@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { RootState } from '../store';
 import { addTask } from '../store/slices/taskSlice';
+import { notificationService } from '../services/notificationService';
 
 const AddTaskScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -37,7 +38,7 @@ const AddTaskScreen: React.FC = () => {
     navigation.goBack();
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!title.trim()) {
       Alert.alert('Error', 'Please enter a task title');
       return;
@@ -59,6 +60,22 @@ const AddTaskScreen: React.FC = () => {
     };
 
     dispatch(addTask(newTask));
+
+    // Schedule notification if reminder is set
+    if (hasReminder && dueDate) {
+      try {
+        await notificationService.scheduleTaskDeadlineReminder(
+          newTask.id,
+          title.trim(),
+          dueDate,
+          priority === 'high'
+        );
+        console.log('✅ Task notification scheduled for:', reminderTime.toLocaleString());
+      } catch (error) {
+        console.error('❌ Failed to schedule notification:', error);
+      }
+    }
+
     Alert.alert('Success', 'Task created successfully!', [
       { text: 'OK', onPress: () => navigation.goBack() }
     ]);
