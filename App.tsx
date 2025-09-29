@@ -9,6 +9,7 @@ import AuthService from './src/services/auth';
 import ConnectionManager from './src/services/connectionManager';
 import { wakeWordService } from './src/services/wakeWordService';
 import { conversationManager } from './src/services/conversationManager';
+import { notificationService } from './src/services/notificationService';
 
 const AppContent: React.FC = () => {
   const isDark = useSelector((state: RootState) => state.theme.isDark);
@@ -29,6 +30,15 @@ const AppContent: React.FC = () => {
         // Initialize auth service
         await AuthService.initialize();
         console.log('✅ Auth Service initialized');
+
+        // Initialize notification service
+        const notificationsEnabled = await notificationService.initialize();
+        if (notificationsEnabled) {
+          console.log('✅ Notifications enabled');
+          console.log('📱 Push token:', notificationService.getExpoPushToken());
+        } else {
+          console.log('⚠️ Notifications not enabled - user may have denied permission');
+        }
 
         // Get initial connection diagnostics
         const diagnostics = await ConnectionManager.getDiagnostics();
