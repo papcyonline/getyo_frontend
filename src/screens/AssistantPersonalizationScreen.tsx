@@ -200,8 +200,14 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
       console.log('✅ Personalization saved successfully');
 
-      // Navigate to congratulations screen or complete onboarding
-      navigation.navigate('Congratulations');
+      // Mark onboarding as complete and navigate to home
+      await ApiService.completeAgentSetup();
+
+      // Navigate to home screen (reset navigation stack)
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
 
     } catch (error: any) {
       console.error('Failed to save personalization:', error);
@@ -275,15 +281,17 @@ const AssistantPersonalizationScreen: React.FC = () => {
   };
 
   const deriveTaskCategories = (data: PersonalizationData) => {
+    // Valid categories from backend: scheduling, email_management, research, reminders,
+    // travel_planning, document_management, social_media, finance_tracking
     const categoryMapping: Record<string, string[]> = {
-      email_overload: ['email_management', 'communication'],
-      too_many_meetings: ['scheduling', 'calendar_management'],
-      task_tracking: ['task_management', 'project_tracking'],
-      time_management: ['time_blocking', 'scheduling'],
-      context_switching: ['focus_time', 'task_management'],
-      prioritization: ['task_management', 'decision_support'],
-      communication: ['email_management', 'communication'],
-      deadlines: ['deadline_tracking', 'reminders'],
+      email_overload: ['email_management'],
+      too_many_meetings: ['scheduling', 'reminders'],
+      task_tracking: ['reminders', 'document_management'],
+      time_management: ['scheduling', 'reminders'],
+      context_switching: ['reminders', 'research'],
+      prioritization: ['reminders', 'scheduling'],
+      communication: ['email_management', 'social_media'],
+      deadlines: ['reminders', 'scheduling'],
     };
 
     const enabledCategories: string[] = [];
@@ -294,9 +302,14 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
     const uniqueCategories = [...new Set(enabledCategories)];
 
+    // If no categories derived, use defaults
+    const finalCategories = uniqueCategories.length > 0
+      ? uniqueCategories
+      : ['scheduling', 'email_management', 'reminders', 'research'];
+
     return {
-      enabledCategories: uniqueCategories,
-      priorityOrder: uniqueCategories,
+      enabledCategories: finalCategories,
+      priorityOrder: finalCategories,
     };
   };
 

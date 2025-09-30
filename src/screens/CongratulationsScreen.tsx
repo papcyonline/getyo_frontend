@@ -23,7 +23,7 @@ const CongratulationsScreen: React.FC = () => {
   const navigation = useNavigation<CongratulationsNavigationProp>();
   const route = useRoute<CongratulationsRouteProp>();
   const insets = useSafeAreaInsets();
-  const { phone, email, userDetails, user, token, passwordGenerated } = route.params;
+  const { phone, email, userDetails, user, token, passwordGenerated } = route.params || {};
 
   const slideAnim = useRef(new Animated.Value(height)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -79,14 +79,23 @@ const CongratulationsScreen: React.FC = () => {
   };
 
   const handleContinue = () => {
-    navigation.navigate('AssistantNaming', {
-      phone,
-      email,
-      userDetails,
-      user,
-      token,
-      passwordGenerated
-    });
+    // If coming from onboarding flow, continue to assistant naming
+    if (phone || email) {
+      navigation.navigate('AssistantNaming', {
+        phone,
+        email,
+        userDetails,
+        user,
+        token,
+        passwordGenerated
+      });
+    } else {
+      // If coming from personalization, go to home
+      navigation.reset({
+        index: 0,
+        routes: [{ name: 'Home' }],
+      });
+    }
   };
 
   return (
