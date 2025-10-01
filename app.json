@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "scheme": "yo-app",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -15,9 +14,11 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.getyo.app",
+      "bundleIdentifier": "com.bahnfor.yoapp",
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSSpeechRecognitionUsageDescription": "This app uses speech recognition to enable voice commands and voice-based interactions with your personal assistant.",
+        "NSMicrophoneUsageDescription": "This app needs access to your microphone to process voice commands and enable voice interactions."
       }
     },
     "android": {
@@ -25,17 +26,23 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false,
-      "package": "com.getyo.app"
+      "package": "com.getyo.app",
+      "permissions": [
+        "RECORD_AUDIO",
+        "CAMERA",
+        "READ_CALENDAR",
+        "WRITE_CALENDAR",
+        "INTERNET",
+        "ACCESS_NETWORK_STATE"
+      ],
+      "versionCode": 1
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-localization",
-      "expo-web-browser",
-      "expo-apple-authentication"
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

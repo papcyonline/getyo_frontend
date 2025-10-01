@@ -1,13 +1,14 @@
 {
   "cli": {
-    "version": ">= 5.0.0"
+    "version": ">= 5.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
-      "developmentClient": true,
-      "distribution": "internal",
-      "ios": {
-        "simulator": true
+      "android": {
+        "buildType": "apk",
+        "developmentClient": true,
+        "distribution": "internal"
       }
     },
     "preview": {
