@@ -19,8 +19,8 @@ const development: EnvironmentConfig = {
 };
 
 const production: EnvironmentConfig = {
-  API_BASE_URL: 'https://yo-backend.onrender.com', // Update this after deploying to Render
-  SOCKET_URL: 'https://yo-backend.onrender.com', // Update this after deploying to Render
+  API_BASE_URL: 'https://getyo-backend.onrender.com',
+  SOCKET_URL: 'https://getyo-backend.onrender.com',
   DEBUG: false,
   API_TIMEOUT: 30000, // Increased to 30 seconds
   VOICE_TIMEOUT: 30000,
