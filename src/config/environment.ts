@@ -9,8 +9,8 @@ interface EnvironmentConfig {
 }
 
 const development: EnvironmentConfig = {
-  API_BASE_URL: 'http://192.168.1.206:3000',
-  SOCKET_URL: 'http://192.168.1.206:3000',
+  API_BASE_URL: 'http://192.168.1.231:3000',
+  SOCKET_URL: 'http://192.168.1.231:3000',
   DEBUG: true,
   API_TIMEOUT: 30000, // Increased to 30 seconds
   VOICE_TIMEOUT: 30000,
@@ -19,8 +19,8 @@ const development: EnvironmentConfig = {
 };
 
 const production: EnvironmentConfig = {
-  API_BASE_URL: 'https://your-backend-url.com',
-  SOCKET_URL: 'https://your-backend-url.com',
+  API_BASE_URL: 'https://yo-backend.onrender.com', // Update this after deploying to Render
+  SOCKET_URL: 'https://yo-backend.onrender.com', // Update this after deploying to Render
   DEBUG: false,
   API_TIMEOUT: 30000, // Increased to 30 seconds
   VOICE_TIMEOUT: 30000,

@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/papcy/Desktop/yofam/getyo_backend/**)",
+      "Bash(ipconfig)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$(cat <<''EOF''\nPrepare backend for Render.com deployment\n\n- Add render.yaml configuration for deployment\n- Add .dockerignore for build optimization\n- Update CORS to support production environment\n- Configure production environment variables\n\n🤖 Generated with [Claude Code](https://claude.com/claude-code)\n\nCo-Authored-By: Claude <noreply@anthropic.com>\nEOF\n)\")",
+      "Bash(git push:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
