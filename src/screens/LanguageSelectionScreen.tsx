@@ -107,9 +107,11 @@ const LanguageSelectionScreen: React.FC = () => {
     try {
       // Always save language preference locally first
       await AsyncStorage.setItem('selectedLanguage', selectedLanguage.code);
+      console.log('✅ Language saved locally:', selectedLanguage.code);
 
       // Check if user is authenticated (if this is a settings update)
       const isAuthenticated = AuthService.isAuthenticated();
+      console.log('🔐 Is user authenticated?', isAuthenticated);
 
       if (isAuthenticated) {
         // Update user preferences with selected language
@@ -119,7 +121,14 @@ const LanguageSelectionScreen: React.FC = () => {
           language: selectedLanguage.code,
         };
 
-        await AuthService.updatePreferences(updatedPreferences);
+        console.log('📡 Updating language preference on server...');
+        try {
+          await AuthService.updatePreferences(updatedPreferences);
+          console.log('✅ Server update successful');
+        } catch (serverError) {
+          console.error('⚠️ Server update failed, but continuing:', serverError);
+          // Don't block the user - language is already saved locally
+        }
 
         // Navigate without showing alert
         if (navigation.canGoBack()) {
@@ -130,17 +139,24 @@ const LanguageSelectionScreen: React.FC = () => {
       } else {
         // For new users during onboarding, language is already saved locally
         // Just navigate to next screen
+        console.log('➡️ Navigating to WelcomeAuth (not authenticated)');
         navigation.navigate('WelcomeAuth');
       }
     } catch (error) {
-      console.error('Failed to update language:', error);
+      console.error('❌ Failed to update language:', error);
       // For new users during onboarding, if navigation fails, try to continue anyway
       const isAuthenticated = AuthService.isAuthenticated();
       if (isAuthenticated) {
         Alert.alert(
-          t.error,
-          t.errorMessage,
-          [{ text: t.ok }]
+          'Network Error',
+          'Failed to update language preference on server. Your selection is saved locally.',
+          [{ text: 'Continue', onPress: () => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigation.navigate('WelcomeAuth');
+            }
+          }}]
         );
       } else {
         // Even if there was an error, try to navigate
