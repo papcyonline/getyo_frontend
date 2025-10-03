@@ -34,6 +34,7 @@ import AgentPrivacyScreen from '../screens/AgentPrivacyScreen';
 // Authentication Screens
 import WelcomeAuthScreen from '../screens/WelcomeAuthScreen';
 import SignInScreen from '../screens/SignInScreen';
+import SignUpScreen from '../screens/SignUpScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ResetPasswordOTPScreen from '../screens/ResetPasswordOTPScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
@@ -969,18 +970,18 @@ const TabNavigator = () => {
 const OnboardingNavigator = () => {
   return (
     <Stack.Navigator
-      initialRouteName="Splash"
+      initialRouteName="LanguageSelection"
       screenOptions={{
         headerShown: false,
         gestureEnabled: false, // Prevent swipe back
       }}
     >
-      <Stack.Screen name="Splash" component={SplashScreen} />
       <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
 
       {/* Welcome/Auth Choice Screen */}
       <Stack.Screen name="WelcomeAuth" component={WelcomeAuthScreen} />
       <Stack.Screen name="SignIn" component={SignInScreen} />
+      <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="ResetPasswordOTP" component={ResetPasswordOTPScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />

@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons } from '@expo/vector-icons';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { PanGestureHandler, State, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
@@ -127,7 +127,8 @@ const TermsPrivacyScreen: React.FC = () => {
     if (!hasReadComplete || accepting) return;
 
     const { translationX } = event.nativeEvent;
-    const threshold = 200; // Distance to slide
+    const slideDistance = width - 76; // Full width minus padding and button size
+    const threshold = slideDistance * 0.9; // 90% of slide distance
 
     if (translationX >= threshold) {
       try {
@@ -136,7 +137,7 @@ const TermsPrivacyScreen: React.FC = () => {
         // Record legal acceptance with API
         await legalService.acceptLegal('combined');
 
-        // Terms and privacy accepted, navigate
+        // Terms and privacy accepted, navigate to user details (proper onboarding flow)
         setIsAccepted(true);
         setTimeout(() => {
           navigation.navigate('UserDetails');
@@ -183,33 +184,33 @@ const TermsPrivacyScreen: React.FC = () => {
         end={{ x: 0.5, y: 1 }}
       />
 
-      <Animated.View
-        style={[
-          styles.slidingContainer,
-          { transform: [{ translateY: slideAnim }] }
-        ]}
-      >
-        {/* Transparent gradient background overlay */}
-        <LinearGradient
-          colors={[
-            'rgba(255, 255, 255, 0.1)',
-            'rgba(255, 255, 255, 0.05)',
-            'transparent',
+      <SafeAreaView style={styles.safeArea}>
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+          <View style={styles.headerTop}>
+            <Text style={styles.title}>{t.termsPrivacy.title}</Text>
+            <Text style={styles.subtitle}>
+              {t.termsPrivacy.subtitle || 'Please read and accept our terms and privacy policy'}
+            </Text>
+          </View>
+        </Animated.View>
+
+        <Animated.View
+          style={[
+            styles.slidingContainer,
+            { transform: [{ translateY: slideAnim }] }
           ]}
-          style={styles.slidingGradientOverlay}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          pointerEvents="none"
-        />
-        <SafeAreaView style={styles.safeArea}>
-          {/* Header with progress indicator */}
-          <View style={styles.header}>
+        >
+          <LinearGradient
+            colors={['rgba(40, 40, 40, 0.1)', 'rgba(30, 30, 30, 0.3)', 'rgba(20, 20, 20, 0.7)']}
+            style={styles.gradientBackground}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          >
             <View style={styles.topBar}>
               <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <Text style={styles.backButtonText}>←</Text>
+                <Ionicons name="chevron-back-outline" size={24} color="#FFFFFF" />
               </TouchableOpacity>
-              <Text style={styles.step}>{t.termsPrivacy.title}</Text>
-              <View style={styles.placeholder} />
+              <View style={{ width: 44 }} />
             </View>
 
             {/* Progress bar */}
@@ -228,38 +229,32 @@ const TermsPrivacyScreen: React.FC = () => {
                 {hasReadComplete ? t.termsPrivacy.readyToContinue : `${Math.round(scrollProgress * 100)}${t.termsPrivacy.progressText}`}
               </Text>
             </View>
-          </View>
 
-          {/* Combined Terms & Privacy Content */}
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={100}
-          >
-            {loading ? (
-              <View style={styles.loadingContainer}>
-                <ActivityIndicator size="large" color="#3396D3" />
-                <Text style={styles.loadingText}>Loading terms and privacy policy...</Text>
-              </View>
-            ) : (
-              <Animated.View
-                style={[
-                  styles.content,
-                  { opacity: fadeAnim },
-                ]}
-              >
-                {legalContent && (
-                  <View style={styles.section}>
-                    <Text style={styles.mainTitle}>
-                      {legalContent.content.mainTitle || legalContent.title}
-                    </Text>
-                    {legalContent.content.subtitle && (
-                      <Text style={styles.subtitle}>
-                        {legalContent.content.subtitle}
+            {/* Combined Terms & Privacy Content */}
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 20) + 100 }]}
+              showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={100}
+            >
+              {loading ? (
+                <View style={styles.loadingContainer}>
+                  <ActivityIndicator size="large" color="#3396D3" />
+                  <Text style={styles.loadingText}>Loading terms and privacy policy...</Text>
+                </View>
+              ) : (
+                <View style={styles.contentInner}>
+                  {legalContent && (
+                    <View style={styles.section}>
+                      <Text style={styles.mainTitle}>
+                        {legalContent.content.mainTitle || legalContent.title}
                       </Text>
-                    )}
+                      {legalContent.content.subtitle && (
+                        <Text style={styles.subtitleInner}>
+                          {legalContent.content.subtitle}
+                        </Text>
+                      )}
 
                     <Text style={styles.versionText}>
                       Version {legalContent.version} - {new Date(legalContent.effectiveDate).toLocaleDateString()}
@@ -295,8 +290,8 @@ const TermsPrivacyScreen: React.FC = () => {
                                   transform: [
                                     {
                                       translateX: slideToAcceptAnim.interpolate({
-                                        inputRange: [0, 200],
-                                        outputRange: [0, 200],
+                                        inputRange: [0, width - 76],
+                                        outputRange: [0, width - 76],
                                         extrapolate: 'clamp',
                                       }),
                                     },
@@ -325,13 +320,14 @@ const TermsPrivacyScreen: React.FC = () => {
                         <Text style={styles.acceptedText}>{t.termsPrivacy.readyToContinueAfterAccept}</Text>
                       </View>
                     )}
-                  </View>
-                )}
-              </Animated.View>
-            )}
-          </ScrollView>
-        </SafeAreaView>
-      </Animated.View>
+                    </View>
+                  )}
+                </View>
+              )}
+            </ScrollView>
+          </LinearGradient>
+        </Animated.View>
+      </SafeAreaView>
     </GestureHandlerRootView>
   );
 };
@@ -346,40 +342,67 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    bottom: 0,
-  },
-  slidingContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingBottom: 0,
-    marginBottom: 0,
-  },
-  slidingGradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    height: height * 0.4,
+    zIndex: 1,
   },
   safeArea: {
     flex: 1,
+    zIndex: 2,
   },
-  header: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-    paddingBottom: 15,
+  content: {
+    flex: 1,
+    paddingHorizontal: 30,
+    paddingTop: 20,
+    zIndex: 2,
+  },
+  headerTop: {
+    alignItems: 'center',
+    marginTop: 60,
+    marginBottom: 30,
+  },
+  title: {
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: 0.5,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.8)',
+    textAlign: 'center',
+    fontWeight: '500',
+    letterSpacing: 0.3,
+    lineHeight: 22,
+    paddingHorizontal: 20,
+  },
+  slidingContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.75,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 10,
+  },
+  gradientBackground: {
+    flex: 1,
+    paddingTop: 10,
+    zIndex: 10,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 30,
-    paddingTop: 20,
-    paddingBottom: 15,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   backButton: {
     width: 40,
@@ -391,23 +414,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '600',
-  },
-  step: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    letterSpacing: 0.5,
-  },
-  placeholder: {
-    width: 40,
-  },
   progressContainer: {
     paddingHorizontal: 30,
-    paddingTop: 10,
+    paddingTop: 5,
   },
   progressBackground: {
     height: 4,
@@ -430,11 +439,19 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 120,
-  },
-  content: {
     paddingHorizontal: 30,
     paddingTop: 25,
+  },
+  contentInner: {
+    flex: 1,
+  },
+  subtitleInner: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.7)',
+    lineHeight: 22,
+    fontWeight: '400',
+    textAlign: 'center',
+    marginBottom: 30,
   },
   section: {
     marginBottom: 40,

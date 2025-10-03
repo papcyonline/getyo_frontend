@@ -350,6 +350,50 @@ class ApiService {
     }
   }
 
+  async googleAuth(googleUser: {
+    idToken: string;
+    email: string;
+    name: string;
+  }): Promise<{ user: User; token: string }> {
+    try {
+      console.log('🔐 Google OAuth attempt');
+      const response = await this.api.post('/api/auth/oauth/google', googleUser);
+      const { user, token } = response.data.data;
+
+      // Store token and user data
+      await AsyncStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      console.log('✅ Google OAuth successful');
+      return { user, token };
+    } catch (error: any) {
+      console.error('❌ Google OAuth failed:', error);
+      throw error;
+    }
+  }
+
+  async appleAuth(appleUser: {
+    identityToken: string;
+    email: string;
+    fullName?: string;
+  }): Promise<{ user: User; token: string }> {
+    try {
+      console.log('🔐 Apple OAuth attempt');
+      const response = await this.api.post('/api/auth/oauth/apple', appleUser);
+      const { user, token } = response.data.data;
+
+      // Store token and user data
+      await AsyncStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      console.log('✅ Apple OAuth successful');
+      return { user, token };
+    } catch (error: any) {
+      console.error('❌ Apple OAuth failed:', error);
+      throw error;
+    }
+  }
+
   // OTP Management
   async sendPhoneOTP(phone: string): Promise<ApiResponse<null>> {
     try {

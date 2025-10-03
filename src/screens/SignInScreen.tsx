@@ -94,18 +94,28 @@ const SignInScreen: React.FC = () => {
         userId: user?.id
       });
 
-      // Check if user has completed assistant setup
-      // If assistantName exists, they've completed setup
-      if (user && user.assistantName) {
-        console.log('✅ [DEBUG] User has assistantName, dispatching completeOnboarding()');
+      // Check if user has completed onboarding
+      // Use the hasCompletedOnboarding flag from backend
+      if (user && user.hasCompletedOnboarding) {
+        console.log('✅ [DEBUG] User has completed onboarding, dispatching completeOnboarding()');
         // Mark onboarding as complete
         dispatch(completeOnboarding());
         console.log('✅ [DEBUG] completeOnboarding() dispatched successfully');
       } else {
-        console.log('🔄 [DEBUG] User has NO assistantName, navigating to AssistantNaming');
-        // Navigate to assistant setup
-        navigation.navigate('AssistantNaming' as any);
-        console.log('🔄 [DEBUG] Navigation to AssistantNaming triggered');
+        console.log('🔄 [DEBUG] User has NOT completed onboarding');
+        // Determine where to resume onboarding based on what's missing
+        if (!user.assistantName) {
+          console.log('🔄 [DEBUG] Missing assistantName, navigating to AssistantNaming');
+          navigation.navigate('AssistantNaming' as any);
+        } else if (!user.agentConfiguration?.setupCompleted) {
+          console.log('🔄 [DEBUG] Missing agent setup, navigating to AgentPersonality');
+          navigation.navigate('AgentPersonality' as any);
+        } else {
+          // Fallback to assistant naming if we're not sure
+          console.log('🔄 [DEBUG] Uncertain state, navigating to AssistantNaming');
+          navigation.navigate('AssistantNaming' as any);
+        }
+        console.log('🔄 [DEBUG] Navigation triggered');
       }
 
       console.log('✅ [DEBUG] Login process completed successfully');
@@ -193,9 +203,9 @@ const SignInScreen: React.FC = () => {
           >
             <View style={styles.topBar}>
               <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <Ionicons name="arrow-back" size={24} color="#3396D3" />
+                <Ionicons name="chevron-back-outline" size={24} color="#FFFFFF" />
               </TouchableOpacity>
-              <Text style={styles.step}>{t.signIn.title}</Text>
+              <View style={{ width: 44 }} />
             </View>
 
             <KeyboardAvoidingView
@@ -209,7 +219,7 @@ const SignInScreen: React.FC = () => {
                   <TextInput
                     style={styles.input}
                     placeholder={t.signIn.emailPlaceholder}
-                    placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -224,7 +234,7 @@ const SignInScreen: React.FC = () => {
                   <TextInput
                     style={styles.input}
                     placeholder={t.signIn.passwordPlaceholder}
-                    placeholderTextColor="rgba(255, 255, 255, 0.7)"
+                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
@@ -309,12 +319,12 @@ const SignInScreen: React.FC = () => {
                 </View>
               </View>
 
-              <View style={styles.footer}>
+              <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
                 <Text style={styles.footerText}>
                   {t.signIn.noAccount}{' '}
                   <Text
                     style={styles.signUpLink}
-                    onPress={() => navigation.navigate('PhoneInput')}
+                    onPress={() => navigation.navigate('TermsPrivacy')}
                   >
                     {t.signIn.signUp}
                   </Text>
@@ -391,7 +401,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: height * 0.65,
+    height: height * 0.75,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderTopWidth: 1,
@@ -577,7 +587,7 @@ const styles = StyleSheet.create({
   },
   footer: {
     paddingHorizontal: 30,
-    paddingBottom: 30,
+    paddingTop: 10,
     alignItems: 'center',
   },
   footerText: {

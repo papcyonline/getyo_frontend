@@ -15,13 +15,14 @@ import {
   SafeAreaView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RootState, AppDispatch } from '../store';
+import { RootState } from '../store';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
-import AuthService from '../services/auth';
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { getTranslations } from '../utils/translations';
 
 const { height } = Dimensions.get('window');
 
@@ -31,26 +32,24 @@ const SignUpScreen: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
-    phone: '',
     password: '',
     confirmPassword: '',
   });
   const [errors, setErrors] = useState({
     name: '',
     email: '',
-    phone: '',
     password: '',
     confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const slideAnim = useRef(new Animated.Value(height)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   const navigation = useNavigation<SignUpNavigationProp>();
-  const dispatch = useDispatch<AppDispatch>();
   const insets = useSafeAreaInsets();
-  const theme = useSelector((state: RootState) => state.theme.theme);
-  const { loading, error } = useSelector((state: RootState) => state.user);
+  const currentLanguage = useSelector((state: RootState) => state.user?.user?.preferences?.language || 'en');
+  const t = getTranslations(currentLanguage);
 
   useEffect(() => {
     // Slide up animation
@@ -59,6 +58,13 @@ const SignUpScreen: React.FC = () => {
       useNativeDriver: true,
       tension: 50,
       friction: 8,
+    }).start();
+
+    // Fade in animation
+    Animated.timing(fadeAnim, {
+      toValue: 1,
+      duration: 600,
+      useNativeDriver: true,
     }).start();
   }, []);
 
@@ -89,34 +95,13 @@ const SignUpScreen: React.FC = () => {
     return true;
   };
 
-  const validatePhone = (phone: string): boolean => {
-    if (!phone) {
-      setErrors(prev => ({ ...prev, phone: '' }));
-      return true; // Phone is optional
-    }
-    const phoneRegex = /^[\+]?[1-9][\d]{0,15}$/;
-    if (!phoneRegex.test(phone.replace(/\s+/g, ''))) {
-      setErrors(prev => ({ ...prev, phone: 'Please enter a valid phone number' }));
-      return false;
-    }
-    setErrors(prev => ({ ...prev, phone: '' }));
-    return true;
-  };
-
   const validatePassword = (password: string): boolean => {
     if (!password) {
       setErrors(prev => ({ ...prev, password: 'Password is required' }));
       return false;
     }
-    if (password.length < 8) {
-      setErrors(prev => ({ ...prev, password: 'Password must be at least 8 characters' }));
-      return false;
-    }
-    if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(password)) {
-      setErrors(prev => ({
-        ...prev,
-        password: 'Password must contain uppercase, lowercase, and number'
-      }));
+    if (password.length < 6) {
+      setErrors(prev => ({ ...prev, password: 'Password must be at least 6 characters' }));
       return false;
     }
     setErrors(prev => ({ ...prev, password: '' }));
@@ -139,75 +124,47 @@ const SignUpScreen: React.FC = () => {
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
 
-    // Real-time validation
+    // Clear error when user starts typing
     if (errors[field as keyof typeof errors]) {
-      switch (field) {
-        case 'name':
-          validateName(value);
-          break;
-        case 'email':
-          validateEmail(value);
-          break;
-        case 'phone':
-          validatePhone(value);
-          break;
-        case 'password':
-          validatePassword(value);
-          if (formData.confirmPassword) {
-            validateConfirmPassword(formData.confirmPassword);
-          }
-          break;
-        case 'confirmPassword':
-          validateConfirmPassword(value);
-          break;
-      }
+      setErrors(prev => ({ ...prev, [field]: '' }));
     }
   };
 
   const handleSignUp = async () => {
     const isNameValid = validateName(formData.name);
     const isEmailValid = validateEmail(formData.email);
-    const isPhoneValid = validatePhone(formData.phone);
     const isPasswordValid = validatePassword(formData.password);
     const isConfirmPasswordValid = validateConfirmPassword(formData.confirmPassword);
 
-    if (!isNameValid || !isEmailValid || !isPhoneValid || !isPasswordValid || !isConfirmPasswordValid) {
+    if (!isNameValid || !isEmailValid || !isPasswordValid || !isConfirmPasswordValid) {
       return;
     }
 
-    try {
-      await AuthService.register({
+    // Navigate to proper onboarding flow - registration happens AFTER OTP verification
+    navigation.navigate('TermsPrivacy', {
+      signUpData: {
         name: formData.name.trim(),
         email: formData.email.toLowerCase().trim(),
         password: formData.password,
-        phone: formData.phone.trim() || undefined,
-      });
-
-      Alert.alert('Success', 'Account created successfully!', [
-        { text: 'OK', onPress: () => {} }
-      ]);
-
-      // Alternative: Navigate to phone verification flow if you want that
-      // navigation.navigate('PhoneInput');
-    } catch (error: any) {
-      Alert.alert(
-        'Registration Failed',
-        error.response?.data?.error || error.message || 'An error occurred during registration'
-      );
-    }
-  };
-
-  const handleLogin = () => {
-    navigation.navigate('Login');
+      }
+    });
   };
 
   const handleBack = () => {
     navigation.goBack();
   };
 
+  const handleGoogleSignIn = () => {
+    Alert.alert('Coming Soon', 'Google Sign-In will be available soon.');
+  };
+
+  const handleAppleSignIn = () => {
+    Alert.alert('Coming Soon', 'Apple Sign-In will be available soon.');
+  };
+
   const isFormValid = () => {
-    return formData.name &&
-           formData.email &&
+    return formData.name.trim() &&
+           formData.email.trim() &&
            formData.password &&
            formData.confirmPassword &&
            !Object.values(errors).some(error => error !== '');
@@ -215,194 +172,216 @@ const SignUpScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
+      {/* Background gradient flare */}
+      <LinearGradient
+        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
+        style={styles.gradientFlare}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+      />
+
       <SafeAreaView style={styles.safeArea}>
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-          style={styles.keyboardAvoid}
-        >
-          <View style={styles.header}>
-            <Text style={styles.title}>Create Account</Text>
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+          <View style={styles.headerTop}>
+            <Text style={styles.title}>{t.signUp?.title || 'Create Account'}</Text>
             <Text style={styles.subtitle}>
-              Join thousands using AI personal assistants
+              {t.signUp?.subtitle || 'Join us and get your personal AI assistant'}
             </Text>
           </View>
+        </Animated.View>
 
-          <View style={styles.formContainer}>
+        <Animated.View
+          style={[
+            styles.slidingContainer,
+            { transform: [{ translateY: slideAnim }] }
+          ]}
+        >
+          <LinearGradient
+            colors={['rgba(40, 40, 40, 0.1)', 'rgba(30, 30, 30, 0.3)', 'rgba(20, 20, 20, 0.7)']}
+            style={styles.gradientBackground}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+          >
             <View style={styles.topBar}>
               <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <Text style={styles.backButtonText}>←</Text>
+                <Ionicons name="chevron-back-outline" size={24} color="#FFFFFF" />
               </TouchableOpacity>
-              <Text style={styles.step}>Sign Up</Text>
+              <View style={{ width: 44 }} />
             </View>
 
-            <ScrollView
-              style={styles.scrollView}
-              contentContainerStyle={{
-                paddingHorizontal: 30,
-                paddingBottom: 20
-              }}
-              showsVerticalScrollIndicator={false}
+            <KeyboardAvoidingView
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={styles.keyboardAvoid}
             >
-              <View style={styles.form}>
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Full Name</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      errors.name ? styles.inputError : null,
-                    ]}
-                    placeholder="Enter your full name"
-                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                    value={formData.name}
-                    onChangeText={(text) => handleInputChange('name', text)}
-                    onBlur={() => validateName(formData.name)}
-                    autoCapitalize="words"
-                    returnKeyType="next"
-                  />
-                  {errors.name ? (
-                    <Text style={styles.errorText}>{errors.name}</Text>
-                  ) : null}
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Email Address</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      errors.email ? styles.inputError : null,
-                    ]}
-                    placeholder="Enter your email"
-                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                    value={formData.email}
-                    onChangeText={(text) => handleInputChange('email', text)}
-                    onBlur={() => validateEmail(formData.email)}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    autoComplete="email"
-                    returnKeyType="next"
-                  />
-                  {errors.email ? (
-                    <Text style={styles.errorText}>{errors.email}</Text>
-                  ) : null}
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Phone Number (Optional)</Text>
-                  <TextInput
-                    style={[
-                      styles.input,
-                      errors.phone ? styles.inputError : null,
-                    ]}
-                    placeholder="Enter your phone number"
-                    placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                    value={formData.phone}
-                    onChangeText={(text) => handleInputChange('phone', text)}
-                    onBlur={() => validatePhone(formData.phone)}
-                    keyboardType="phone-pad"
-                    autoComplete="tel"
-                    returnKeyType="next"
-                  />
-                  {errors.phone ? (
-                    <Text style={styles.errorText}>{errors.phone}</Text>
-                  ) : null}
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Password</Text>
-                  <View style={styles.passwordContainer}>
-                    <TextInput
-                      style={[
-                        styles.passwordInput,
-                        errors.password ? styles.inputError : null,
-                      ]}
-                      placeholder="Create a password"
-                      placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                      value={formData.password}
-                      onChangeText={(text) => handleInputChange('password', text)}
-                      onBlur={() => validatePassword(formData.password)}
-                      secureTextEntry={!showPassword}
-                      returnKeyType="next"
-                    />
-                    <TouchableOpacity
-                      style={styles.eyeButton}
-                      onPress={() => setShowPassword(!showPassword)}
-                    >
-                      <Text style={styles.eyeIcon}>{showPassword ? 'Hide' : 'Show'}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {errors.password ? (
-                    <Text style={styles.errorText}>{errors.password}</Text>
-                  ) : null}
-                </View>
-
-                <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Confirm Password</Text>
-                  <View style={styles.passwordContainer}>
-                    <TextInput
-                      style={[
-                        styles.passwordInput,
-                        errors.confirmPassword ? styles.inputError : null,
-                      ]}
-                      placeholder="Confirm your password"
-                      placeholderTextColor="rgba(255, 255, 255, 0.4)"
-                      value={formData.confirmPassword}
-                      onChangeText={(text) => handleInputChange('confirmPassword', text)}
-                      onBlur={() => validateConfirmPassword(formData.confirmPassword)}
-                      secureTextEntry={!showConfirmPassword}
-                      returnKeyType="done"
-                      onSubmitEditing={handleSignUp}
-                    />
-                    <TouchableOpacity
-                      style={styles.eyeButton}
-                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
-                    >
-                      <Text style={styles.eyeIcon}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {errors.confirmPassword ? (
-                    <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-                  ) : null}
-                </View>
-
-                {error && (
-                  <View style={styles.globalErrorContainer}>
-                    <Text style={styles.globalErrorText}>{error}</Text>
-                  </View>
-                )}
-              </View>
-            </ScrollView>
-
-            <View style={styles.footer}>
-              <TouchableOpacity
-                style={[
-                  styles.signUpButton,
-                  (!isFormValid() || loading) && styles.disabledButton,
-                ]}
-                onPress={handleSignUp}
-                disabled={!isFormValid() || loading}
-                activeOpacity={0.9}
+              <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={[styles.scrollContent, { paddingBottom: Math.max(insets.bottom, 20) + 20 }]}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
               >
-                {loading ? (
-                  <ActivityIndicator color="#FFFFFF" size="large" />
-                ) : (
-                  <Text style={[
-                    styles.signUpButtonText,
-                    !isFormValid() && styles.disabledButtonText,
-                  ]}>
-                    Create Account
-                  </Text>
-                )}
-              </TouchableOpacity>
+                <View style={styles.formContainer}>
+                  {/* Name Input */}
+                  <View style={styles.inputWrapper}>
+                    <View style={styles.inputRow}>
+                      <MaterialIcons name="person" size={20} color="#3396D3" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder={t.signUp?.namePlaceholder || 'Full Name'}
+                        placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                        value={formData.name}
+                        onChangeText={(text) => handleInputChange('name', text)}
+                        onBlur={() => validateName(formData.name)}
+                        autoCapitalize="words"
+                        returnKeyType="next"
+                      />
+                    </View>
+                    <View style={styles.underline} />
+                    {errors.name ? (
+                      <Text style={styles.errorText}>{errors.name}</Text>
+                    ) : null}
+                  </View>
 
-              <View style={styles.loginContainer}>
-                <Text style={styles.loginPrompt}>Already have an account?</Text>
-                <TouchableOpacity onPress={handleLogin}>
-                  <Text style={styles.loginLink}>Sign In</Text>
-                </TouchableOpacity>
+                  {/* Email Input */}
+                  <View style={styles.inputWrapper}>
+                    <View style={styles.inputRow}>
+                      <MaterialIcons name="email" size={20} color="#3396D3" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder={t.signUp?.emailPlaceholder || 'Email Address'}
+                        placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                        value={formData.email}
+                        onChangeText={(text) => handleInputChange('email', text)}
+                        onBlur={() => validateEmail(formData.email)}
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        autoComplete="email"
+                        returnKeyType="next"
+                      />
+                    </View>
+                    <View style={styles.underline} />
+                    {errors.email ? (
+                      <Text style={styles.errorText}>{errors.email}</Text>
+                    ) : null}
+                  </View>
+
+                  {/* Password Input */}
+                  <View style={styles.inputWrapper}>
+                    <View style={styles.inputRow}>
+                      <MaterialIcons name="lock" size={20} color="#3396D3" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder={t.signUp?.passwordPlaceholder || 'Password'}
+                        placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                        value={formData.password}
+                        onChangeText={(text) => handleInputChange('password', text)}
+                        onBlur={() => validatePassword(formData.password)}
+                        secureTextEntry={!showPassword}
+                        autoComplete="password"
+                        returnKeyType="next"
+                      />
+                      <TouchableOpacity
+                        style={styles.eyeButton}
+                        onPress={() => setShowPassword(!showPassword)}
+                      >
+                        <MaterialIcons
+                          name={showPassword ? "visibility" : "visibility-off"}
+                          size={20}
+                          color="rgba(255, 255, 255, 0.6)"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.underline} />
+                    {errors.password ? (
+                      <Text style={styles.errorText}>{errors.password}</Text>
+                    ) : null}
+                  </View>
+
+                  {/* Confirm Password Input */}
+                  <View style={styles.inputWrapper}>
+                    <View style={styles.inputRow}>
+                      <MaterialIcons name="lock" size={20} color="#3396D3" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder={t.signUp?.confirmPasswordPlaceholder || 'Confirm Password'}
+                        placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                        value={formData.confirmPassword}
+                        onChangeText={(text) => handleInputChange('confirmPassword', text)}
+                        onBlur={() => validateConfirmPassword(formData.confirmPassword)}
+                        secureTextEntry={!showConfirmPassword}
+                        returnKeyType="done"
+                        onSubmitEditing={handleSignUp}
+                      />
+                      <TouchableOpacity
+                        style={styles.eyeButton}
+                        onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                      >
+                        <MaterialIcons
+                          name={showConfirmPassword ? "visibility" : "visibility-off"}
+                          size={20}
+                          color="rgba(255, 255, 255, 0.6)"
+                        />
+                      </TouchableOpacity>
+                    </View>
+                    <View style={styles.underline} />
+                    {errors.confirmPassword ? (
+                      <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+                    ) : null}
+                  </View>
+
+                  {/* Sign Up Button */}
+                  <TouchableOpacity
+                    style={[styles.signUpButton, !isFormValid() && styles.disabledButton]}
+                    onPress={handleSignUp}
+                    disabled={!isFormValid()}
+                    activeOpacity={0.9}
+                  >
+                    <MaterialIcons name="person-add" size={20} color="#FFFFFF" />
+                    <Text style={styles.signUpButtonText}>{t.signUp?.signUpButton || 'Create Account'}</Text>
+                  </TouchableOpacity>
+
+                  {/* OR Divider */}
+                  <View style={styles.dividerContainer}>
+                    <View style={styles.dividerLine} />
+                    <Text style={styles.dividerText}>OR</Text>
+                    <View style={styles.dividerLine} />
+                  </View>
+
+                  {/* Google Sign In Button */}
+                  <TouchableOpacity
+                    style={styles.socialButton}
+                    onPress={handleGoogleSignIn}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="login" size={20} color="#FFFFFF" />
+                    <Text style={styles.socialButtonText}>Continue with Google</Text>
+                  </TouchableOpacity>
+
+                  {/* Apple Sign In Button */}
+                  <TouchableOpacity
+                    style={styles.socialButton}
+                    onPress={handleAppleSignIn}
+                    activeOpacity={0.8}
+                  >
+                    <MaterialIcons name="apple" size={20} color="#FFFFFF" />
+                    <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                  </TouchableOpacity>
+                </View>
+              </ScrollView>
+
+              <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+                <Text style={styles.footerText}>
+                  {t.signUp?.haveAccount || 'Already have an account?'}{' '}
+                  <Text
+                    style={styles.signInLink}
+                    onPress={() => navigation.navigate('SignIn')}
+                  >
+                    {t.signUp?.signIn || 'Sign In'}
+                  </Text>
+                </Text>
               </View>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
+            </KeyboardAvoidingView>
+          </LinearGradient>
+        </Animated.View>
       </SafeAreaView>
     </View>
   );
@@ -413,191 +392,194 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
+  gradientFlare: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.4,
+    zIndex: 1,
+  },
   safeArea: {
     flex: 1,
+    zIndex: 2,
   },
-  header: {
+  content: {
+    flex: 1,
     paddingHorizontal: 30,
-    paddingTop: 40,
-    paddingBottom: 30,
+    paddingTop: 20,
+    zIndex: 2,
+  },
+  headerTop: {
     alignItems: 'center',
+    marginTop: 60,
+    marginBottom: 30,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#000000',
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFFFFF',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#F7F2ED',
+    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
     fontWeight: '500',
     letterSpacing: 0.3,
+    lineHeight: 22,
+    paddingHorizontal: 20,
   },
-  formContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(40, 40, 40, 0.95)',
+  slidingContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.75,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-    paddingTop: 20,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    zIndex: 10,
   },
-  keyboardAvoid: {
+  gradientBackground: {
     flex: 1,
+    paddingTop: 10,
+    zIndex: 10,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 30,
+    paddingTop: 15,
     paddingBottom: 20,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  backButtonText: {
-    color: '#000000',
-    fontSize: 22,
-    fontWeight: '600',
-  },
-  step: {
-    fontSize: 16,
-    color: '#000000',
-    fontWeight: '500',
-    letterSpacing: 0.5,
+  keyboardAvoid: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 30,
-    paddingBottom: 20,
+    paddingTop: 10,
   },
-  form: {
-    width: '100%',
+  formContainer: {
+    flex: 1,
   },
-  inputContainer: {
-    marginBottom: 20,
+  inputWrapper: {
+    marginBottom: 25,
   },
-  inputLabel: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#000000',
-    marginBottom: 8,
-    letterSpacing: 0.3,
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   input: {
-    height: 56,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 16,
-    paddingHorizontal: 20,
+    flex: 1,
     fontSize: 16,
+    color: '#FFFFFF',
     fontWeight: '500',
-    color: '#000000',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  passwordContainer: {
-    position: 'relative',
-  },
-  passwordInput: {
-    height: 56,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    paddingRight: 60,
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#000000',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+  underline: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   eyeButton: {
-    position: 'absolute',
-    right: 20,
-    top: 16,
     padding: 4,
-  },
-  eyeIcon: {
-    fontSize: 12,
-    color: '#000000',
-    fontWeight: '600',
-  },
-  inputError: {
-    borderColor: '#FF6B6B',
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
+    marginLeft: 8,
   },
   errorText: {
     fontSize: 12,
     color: '#FF6B6B',
     marginTop: 6,
-    marginLeft: 4,
+    marginLeft: 32,
     fontWeight: '500',
-  },
-  globalErrorContainer: {
-    backgroundColor: 'rgba(255, 107, 107, 0.1)',
-    borderRadius: 12,
-    padding: 16,
-    marginTop: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 107, 0.3)',
-  },
-  globalErrorText: {
-    fontSize: 14,
-    color: '#FF6B6B',
-    textAlign: 'center',
-    fontWeight: '500',
-  },
-  footer: {
-    paddingHorizontal: 30,
-    paddingBottom: 40,
-    paddingTop: 20,
   },
   signUpButton: {
     height: 56,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#3396D3',
     borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  signUpButtonText: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#000000',
-    letterSpacing: 0.5,
-  },
-  disabledButtonText: {
-    color: 'rgba(255, 255, 255, 0.4)',
-  },
-  loginContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
+    marginTop: 10,
   },
-  loginPrompt: {
+  disabledButton: {
+    backgroundColor: 'rgba(51, 150, 211, 0.3)',
+  },
+  signUpButtonText: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  footer: {
+    paddingHorizontal: 30,
+    paddingTop: 10,
+    alignItems: 'center',
+  },
+  footerText: {
     fontSize: 14,
     color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '500',
+    textAlign: 'center',
   },
-  loginLink: {
-    fontSize: 14,
-    color: '#000000',
+  signInLink: {
+    color: '#3396D3',
     fontWeight: '600',
-    textDecorationLine: 'underline',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 25,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  dividerText: {
+    color: 'rgba(255, 255, 255, 0.5)',
+    paddingHorizontal: 15,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  socialButton: {
+    height: 52,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 26,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 12,
+  },
+  socialButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    letterSpacing: 0.3,
   },
 });
 

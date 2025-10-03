@@ -9,8 +9,8 @@ interface EnvironmentConfig {
 }
 
 const development: EnvironmentConfig = {
-  API_BASE_URL: 'http://192.168.1.231:3000',
-  SOCKET_URL: 'http://192.168.1.231:3000',
+  API_BASE_URL: 'https://getyo-backend.onrender.com',
+  SOCKET_URL: 'https://getyo-backend.onrender.com',
   DEBUG: true,
   API_TIMEOUT: 30000, // Increased to 30 seconds
   VOICE_TIMEOUT: 30000,

@@ -125,8 +125,8 @@ const OTPVerificationScreen: React.FC = () => {
         if (verificationType === 'phone' && phone) {
           // Move to email input
           navigation.navigate('EmailInput', { phone, userDetails });
-        } else if (verificationType === 'email' && phone && email) {
-          // Email verification successful - move to password creation
+        } else if (verificationType === 'email') {
+          // Both phone and email verified - now collect password before registration
           navigation.navigate('PasswordCreation', { phone, email, userDetails });
         }
       } else {

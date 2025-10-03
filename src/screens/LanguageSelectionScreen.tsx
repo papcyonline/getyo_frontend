@@ -18,6 +18,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as Localization from 'expo-localization';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../types';
 import AuthService from '../services/auth';
 import { getTranslations } from '../utils/translations';
@@ -104,6 +105,9 @@ const LanguageSelectionScreen: React.FC = () => {
     setIsLoading(true);
 
     try {
+      // Always save language preference locally first
+      await AsyncStorage.setItem('selectedLanguage', selectedLanguage.code);
+
       // Check if user is authenticated (if this is a settings update)
       const isAuthenticated = AuthService.isAuthenticated();
 
@@ -124,12 +128,13 @@ const LanguageSelectionScreen: React.FC = () => {
           navigation.navigate('WelcomeAuth');
         }
       } else {
-        // For new users during onboarding, just navigate without any popups
+        // For new users during onboarding, language is already saved locally
+        // Just navigate to next screen
         navigation.navigate('WelcomeAuth');
       }
     } catch (error) {
       console.error('Failed to update language:', error);
-      // For new users during onboarding, ignore errors and just proceed
+      // For new users during onboarding, if navigation fails, try to continue anyway
       const isAuthenticated = AuthService.isAuthenticated();
       if (isAuthenticated) {
         Alert.alert(
@@ -138,7 +143,18 @@ const LanguageSelectionScreen: React.FC = () => {
           [{ text: t.ok }]
         );
       } else {
-        navigation.navigate('WelcomeAuth');
+        // Even if there was an error, try to navigate
+        try {
+          navigation.navigate('WelcomeAuth');
+        } catch (navError) {
+          console.error('Navigation failed:', navError);
+          // If navigation fails, the app might not be fully initialized yet
+          Alert.alert(
+            'Error',
+            'App is still initializing. Please wait a moment and try again.',
+            [{ text: 'OK' }]
+          );
+        }
       }
     } finally {
       setIsLoading(false);

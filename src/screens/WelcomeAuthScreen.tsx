@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { AntDesign, MaterialIcons } from '@expo/vector-icons';
+import { AntDesign, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,8 +34,8 @@ const WelcomeAuthScreen: React.FC = () => {
 
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
-  const [loadingStates, setLoadingStates] = useState([false, false, false, false, false, false]);
-  const [completedStates, setCompletedStates] = useState([false, false, false, false, false, false]);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const floatAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Slide up animation
@@ -54,45 +54,42 @@ const WelcomeAuthScreen: React.FC = () => {
       useNativeDriver: true,
     }).start();
 
-    // Start sequential loading animation
-    startSequentialLoading();
+    // Gentle pulse animation for logo
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.05,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 2000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+
+    // Floating animation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(floatAnim, {
+          toValue: -10,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(floatAnim, {
+          toValue: 0,
+          duration: 3000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
   }, []);
-
-  const startSequentialLoading = () => {
-    const loadFeature = (index: number) => {
-      if (index >= 6) return;
-
-      // Start loading
-      setLoadingStates(prev => {
-        const newStates = [...prev];
-        newStates[index] = true;
-        return newStates;
-      });
-
-      // Complete after 2 seconds
-      setTimeout(() => {
-        setLoadingStates(prev => {
-          const newStates = [...prev];
-          newStates[index] = false;
-          return newStates;
-        });
-        setCompletedStates(prev => {
-          const newStates = [...prev];
-          newStates[index] = true;
-          return newStates;
-        });
-
-        // Start next feature
-        setTimeout(() => loadFeature(index + 1), 300);
-      }, 2000);
-    };
-
-    // Start with first feature after initial fade in
-    setTimeout(() => loadFeature(0), 1000);
-  };
 
 
   const handleSignUp = () => {
+    // Navigate to Terms & Privacy (mandatory before sign up)
     navigation.navigate('TermsPrivacy');
   };
 
@@ -115,83 +112,74 @@ const WelcomeAuthScreen: React.FC = () => {
         end={{ x: 0.5, y: 1 }}
       />
 
-      {/* AI-themed background shapes */}
-      <View style={styles.backgroundShapes}>
-        {Array.from({ length: 20 }).map((_, i) => {
-          const shapeType = i % 4;
-          const isEven = i % 2 === 0;
-          return (
-            <View
-              key={i}
-              style={[
-                styles.aiShape,
-                shapeType === 0 && styles.microphoneIcon,
-                shapeType === 1 && styles.brainIcon,
-                shapeType === 2 && styles.connectionIcon,
-                shapeType === 3 && styles.chipIcon,
-                {
-                  top: Math.random() * (height * 0.8),
-                  left: Math.random() * (width - 40),
-                  opacity: isEven ? 0.08 : 0.04,
-                },
-              ]}
-            >
-              {shapeType === 0 && <MaterialIcons name="mic" size={20} color="rgba(51, 150, 211, 0.3)" />}
-              {shapeType === 1 && <MaterialIcons name="psychology" size={20} color="rgba(75, 0, 130, 0.3)" />}
-              {shapeType === 2 && <MaterialIcons name="hub" size={20} color="rgba(25, 25, 112, 0.3)" />}
-              {shapeType === 3 && <MaterialIcons name="memory" size={20} color="rgba(138, 43, 226, 0.3)" />}
-            </View>
-          );
-        })}
-      </View>
-
       <SafeAreaView style={styles.safeArea}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          <View style={styles.header}>
-            <Text style={styles.title}>{t.welcome.meetTitle}</Text>
-            <Text style={styles.subtitle}>
-              {t.welcome.subtitle}
-            </Text>
-            <Text style={styles.description}>
-              {t.welcome.description}
-            </Text>
+          {/* Logo Section */}
+          <View style={styles.logoSection}>
+            <Animated.View style={[
+              styles.logoContainer,
+              { transform: [{ scale: pulseAnim }, { translateY: floatAnim }] }
+            ]}>
+              <LinearGradient
+                colors={['#3396D3', '#2578B5', '#1A5A97']}
+                style={styles.logoCircle}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <MaterialIcons name="assistant" size={60} color="#FFFFFF" />
+              </LinearGradient>
+
+              {/* Glow effect */}
+              <View style={styles.glowCircle} />
+            </Animated.View>
+
+            <Text style={styles.appName}>Yo!</Text>
+            <Text style={styles.tagline}>Your Personal AI Assistant</Text>
           </View>
 
-          <View style={styles.featuresContainer}>
-            {[
-              { title: t.welcome.features.smartTaskManagement, description: t.welcome.features.smartTaskManagementDesc },
-              { title: t.welcome.features.naturalConversations, description: t.welcome.features.naturalConversationsDesc },
-              { title: t.welcome.features.intelligentScheduling, description: t.welcome.features.intelligentSchedulingDesc },
-              { title: t.welcome.features.seamlessIntegration, description: t.welcome.features.seamlessIntegrationDesc },
-              { title: t.welcome.features.proactiveReminders, description: t.welcome.features.proactiveRemindersDesc },
-              { title: t.welcome.features.deadlineTracking, description: t.welcome.features.deadlineTrackingDesc }
-            ].map((feature, index) => (
-              <View key={index} style={styles.feature}>
-                <View style={styles.checkmarkIcon}>
-                  {loadingStates[index] ? (
-                    <ActivityIndicator size="small" color="#3396D3" />
-                  ) : completedStates[index] ? (
-                    <Text style={styles.checkmark}>✓</Text>
-                  ) : (
-                    <View style={styles.emptyIcon} />
-                  )}
-                </View>
-                <View style={styles.featureTextContainer}>
-                  <Text style={[
-                    styles.featureTitle,
-                    { opacity: loadingStates[index] || completedStates[index] ? 1 : 0.3 }
-                  ]}>
-                    {feature.title}
-                  </Text>
-                  <Text style={[
-                    styles.featureDescription,
-                    { opacity: loadingStates[index] || completedStates[index] ? 0.8 : 0.2 }
-                  ]}>
-                    {feature.description}
-                  </Text>
-                </View>
+          {/* Features Grid */}
+          <View style={styles.featuresGrid}>
+            <View style={styles.featureCard}>
+              <View style={styles.featureIconContainer}>
+                <MaterialIcons name="chat" size={28} color="#3396D3" />
               </View>
-            ))}
+              <Text style={styles.featureCardTitle}>Smart Conversations</Text>
+              <Text style={styles.featureCardDesc}>Natural voice & text interactions</Text>
+            </View>
+
+            <View style={styles.featureCard}>
+              <View style={styles.featureIconContainer}>
+                <MaterialIcons name="schedule" size={28} color="#3396D3" />
+              </View>
+              <Text style={styles.featureCardTitle}>Task Management</Text>
+              <Text style={styles.featureCardDesc}>Organize your day effortlessly</Text>
+            </View>
+
+            <View style={styles.featureCard}>
+              <View style={styles.featureIconContainer}>
+                <MaterialIcons name="notifications-active" size={28} color="#3396D3" />
+              </View>
+              <Text style={styles.featureCardTitle}>Smart Reminders</Text>
+              <Text style={styles.featureCardDesc}>Never miss what matters</Text>
+            </View>
+          </View>
+
+          {/* Stats/Trust indicators */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <MaterialIcons name="security" size={20} color="#3396D3" />
+              <Text style={styles.statText}>Secure</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <MaterialIcons name="cloud-done" size={20} color="#3396D3" />
+              <Text style={styles.statText}>Cloud Sync</Text>
+            </View>
+            <View style={styles.statDivider} />
+            <View style={styles.statItem}>
+              <MaterialIcons name="offline-bolt" size={20} color="#3396D3" />
+              <Text style={styles.statText}>Always On</Text>
+            </View>
           </View>
         </Animated.View>
 
@@ -211,7 +199,7 @@ const WelcomeAuthScreen: React.FC = () => {
           >
           <View style={styles.topBar}>
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Text style={styles.backButtonText}>←</Text>
+              <Ionicons name="chevron-back-outline" size={24} color="#FFFFFF" />
             </TouchableOpacity>
             <View style={{ width: 40 }} />
           </View>
@@ -240,7 +228,7 @@ const WelcomeAuthScreen: React.FC = () => {
               onPress={handleSignIn}
               activeOpacity={0.9}
             >
-              <MaterialIcons name="login" size={18} color="#FFFFFF" />
+              <MaterialIcons name="login" size={18} color="rgba(255, 255, 255, 0.9)" />
               <Text style={styles.signInButtonText}>{t.welcome.signIn}</Text>
             </TouchableOpacity>
           </View>
@@ -267,37 +255,8 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: height * 0.4,
+    height: height * 0.5,
     zIndex: 1,
-  },
-  backgroundShapes: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
-  },
-  aiShape: {
-    position: 'absolute',
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
-  },
-  microphoneIcon: {
-    backgroundColor: 'rgba(51, 150, 211, 0.05)',
-  },
-  brainIcon: {
-    backgroundColor: 'rgba(75, 0, 130, 0.05)',
-  },
-  connectionIcon: {
-    backgroundColor: 'rgba(25, 25, 112, 0.05)',
-  },
-  chipIcon: {
-    backgroundColor: 'rgba(138, 43, 226, 0.05)',
   },
   safeArea: {
     flex: 1,
@@ -305,168 +264,124 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 30,
-    paddingTop: 20,
+    paddingHorizontal: 24,
+    paddingTop: 40,
     zIndex: 2,
   },
-  header: {
+  logoSection: {
     alignItems: 'center',
-    marginBottom: 30,
+    marginBottom: 40,
   },
-  title: {
-    fontSize: 36,
+  logoContainer: {
+    position: 'relative',
+    marginBottom: 20,
+  },
+  logoCircle: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#3396D3',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.6,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  glowCircle: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: 'rgba(51, 150, 211, 0.2)',
+    top: -10,
+    left: -10,
+    zIndex: -1,
+  },
+  appName: {
+    fontSize: 48,
     fontWeight: '900',
     color: '#FFFFFF',
-    marginBottom: 12,
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-    fontWeight: '500',
-    letterSpacing: 0.3,
-    lineHeight: 22,
-    paddingHorizontal: 20,
+    letterSpacing: 2,
     marginBottom: 8,
   },
-  description: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
-    textAlign: 'center',
-    fontWeight: '400',
-    letterSpacing: 0.2,
+  tagline: {
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.7)',
+    fontWeight: '500',
+    letterSpacing: 0.5,
   },
-  illustrationContainer: {
-    alignItems: 'center',
-    marginVertical: 25,
-    position: 'relative',
-    height: 120,
+  featuresGrid: {
+    gap: 12,
+    marginBottom: 30,
   },
-  assistantContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  assistantCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(201, 169, 110, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-    shadowColor: '#3396D3',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  deviceRow: {
-    flexDirection: 'row',
-    gap: 16,
-  },
-  deviceIcon: {
-    width: 32,
-    height: 32,
+  featureCard: {
+    backgroundColor: 'rgba(51, 150, 211, 0.08)',
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  floatingShape1: {
-    position: 'absolute',
-    top: 5,
-    left: 15,
-  },
-  floatingShape2: {
-    position: 'absolute',
-    top: 30,
-    right: 20,
-  },
-  floatingShape3: {
-    position: 'absolute',
-    bottom: 15,
-    left: 30,
-  },
-  floatingCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  floatingSquare: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  floatingDiamond: {
-    width: 20,
-    height: 20,
-    borderRadius: 4,
-    backgroundColor: 'rgba(201, 169, 110, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    transform: [{ rotate: '45deg' }],
-  },
-  featuresContainer: {
-    marginTop: 30,
-    gap: 16,
-  },
-  feature: {
+    borderWidth: 1,
+    borderColor: 'rgba(51, 150, 211, 0.2)',
+    padding: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
   },
-  checkmarkIcon: {
-    width: 28,
-    height: 28,
-    marginRight: 16,
+  featureIconContainer: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: 'rgba(51, 150, 211, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 14,
-    backgroundColor: '#3396D3',
+    marginRight: 16,
   },
-  checkmark: {
+  featureCardTitle: {
     fontSize: 16,
+    fontWeight: '700',
     color: '#FFFFFF',
-    fontWeight: 'bold',
-  },
-  emptyIcon: {
-    width: 16,
-    height: 16,
-  },
-  featureTextContainer: {
-    flex: 1,
-  },
-  featureTitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
-    fontWeight: '600',
     letterSpacing: 0.3,
     marginBottom: 4,
+    flex: 1,
   },
-  featureDescription: {
+  featureCardDesc: {
     fontSize: 13,
     color: 'rgba(255, 255, 255, 0.6)',
     fontWeight: '400',
     letterSpacing: 0.2,
-    lineHeight: 18,
+    position: 'absolute',
+    left: 82,
+    bottom: 16,
+  },
+  statsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  statItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  statText: {
+    fontSize: 13,
+    color: 'rgba(255, 255, 255, 0.8)',
+    fontWeight: '600',
+  },
+  statDivider: {
+    width: 1,
+    height: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    marginHorizontal: 16,
   },
   slidingContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: height * 0.4,
+    height: height * 0.32,
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderTopWidth: 1,
@@ -503,20 +418,10 @@ const styles = StyleSheet.create({
     fontSize: 22,
     fontWeight: '600',
   },
-  step: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '500',
-    letterSpacing: 0.5,
-  },
   authOptions: {
     paddingHorizontal: 30,
-    paddingTop: 20,
-    paddingBottom: 20,
-  },
-  primaryAuthSection: {
-    flexDirection: 'row',
-    gap: 12,
+    paddingTop: 10,
+    paddingBottom: 10,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -533,62 +438,6 @@ const styles = StyleSheet.create({
     color: 'rgba(255, 255, 255, 0.5)',
     marginHorizontal: 16,
     fontWeight: '500',
-  },
-  socialButtonsRow: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  googleButton: {
-    flex: 1,
-    height: 42,
-    backgroundColor: '#3396D3',
-    borderRadius: 21,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  googleButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#333333',
-    letterSpacing: 0.2,
-  },
-  facebookButton: {
-    flex: 1,
-    height: 42,
-    backgroundColor: '#1877F2',
-    borderRadius: 21,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    gap: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(24, 119, 242, 0.2)',
-    shadowColor: '#1877F2',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 2,
-    elevation: 2,
-  },
-  facebookButtonText: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: '#FFFFFF',
-    letterSpacing: 0.2,
   },
   signUpButton: {
     height: 56,
@@ -619,9 +468,9 @@ const styles = StyleSheet.create({
   },
   signInButton: {
     height: 48,
-    backgroundColor: '#3396D3',
-    borderWidth: 1,
-    borderColor: '#3396D3',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
     borderRadius: 24,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -631,7 +480,7 @@ const styles = StyleSheet.create({
   signInButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: 'rgba(255, 255, 255, 0.9)',
     letterSpacing: 0.3,
   },
   footer: {

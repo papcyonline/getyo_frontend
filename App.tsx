@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Provider, useSelector } from 'react-redux';
 import { View, Text, ActivityIndicator } from 'react-native';
@@ -10,6 +10,10 @@ import ConnectionManager from './src/services/connectionManager';
 import { wakeWordService } from './src/services/wakeWordService';
 import { conversationManager } from './src/services/conversationManager';
 import { notificationService } from './src/services/notificationService';
+import * as SplashScreen from 'expo-splash-screen';
+
+// Keep the splash screen visible while we fetch resources
+SplashScreen.preventAutoHideAsync();
 
 const AppContent: React.FC = () => {
   const isDark = useSelector((state: RootState) => state.theme.isDark);
@@ -46,11 +50,17 @@ const AppContent: React.FC = () => {
 
         setIsInitialized(true);
         console.log('✅ App initialization completed successfully');
+
+        // Hide splash screen after initialization
+        await SplashScreen.hideAsync();
       } catch (error) {
         console.error('❌ Failed to initialize app:', error);
         setInitError(error instanceof Error ? error.message : 'Unknown initialization error');
         // Don't prevent app from loading - show error but continue
         setIsInitialized(true);
+
+        // Hide splash screen even on error
+        await SplashScreen.hideAsync();
       }
     };
 
@@ -132,38 +142,7 @@ const AppContent: React.FC = () => {
     };
   }, [user]);
 
-  // Show loading screen while initializing
-  if (!isInitialized) {
-    return (
-      <View style={{
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        backgroundColor: isDark ? '#000000' : '#FFFFFF'
-      }}>
-        <ActivityIndicator size="large" color={isDark ? '#FFFFFF' : '#000000'} />
-        <Text style={{
-          marginTop: 16,
-          fontSize: 16,
-          color: isDark ? '#FFFFFF' : '#000000',
-          textAlign: 'center'
-        }}>
-          Initializing Yo! Assistant...
-        </Text>
-        {initError && (
-          <Text style={{
-            marginTop: 8,
-            fontSize: 12,
-            color: '#FF6B6B',
-            textAlign: 'center',
-            paddingHorizontal: 20
-          }}>
-            {initError}
-          </Text>
-        )}
-      </View>
-    );
-  }
+  // Initialize silently in the background - don't show loading screen
 
   return (
     <>
