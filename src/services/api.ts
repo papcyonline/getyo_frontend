@@ -165,10 +165,10 @@ class ApiService {
     // Handle timeout
     if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
       return {
-        message: 'Request timed out. Please try again.',
+        message: 'Server is starting up. This may take up to 60 seconds on first request. Please try again.',
         code: 'TIMEOUT',
         status: 0,
-        details: { timeout: config.API_TIMEOUT }
+        details: { timeout: config.API_TIMEOUT, hint: 'Render.com free tier cold start' }
       };
     }
 
