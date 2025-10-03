@@ -122,11 +122,19 @@ const OTPVerificationScreen: React.FC = () => {
     setLoading(true);
     try {
       const otpCode = otp.join('');
-      const identifier = verificationType === 'phone' ? phone : email;
+      // Normalize identifier: lowercase and trim for email, just trim for phone
+      let identifier = verificationType === 'phone' ? phone : email;
 
       if (!identifier) {
         Alert.alert('Error', 'Missing verification identifier');
         return;
+      }
+
+      // IMPORTANT: Normalize email to match backend normalization
+      if (verificationType === 'email') {
+        identifier = identifier.toLowerCase().trim();
+      } else {
+        identifier = identifier.trim();
       }
 
       console.log('🔍 [Frontend] Verifying OTP:', {
