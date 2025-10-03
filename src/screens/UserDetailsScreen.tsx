@@ -87,8 +87,8 @@ const UserDetailsScreen: React.FC = () => {
       return;
     }
 
-    // Navigate to PhoneInput with user details
-    navigation.navigate('PhoneInput', {
+    // SIMPLIFIED: Skip OTP verification, go directly to email/password collection
+    navigation.navigate('EmailInput', {
       userDetails: {
         fullName: fullName.trim(),
         preferredName: preferredName.trim(),

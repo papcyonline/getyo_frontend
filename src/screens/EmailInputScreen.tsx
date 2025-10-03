@@ -66,27 +66,12 @@ const EmailInputScreen: React.FC = () => {
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await ApiService.sendEmailOTP(email.trim());
-
-      if (response.success) {
-        navigation.navigate('OTPVerification', {
-          phone,
-          email: email.trim(),
-          verificationType: 'email',
-          userDetails
-        });
-      } else {
-        Alert.alert('Error', response.error || 'Failed to send OTP. Please try again.');
-      }
-    } catch (error: any) {
-      console.error('Send email OTP error:', error);
-      const errorMessage = error.response?.data?.error || error.message || 'Failed to send OTP. Please try again.';
-      Alert.alert('Error', errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    // SIMPLIFIED: Skip OTP, go directly to password creation
+    navigation.navigate('PasswordCreation', {
+      phone: null,
+      email: email.trim(),
+      userDetails
+    });
   };
 
   const handleBack = () => {
