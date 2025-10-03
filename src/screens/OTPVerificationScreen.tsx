@@ -32,6 +32,16 @@ const OTPVerificationScreen: React.FC = () => {
   const insets = useSafeAreaInsets();
   const { phone, email, verificationType, userDetails } = route.params;
 
+  // Debug: Log route params
+  useEffect(() => {
+    console.log('📋 [OTPVerification] Route params:', {
+      phone,
+      email,
+      verificationType,
+      hasUserDetails: !!userDetails
+    });
+  }, []);
+
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
   const [resendTimer, setResendTimer] = useState(30);
@@ -118,6 +128,14 @@ const OTPVerificationScreen: React.FC = () => {
         Alert.alert('Error', 'Missing verification identifier');
         return;
       }
+
+      console.log('🔍 [Frontend] Verifying OTP:', {
+        identifier,
+        otpCode,
+        verificationType,
+        identifierLength: identifier?.length,
+        otpLength: otpCode.length
+      });
 
       const response = await ApiService.verifyOTP(identifier, otpCode, verificationType);
 
