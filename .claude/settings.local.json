@@ -33,7 +33,10 @@
       "Bash(findstr:*)",
       "Bash(Remove-Item \"C:\\Users\\papcy\\Desktop\\yofam\\getyo_frontend\\src\\screens\\LoginScreen.tsx\" -Force)",
       "Bash(Remove-Item \"C:\\Users\\papcy\\Desktop\\yofam\\getyo_frontend\\src\\screens\\EnhancedLoginScreen.tsx\" -Force)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npx eas-cli:*)",
+      "Bash(timeout:*)",
+      "Bash(git revert:*)"
     ],
     "deny": [],
     "ask": []
