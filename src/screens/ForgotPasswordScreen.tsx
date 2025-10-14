@@ -101,17 +101,12 @@ const ForgotPasswordScreen: React.FC = () => {
         ? `A 6-digit code has been sent to your email.\n\nDev OTP: ${resetToken}`
         : 'A 6-digit code has been sent to your email. Please check your inbox.';
 
-      showSuccess('Reset Code Sent', message, {
-        primaryButton: {
-          text: 'Enter Code',
-          onPress: () => {
-            hideAlert();
-            navigation.navigate('ResetPassword', {
-              email: email.toLowerCase().trim(),
-              token: '', // User will enter OTP manually
-            });
-          }
-        }
+      showSuccess('Reset Code Sent', message, () => {
+        hideAlert();
+        navigation.navigate('ResetPassword', {
+          email: email.toLowerCase().trim(),
+          token: '', // User will enter OTP manually
+        });
       });
     } catch (error: any) {
       const errorMessage = error.response?.data?.error ||
