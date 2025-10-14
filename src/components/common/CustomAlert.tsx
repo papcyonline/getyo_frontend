@@ -8,8 +8,6 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons } from '@expo/vector-icons';
 
 const { width, height } = Dimensions.get('window');
 
@@ -72,45 +70,6 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
       ]).start();
     }
   }, [visible]);
-
-  const getIconName = () => {
-    switch (type) {
-      case 'success':
-        return 'check-circle';
-      case 'error':
-        return 'error';
-      case 'warning':
-        return 'warning';
-      default:
-        return 'info';
-    }
-  };
-
-  const getIconColor = () => {
-    switch (type) {
-      case 'success':
-        return '#4CAF50';
-      case 'error':
-        return '#FF5252';
-      case 'warning':
-        return '#FF9800';
-      default:
-        return '#3396D3';
-    }
-  };
-
-  const getGradientColors = () => {
-    switch (type) {
-      case 'success':
-        return ['rgba(76, 175, 80, 0.1)', 'rgba(76, 175, 80, 0.05)'];
-      case 'error':
-        return ['rgba(255, 82, 82, 0.1)', 'rgba(255, 82, 82, 0.05)'];
-      case 'warning':
-        return ['rgba(255, 152, 0, 0.1)', 'rgba(255, 152, 0, 0.05)'];
-      default:
-        return ['rgba(51, 150, 211, 0.1)', 'rgba(51, 150, 211, 0.05)'];
-    }
-  };
 
   const handlePrimaryAction = () => {
     if (primaryButton?.onPress) {
@@ -218,23 +177,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1.5,
     borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  borderGradient: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderRadius: 20,
-    zIndex: -1,
-  },
-  iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
   },
   title: {
     fontSize: 17,
