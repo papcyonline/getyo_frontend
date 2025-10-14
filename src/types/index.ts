@@ -27,6 +27,8 @@ export interface User {
   name: string; // Legacy field for backward compatibility
   email: string;
   phone?: string;
+  phoneVerified?: boolean;
+  profileImage?: string;
   assistantName?: string;
   assistantGender?: 'male' | 'female' | 'non-binary';
   assistantVoice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';

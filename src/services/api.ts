@@ -4,8 +4,9 @@ import secureStorage from './secureStorage';
 import { ApiResponse, User, Task, Event, Conversation } from '../types';
 import config from '../config/environment';
 import NetInfo from '@react-native-community/netinfo';
-import * as FileSystem from 'expo-file-system';
 import { fromByteArray } from 'base64-js';
+import { store } from '../store';
+import { clearUser } from '../store/slices/userSlice';
 
 // Enhanced error types
 interface ApiError {
@@ -88,7 +89,25 @@ class ApiService {
   private async handleApiError(error: AxiosError): Promise<ApiError> {
     const networkState = await NetInfo.fetch();
 
-    // Log detailed error information
+    // Handle 401 - Unauthorized (token expired/invalid) - do this first before logging
+    if (error.response?.status === 401) {
+      console.log('🔑 Session expired - logging out');
+      await secureStorage.deleteItem('authToken');
+      await AsyncStorage.removeItem('user');
+
+      // Dispatch Redux action to clear user state and trigger navigation
+      store.dispatch(clearUser());
+      console.log('✅ User logged out - redirecting to login');
+
+      return {
+        message: 'Session expired. Please log in again.',
+        code: 'AUTH_EXPIRED',
+        status: 401,
+        details: error.response?.data
+      };
+    }
+
+    // Log detailed error information (only for non-401 errors)
     console.error('🔥 API Error Details:', {
       message: error.message,
       code: error.code,
@@ -99,20 +118,6 @@ class ApiService {
       networkConnected: networkState.isConnected,
       data: error.response?.data,
     });
-
-    // Handle 401 - Unauthorized (token expired/invalid)
-    if (error.response?.status === 401) {
-      console.log('🔑 Unauthorized - clearing auth data');
-      await secureStorage.deleteItem('authToken');
-      await AsyncStorage.removeItem('user');
-
-      return {
-        message: 'Session expired. Please log in again.',
-        code: 'AUTH_EXPIRED',
-        status: 401,
-        details: error.response?.data
-      };
-    }
 
     // Handle 400 - Bad Request
     if (error.response?.status === 400) {
@@ -262,7 +267,7 @@ class ApiService {
   }
 
   // Authentication with enhanced error handling and retry
-  async login(email: string, password: string): Promise<{ user: User; token: string }> {
+  async login(email: string, password: string): Promise<{ user?: User; token?: string; requires2FA?: boolean; email?: string }> {
     try {
       // Check network connectivity first
       const isConnected = await this.checkNetworkConnectivity();
@@ -280,6 +285,16 @@ class ApiService {
       // Retrying auth failures can lock accounts or cause rate limiting
       const response = await this.api.post('/api/auth/login', { email, password });
 
+      // Check if 2FA is required
+      if (response.data.data.requires2FA) {
+        console.log('🔐 2FA required for:', email);
+        return {
+          requires2FA: true,
+          email: response.data.data.email
+        };
+      }
+
+      // Normal login - extract user and token
       const { user, token } = response.data.data;
 
       // Store token securely and user data
@@ -502,8 +517,11 @@ class ApiService {
     try {
       const response = await this.api.get('/api/users/profile');
       return response.data.data;
-    } catch (error) {
-      console.error('Get profile failed:', error);
+    } catch (error: any) {
+      // Don't log 401 errors - they're handled gracefully
+      if (error.status !== 401) {
+        console.error('Get profile failed:', error);
+      }
       throw error;
     }
   }
@@ -1027,16 +1045,10 @@ class ApiService {
       // Convert to base64
       const base64Audio = await this.arrayBufferToBase64(arrayBuffer);
 
-      // Save to file
-      const filename = `tts_${voice}_${Date.now()}.mp3`;
-      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
-
-      await FileSystem.writeAsStringAsync(fileUri, base64Audio, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-
-      console.log('✅ Audio saved to:', fileUri);
-      return fileUri;
+      // Return data URI instead of file path (avoids deprecated file API)
+      const dataUri = `data:audio/mp3;base64,${base64Audio}`;
+      console.log('✅ Audio converted to data URI');
+      return dataUri;
     } catch (error) {
       console.error('Speech synthesis failed:', error);
       throw error;
@@ -1106,8 +1118,11 @@ class ApiService {
     try {
       const response = await this.api.get('/api/agent-config/ai-assistant');
       return response.data.data;
-    } catch (error) {
-      console.error('Get AI Assistant settings failed:', error);
+    } catch (error: any) {
+      // Don't log 401 errors - they're handled gracefully
+      if (error.status !== 401) {
+        console.error('Get AI Assistant settings failed:', error);
+      }
       throw error;
     }
   }
@@ -1566,6 +1581,105 @@ class ApiService {
       return response.data.data;
     } catch (error) {
       console.error('Update privacy settings failed:', error);
+      throw error;
+    }
+  }
+
+  // ===========================
+  // Password Management
+  // ===========================
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<any> {
+    try {
+      const response = await this.api.post('/api/auth/change-password', {
+        currentPassword,
+        newPassword,
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Change password failed:', error);
+      throw error;
+    }
+  }
+
+  // ===========================
+  // Two-Factor Authentication
+  // ===========================
+
+  async get2FAStatus(): Promise<{ enabled: boolean; method: string; verifiedAt?: Date }> {
+    try {
+      const response = await this.api.get('/api/auth/2fa/status');
+      return response.data.data;
+    } catch (error) {
+      console.error('Get 2FA status failed:', error);
+      throw error;
+    }
+  }
+
+  async setup2FA(method?: 'email' | 'sms'): Promise<{ message: string; method?: string; otp?: string }> {
+    try {
+      const response = await this.api.post('/api/auth/2fa/setup', { method });
+      return response.data;
+    } catch (error) {
+      console.error('Setup 2FA failed:', error);
+      throw error;
+    }
+  }
+
+  async sendPhoneVerificationOTP(phone: string): Promise<{ message: string; otp?: string }> {
+    try {
+      const response = await this.api.post('/api/auth/verify-phone/send', { phone });
+      return response.data;
+    } catch (error) {
+      console.error('Send phone verification OTP failed:', error);
+      throw error;
+    }
+  }
+
+  async verifyPhoneOTP(phone: string, code: string): Promise<{ message: string; phone: string; phoneVerified: boolean }> {
+    try {
+      const response = await this.api.post('/api/auth/verify-phone/verify', { phone, code });
+      return response.data;
+    } catch (error) {
+      console.error('Verify phone OTP failed:', error);
+      throw error;
+    }
+  }
+
+  async verify2FA(code: string): Promise<{ message: string }> {
+    try {
+      const response = await this.api.post('/api/auth/2fa/verify', { code });
+      return response.data;
+    } catch (error) {
+      console.error('Verify 2FA failed:', error);
+      throw error;
+    }
+  }
+
+  async disable2FA(password: string): Promise<{ message: string }> {
+    try {
+      const response = await this.api.post('/api/auth/2fa/disable', { password });
+      return response.data;
+    } catch (error) {
+      console.error('Disable 2FA failed:', error);
+      throw error;
+    }
+  }
+
+  async verifyLogin2FA(email: string, code: string): Promise<{ user: User; token: string }> {
+    try {
+      const response = await this.api.post('/api/auth/login-2fa-verify', { email, code });
+
+      const { user, token } = response.data.data;
+
+      // Store token securely and user data
+      await secureStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      console.log('✅ 2FA login verification successful');
+      return { user, token };
+    } catch (error: any) {
+      console.error('Verify login 2FA failed:', error);
       throw error;
     }
   }

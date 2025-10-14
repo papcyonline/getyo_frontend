@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
+import ApiService from '../services/api';
 
 const TwoFactorAuthScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -21,9 +22,31 @@ const TwoFactorAuthScreen: React.FC = () => {
   const theme = useSelector((state: RootState) => state.theme.theme);
 
   const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
-  const [setupStep, setSetupStep] = useState<'initial' | 'verify' | 'complete'>('initial');
+  const [setupStep, setSetupStep] = useState<'initial' | 'method-select' | 'phone-verify' | 'verify' | 'complete'>('initial');
   const [verificationCode, setVerificationCode] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneVerificationCode, setPhoneVerificationCode] = useState('');
+  const [selectedMethod, setSelectedMethod] = useState<'email' | 'sms'>('email');
   const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+
+  // Fetch 2FA status on mount
+  useEffect(() => {
+    const fetch2FAStatus = async () => {
+      try {
+        setInitialLoading(true);
+        const status = await ApiService.get2FAStatus();
+        setTwoFactorEnabled(status.enabled);
+      } catch (error: any) {
+        console.error('Failed to fetch 2FA status:', error);
+        // Don't show error to user on mount, just log it
+      } finally {
+        setInitialLoading(false);
+      }
+    };
+
+    fetch2FAStatus();
+  }, []);
 
   const handleBackPress = () => {
     navigation.goBack();
@@ -31,34 +54,41 @@ const TwoFactorAuthScreen: React.FC = () => {
 
   const handleToggle2FA = async (value: boolean) => {
     if (value) {
-      // Enable 2FA - start setup process
-      setSetupStep('verify');
+      // Enable 2FA - show method selection
+      setSetupStep('method-select');
     } else {
-      // Disable 2FA
-      Alert.alert(
+      // Disable 2FA - require password
+      Alert.prompt(
         'Disable Two-Factor Authentication',
-        'Are you sure you want to disable 2FA? This will reduce your account security.',
+        'Enter your password to confirm:',
         [
           { text: 'Cancel', style: 'cancel' },
           {
             text: 'Disable',
             style: 'destructive',
-            onPress: async () => {
+            onPress: async (password?: string) => {
+              if (!password) {
+                Alert.alert('Error', 'Password is required');
+                return;
+              }
+
               try {
                 setLoading(true);
-                // TODO: Implement disable 2FA API call
-                // await ApiService.disable2FA();
+                await ApiService.disable2FA(password);
                 setTwoFactorEnabled(false);
                 setSetupStep('initial');
                 Alert.alert('Success', 'Two-factor authentication has been disabled');
               } catch (error: any) {
                 Alert.alert('Error', error.message || 'Failed to disable 2FA');
+                // Re-enable the switch if it failed
+                setTwoFactorEnabled(true);
               } finally {
                 setLoading(false);
               }
             }
           }
-        ]
+        ],
+        'secure-text'
       );
     }
   };
@@ -71,12 +101,11 @@ const TwoFactorAuthScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      // TODO: Implement verify 2FA code API call
-      // await ApiService.verify2FACode(verificationCode);
+      await ApiService.verify2FA(verificationCode);
 
       setTwoFactorEnabled(true);
       setSetupStep('complete');
-      Alert.alert('Success', 'Two-factor authentication has been enabled');
+      setVerificationCode('');
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Invalid verification code');
     } finally {
@@ -87,6 +116,112 @@ const TwoFactorAuthScreen: React.FC = () => {
   const handleCancelSetup = () => {
     setSetupStep('initial');
     setVerificationCode('');
+  };
+
+  const handleResendCode = async () => {
+    try {
+      setLoading(true);
+      const response = await ApiService.setup2FA(selectedMethod);
+
+      // Show OTP in development mode
+      if (__DEV__ && response.otp) {
+        Alert.alert(
+          'Code Sent',
+          `A new verification code has been sent to your ${selectedMethod === 'email' ? 'email' : 'phone'}.\n\nDEV MODE - Your code: ${response.otp}`
+        );
+      } else {
+        Alert.alert('Code Sent', `A new verification code has been sent to your ${selectedMethod === 'email' ? 'email' : 'phone'}.`);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to resend verification code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleMethodSelect = async (method: 'email' | 'sms') => {
+    setSelectedMethod(method);
+
+    if (method === 'sms') {
+      // Check if phone needs verification
+      setSetupStep('phone-verify');
+    } else {
+      // Email method - proceed directly to 2FA verification
+      try {
+        setLoading(true);
+        const response = await ApiService.setup2FA('email');
+        setSetupStep('verify');
+
+        if (__DEV__ && response.otp) {
+          Alert.alert(
+            'Code Sent',
+            `A verification code has been sent to your email.\n\nDEV MODE - Your code: ${response.otp}`
+          );
+        } else {
+          Alert.alert('Code Sent', 'A verification code has been sent to your email.');
+        }
+      } catch (error: any) {
+        Alert.alert('Error', error.message || 'Failed to send verification code');
+        setSetupStep('method-select');
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const handleSendPhoneVerification = async () => {
+    if (!phoneNumber || phoneNumber.trim().length < 10) {
+      Alert.alert('Error', 'Please enter a valid phone number');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await ApiService.sendPhoneVerificationOTP(phoneNumber);
+
+      if (__DEV__ && response.otp) {
+        Alert.alert(
+          'Code Sent',
+          `A verification code has been sent to ${phoneNumber}.\n\nDEV MODE - Your code: ${response.otp}`
+        );
+      } else {
+        Alert.alert('Code Sent', `A verification code has been sent to ${phoneNumber}.`);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to send verification code');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyPhone = async () => {
+    if (!phoneVerificationCode || phoneVerificationCode.length !== 6) {
+      Alert.alert('Error', 'Please enter a valid 6-digit code');
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await ApiService.verifyPhoneOTP(phoneNumber, phoneVerificationCode);
+
+      // Phone verified, now send 2FA code
+      const response = await ApiService.setup2FA('sms');
+      setSetupStep('verify');
+      setPhoneVerificationCode('');
+
+      if (__DEV__ && response.otp) {
+        Alert.alert(
+          '2FA Code Sent',
+          `A 2FA verification code has been sent to ${phoneNumber}.\n\nDEV MODE - Your code: ${response.otp}`
+        );
+      } else {
+        Alert.alert('Code Sent', `A 2FA verification code has been sent to ${phoneNumber}.`);
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Failed to verify phone number');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -144,7 +279,7 @@ const TwoFactorAuthScreen: React.FC = () => {
                   trackColor={{ false: 'rgba(201, 169, 110, 0.3)', true: '#C9A96E' }}
                   thumbColor="#C9A96E"
                   ios_backgroundColor="rgba(201, 169, 110, 0.3)"
-                  disabled={loading}
+                  disabled={loading || initialLoading}
                 />
               </View>
             </View>
@@ -195,6 +330,141 @@ const TwoFactorAuthScreen: React.FC = () => {
           </>
         )}
 
+        {setupStep === 'method-select' && (
+          <>
+            <View style={[styles.infoCard, { backgroundColor: theme.surface }]}>
+              <View style={[styles.infoIconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                <Ionicons name="options" size={32} color="#C9A96E" />
+              </View>
+              <Text style={[styles.infoTitle, { color: theme.text }]}>
+                Choose Your Method
+              </Text>
+              <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                Select how you'd like to receive your verification codes
+              </Text>
+            </View>
+
+            <View style={[styles.section, { backgroundColor: theme.surface }]}>
+              <TouchableOpacity
+                style={[styles.methodOption, selectedMethod === 'email' && styles.methodOptionSelected]}
+                onPress={() => handleMethodSelect('email')}
+                disabled={loading}
+              >
+                <Ionicons name="mail" size={24} color={selectedMethod === 'email' ? '#C9A96E' : theme.text} />
+                <View style={styles.methodTextContainer}>
+                  <Text style={[styles.methodTitle, { color: theme.text }]}>Email</Text>
+                  <Text style={[styles.methodSubtitle, { color: theme.textSecondary }]}>
+                    Receive codes via email
+                  </Text>
+                </View>
+                {selectedMethod === 'email' && (
+                  <Ionicons name="checkmark-circle" size={24} color="#C9A96E" />
+                )}
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.methodOption, selectedMethod === 'sms' && styles.methodOptionSelected, { marginTop: 12 }]}
+                onPress={() => handleMethodSelect('sms')}
+                disabled={loading}
+              >
+                <Ionicons name="phone-portrait" size={24} color={selectedMethod === 'sms' ? '#C9A96E' : theme.text} />
+                <View style={styles.methodTextContainer}>
+                  <Text style={[styles.methodTitle, { color: theme.text }]}>SMS</Text>
+                  <Text style={[styles.methodSubtitle, { color: theme.textSecondary }]}>
+                    Receive codes via text message
+                  </Text>
+                </View>
+                {selectedMethod === 'sms' && (
+                  <Ionicons name="checkmark-circle" size={24} color="#C9A96E" />
+                )}
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton, { borderColor: theme.border }]}
+                onPress={() => setSetupStep('initial')}
+                disabled={loading}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme.text }]}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
+        {setupStep === 'phone-verify' && (
+          <>
+            <View style={[styles.infoCard, { backgroundColor: theme.surface }]}>
+              <View style={[styles.infoIconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                <Ionicons name="phone-portrait" size={32} color="#C9A96E" />
+              </View>
+              <Text style={[styles.infoTitle, { color: theme.text }]}>
+                Verify Your Phone
+              </Text>
+              <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+                Enter your phone number to receive SMS verification codes
+              </Text>
+            </View>
+
+            <View style={[styles.section, { backgroundColor: theme.surface }]}>
+              <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PHONE NUMBER</Text>
+              <TextInput
+                style={[styles.phoneInput, { color: theme.text, borderColor: theme.border }]}
+                placeholder="+1 (555) 123-4567"
+                placeholderTextColor={theme.textTertiary}
+                value={phoneNumber}
+                onChangeText={setPhoneNumber}
+                keyboardType="phone-pad"
+                maxLength={20}
+              />
+              <TouchableOpacity
+                style={[styles.button, { backgroundColor: '#C9A96E', marginTop: 16 }]}
+                onPress={handleSendPhoneVerification}
+                disabled={loading}
+              >
+                <Text style={styles.buttonText}>
+                  {loading ? 'Sending...' : 'Send Code'}
+                </Text>
+              </TouchableOpacity>
+
+              {phoneVerificationCode.length > 0 && (
+                <>
+                  <Text style={[styles.sectionTitle, { color: theme.textSecondary, marginTop: 24 }]}>VERIFICATION CODE</Text>
+                  <TextInput
+                    style={[styles.codeInput, { color: theme.text, borderColor: theme.border }]}
+                    placeholder="000000"
+                    placeholderTextColor={theme.textTertiary}
+                    value={phoneVerificationCode}
+                    onChangeText={setPhoneVerificationCode}
+                    keyboardType="number-pad"
+                    maxLength={6}
+                    textAlign="center"
+                  />
+                  <TouchableOpacity
+                    style={[styles.button, { backgroundColor: '#C9A96E' }]}
+                    onPress={handleVerifyPhone}
+                    disabled={loading}
+                  >
+                    <Text style={styles.buttonText}>
+                      {loading ? 'Verifying...' : 'Verify Phone'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={[styles.button, styles.cancelButton, { borderColor: theme.border }]}
+                onPress={() => setSetupStep('method-select')}
+                disabled={loading}
+              >
+                <Text style={[styles.cancelButtonText, { color: theme.text }]}>Back</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
+
         {setupStep === 'verify' && (
           <>
             {/* Verification Section */}
@@ -223,7 +493,11 @@ const TwoFactorAuthScreen: React.FC = () => {
                 maxLength={6}
                 textAlign="center"
               />
-              <TouchableOpacity style={styles.resendButton}>
+              <TouchableOpacity
+                style={styles.resendButton}
+                onPress={handleResendCode}
+                disabled={loading}
+              >
                 <Text style={styles.resendText}>Resend Code</Text>
               </TouchableOpacity>
             </View>
@@ -449,6 +723,37 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  methodOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  methodOptionSelected: {
+    borderColor: '#C9A96E',
+    backgroundColor: 'rgba(201, 169, 110, 0.05)',
+  },
+  methodTextContainer: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  methodTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  methodSubtitle: {
+    fontSize: 13,
+  },
+  phoneInput: {
+    fontSize: 16,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
 });
 
