@@ -14,7 +14,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
