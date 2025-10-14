@@ -14,7 +14,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
@@ -133,12 +133,7 @@ const PhoneVerificationFlow: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
+      
 
       {/* AI-themed background shapes */}
       <View style={styles.backgroundShapes}>
@@ -170,7 +165,7 @@ const PhoneVerificationFlow: React.FC = () => {
         <View style={styles.baseScreen}>
           <View style={styles.header}>
             <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={24} color="#FFF7F5" />
             </TouchableOpacity>
             <Text style={styles.stepText}>Step 1 of 3</Text>
           </View>
@@ -186,14 +181,14 @@ const PhoneVerificationFlow: React.FC = () => {
             >
               <Text style={styles.flagText}>{selectedCountry.flag}</Text>
               <Text style={styles.countryCode}>{selectedCountry.code}</Text>
-              <Ionicons name="chevron-down" size={20} color="rgba(255, 255, 255, 0.6)" />
+              <Ionicons name="chevron-down" size={20} color="rgba(255, 247, 245, 0.6)" />
             </TouchableOpacity>
 
             {/* Phone Input */}
             <TextInput
               style={styles.input}
               placeholder="Phone number"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              placeholderTextColor="rgba(255, 247, 245, 0.5)"
               value={phoneNumber}
               onChangeText={setPhoneNumber}
               keyboardType="phone-pad"
@@ -205,7 +200,7 @@ const PhoneVerificationFlow: React.FC = () => {
               disabled={!isValidPhone() || loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFF7F5" />
               ) : (
                 <Text style={styles.buttonText}>Send Verification</Text>
               )}
@@ -230,7 +225,7 @@ const PhoneVerificationFlow: React.FC = () => {
                 }).start(() => setCurrentStep('phone'));
               }}
             >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={24} color="#FFF7F5" />
             </TouchableOpacity>
             <Text style={styles.stepText}>Step 2 of 3</Text>
           </View>
@@ -258,7 +253,7 @@ const PhoneVerificationFlow: React.FC = () => {
               disabled={otp.join('').length !== 6 || loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFF7F5" />
               ) : (
                 <Text style={styles.buttonText}>Verify Code</Text>
               )}
@@ -283,7 +278,7 @@ const PhoneVerificationFlow: React.FC = () => {
                 }).start(() => setCurrentStep('otp'));
               }}
             >
-              <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
+              <Ionicons name="arrow-back" size={24} color="#FFF7F5" />
             </TouchableOpacity>
             <Text style={styles.stepText}>Step 3 of 3</Text>
           </View>
@@ -295,7 +290,7 @@ const PhoneVerificationFlow: React.FC = () => {
             <TextInput
               style={styles.input}
               placeholder="Email address"
-              placeholderTextColor="rgba(255, 255, 255, 0.5)"
+              placeholderTextColor="rgba(255, 247, 245, 0.5)"
               value={email}
               onChangeText={setEmail}
               keyboardType="email-address"
@@ -308,7 +303,7 @@ const PhoneVerificationFlow: React.FC = () => {
               disabled={!isValidEmail() || loading}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" />
+                <ActivityIndicator color="#FFF7F5" />
               ) : (
                 <Text style={styles.buttonText}>Continue</Text>
               )}
@@ -329,7 +324,7 @@ const PhoneVerificationFlow: React.FC = () => {
                 style={styles.modalCloseButton}
                 onPress={() => setShowCountryModal(false)}
               >
-                <Ionicons name="close" size={24} color="#FFFFFF" />
+                <Ionicons name="close" size={24} color="#FFF7F5" />
               </TouchableOpacity>
             </View>
             <ScrollView style={styles.countriesList}>
@@ -384,7 +379,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.02)',
+    backgroundColor: 'rgba(255, 247, 245, 0.02)',
   },
   safeArea: {
     flex: 1,
@@ -404,7 +399,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 247, 245, 0.1)',
     zIndex: 10,
   },
   header: {
@@ -419,13 +414,13 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   stepText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
   },
   content: {
@@ -435,26 +430,26 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 12,
     textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     textAlign: 'center',
     marginBottom: 40,
   },
   input: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 18,
     fontSize: 18,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 30,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 247, 245, 0.15)',
   },
   otpContainer: {
     flexDirection: 'row',
@@ -465,14 +460,14 @@ const styles = StyleSheet.create({
   otpInput: {
     width: 45,
     height: 55,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     borderRadius: 12,
     textAlign: 'center',
     fontSize: 24,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '600',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 247, 245, 0.15)',
   },
   button: {
     backgroundColor: '#3396D3',
@@ -483,24 +478,24 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     opacity: 0.5,
   },
   buttonText: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   countrySelector: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingVertical: 18,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 247, 245, 0.15)',
   },
   flagText: {
     fontSize: 24,
@@ -509,7 +504,7 @@ const styles = StyleSheet.create({
   countryCode: {
     flex: 1,
     fontSize: 18,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
   },
   modalContainer: {
@@ -523,18 +518,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(255, 247, 245, 0.1)',
   },
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   modalCloseButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -547,7 +542,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.05)',
+    borderBottomColor: 'rgba(255, 247, 245, 0.05)',
   },
   countryFlag: {
     fontSize: 24,
@@ -556,12 +551,12 @@ const styles = StyleSheet.create({
   countryName: {
     flex: 1,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
   },
   countryCodeModal: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     fontWeight: '500',
   },
 });

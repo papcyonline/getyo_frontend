@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -256,7 +256,7 @@ const AgentLearningScreen: React.FC = () => {
         <View style={styles.preferenceItem}>
           <View style={styles.preferenceContent}>
             <View style={styles.preferenceIcon}>
-              <MaterialIcons name={preference.icon as any} size={20} color="#FFFFFF" />
+              <MaterialIcons name={preference.icon as any} size={20} color="#FFF7F5" />
             </View>
             <View style={styles.preferenceTextContainer}>
               <Text style={styles.preferenceTitle}>{preference.title}</Text>
@@ -265,9 +265,9 @@ const AgentLearningScreen: React.FC = () => {
             <Switch
               value={preference.enabled}
               onValueChange={() => handlePreferenceToggle(preference.id)}
-              trackColor={{ false: 'rgba(255, 255, 255, 0.1)', true: '#3396D3' }}
-              thumbColor={preference.enabled ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}
-              ios_backgroundColor="rgba(255, 255, 255, 0.1)"
+              trackColor={{ false: 'rgba(255, 247, 245, 0.1)', true: '#3396D3' }}
+              thumbColor={preference.enabled ? '#FFF7F5' : 'rgba(255, 247, 245, 0.6)'}
+              ios_backgroundColor="rgba(255, 247, 245, 0.1)"
             />
           </View>
         </View>
@@ -292,7 +292,7 @@ const AgentLearningScreen: React.FC = () => {
               <MaterialIcons
                 name={style.icon as any}
                 size={24}
-                color={isSelected ? '#FFFFFF' : '#FFFFFF'}
+                color={isSelected ? '#FFF7F5' : '#FFF7F5'}
               />
             </View>
             <View style={styles.styleTextContainer}>
@@ -305,7 +305,7 @@ const AgentLearningScreen: React.FC = () => {
             </View>
             {isSelected && (
               <View style={styles.checkmarkContainer}>
-                <MaterialIcons name="check-circle" size={20} color="#FFFFFF" />
+                <MaterialIcons name="check-circle" size={20} color="#FFF7F5" />
               </View>
             )}
           </View>
@@ -331,14 +331,7 @@ const AgentLearningScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(51, 150, 211, 0.2)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.6 }}
-        pointerEvents="none"
-      />
-
+      
 
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
@@ -402,7 +395,7 @@ const AgentLearningScreen: React.FC = () => {
               {renderCategory('data', 'Data Analytics')}
 
               <View style={styles.privacyNote}>
-                <MaterialIcons name="lock" size={16} color="#FFFFFF" />
+                <MaterialIcons name="lock" size={16} color="#FFF7F5" />
                 <Text style={styles.privacyText}>
                   All learning happens locally on your device. Your data remains private and secure.
                 </Text>
@@ -423,7 +416,7 @@ const AgentLearningScreen: React.FC = () => {
               >
                 {saving ? (
                   <View style={styles.savingContainer}>
-                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <ActivityIndicator size="small" color="#FFF7F5" style={{ marginRight: 8 }} />
                     <Text style={styles.continueButtonText}>Saving...</Text>
                   </View>
                 ) : (
@@ -464,7 +457,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
@@ -482,7 +475,7 @@ const styles = StyleSheet.create({
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
@@ -498,20 +491,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   backButtonText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontSize: 22,
     fontWeight: '600',
   },
   step: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
     letterSpacing: 0.5,
   },
@@ -534,14 +527,14 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     textAlign: 'center',
     fontWeight: '600',
     marginBottom: 4,
   },
   infoSubtext: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     textAlign: 'center',
     fontWeight: '400',
   },
@@ -551,13 +544,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 8,
     letterSpacing: 0.3,
   },
   sectionDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     marginBottom: 20,
     lineHeight: 20,
   },
@@ -574,7 +567,7 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginHorizontal: 4,
   },
   styleContent: {
@@ -591,7 +584,7 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   selectedStyleIcon: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7F5',
   },
   styleTextContainer: {
     flex: 1,
@@ -599,19 +592,19 @@ const styles = StyleSheet.create({
   styleName: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 247, 245, 0.9)',
     marginBottom: 4,
   },
   selectedText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   styleDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     lineHeight: 18,
   },
   selectedDescription: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 247, 245, 0.8)',
   },
   checkmarkContainer: {
     marginLeft: 12,
@@ -622,7 +615,7 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 16,
     letterSpacing: 0.3,
   },
@@ -652,27 +645,27 @@ const styles = StyleSheet.create({
   preferenceTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 4,
   },
   preferenceDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     lineHeight: 18,
   },
   privacyNote: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 247, 245, 0.05)',
     borderRadius: 12,
     padding: 16,
     marginTop: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   privacyText: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 247, 245, 0.8)',
     marginLeft: 8,
     flex: 1,
     lineHeight: 16,
@@ -691,11 +684,11 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     letterSpacing: 0.5,
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
   },
   savingContainer: {
     flexDirection: 'row',
@@ -710,7 +703,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     marginTop: 16,
     fontWeight: '500',
   },

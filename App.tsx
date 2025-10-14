@@ -1,11 +1,15 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { Provider, useSelector } from 'react-redux';
+import { PersistGate } from 'redux-persist/integration/react';
 import { View, Text, ActivityIndicator } from 'react-native';
-import { store } from './src/store';
+import { store, persistor } from './src/store';
 import { RootState } from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
+import ErrorBoundary from './src/components/ErrorBoundary';
+import BiometricLoginGate from './src/components/BiometricLoginGate';
 import AuthService from './src/services/auth';
+import sentryService from './src/services/sentry';
 import ConnectionManager from './src/services/connectionManager';
 import { wakeWordService } from './src/services/wakeWordService';
 import { conversationManager } from './src/services/conversationManager';
@@ -27,6 +31,9 @@ const AppContent: React.FC = () => {
       try {
         console.log('🚀 Initializing Yo! Personal Assistant App...');
 
+        // Initialize Sentry first for crash reporting
+        sentryService.initialize();
+
         // Initialize connection manager first (includes locale service)
         await ConnectionManager.initialize();
         console.log('✅ Connection Manager initialized');
@@ -35,13 +42,18 @@ const AppContent: React.FC = () => {
         await AuthService.initialize();
         console.log('✅ Auth Service initialized');
 
-        // Initialize notification service
-        const notificationsEnabled = await notificationService.initialize();
-        if (notificationsEnabled) {
-          console.log('✅ Notifications enabled');
-          console.log('📱 Push token:', notificationService.getExpoPushToken());
-        } else {
-          console.log('⚠️ Notifications not enabled - user may have denied permission');
+        // Initialize notification service (skip in Expo Go)
+        // Note: Push notifications don't work in Expo Go (SDK 53+), only in production builds
+        try {
+          const notificationsEnabled = await notificationService.initialize();
+          if (notificationsEnabled) {
+            console.log('✅ Notifications enabled');
+            console.log('📱 Push token:', notificationService.getExpoPushToken());
+          } else {
+            console.log('⚠️ Notifications not enabled - user may have denied permission or running in Expo Go');
+          }
+        } catch (error) {
+          console.log('ℹ️ Push notifications unavailable in Expo Go - will work in production build');
         }
 
         // Get initial connection diagnostics
@@ -144,18 +156,51 @@ const AppContent: React.FC = () => {
 
   // Initialize silently in the background - don't show loading screen
 
+  // Set Sentry user context
+  useEffect(() => {
+    if (user) {
+      sentryService.setUser({
+        id: user.id,
+        email: user.email,
+        username: user.preferredName || user.fullName,
+      });
+    } else {
+      sentryService.setUser(null);
+    }
+  }, [user]);
+
   return (
-    <>
+    <BiometricLoginGate>
       <AppNavigator />
       <StatusBar style={isDark ? 'light' : 'dark'} />
-    </>
+    </BiometricLoginGate>
   );
 };
 
 export default function App() {
   return (
-    <Provider store={store}>
-      <AppContent />
-    </Provider>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Send error to Sentry
+        sentryService.captureException(error, {
+          errorInfo: errorInfo.componentStack,
+        });
+        console.error('App Error:', error, errorInfo);
+      }}
+    >
+      <Provider store={store}>
+        <PersistGate
+          loading={
+            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0A' }}>
+              <ActivityIndicator size="large" color="#3B82F6" />
+              <Text style={{ color: '#FFF', marginTop: 16 }}>Loading...</Text>
+            </View>
+          }
+          persistor={persistor}
+        >
+          <AppContent />
+        </PersistGate>
+      </Provider>
+    </ErrorBoundary>
   );
 }

@@ -8,12 +8,11 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Platform,
   Image,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
 import ApiService from '../services/api';
@@ -75,6 +74,14 @@ const AIAssistantScreen: React.FC = () => {
     loadUserProfile();
     loadSettings();
   }, []);
+
+  // Refresh user profile when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      console.log('🔄 AI Assistant Screen focused - refreshing profile');
+      loadUserProfile();
+    }, [])
+  );
 
   const loadUserProfile = async () => {
     try {
@@ -316,44 +323,50 @@ const AIAssistantScreen: React.FC = () => {
       title: 'Research & Analysis',
       subtitle: 'Deep web research, market analysis, competitor intelligence',
       icon: 'analytics-outline',
-      action: () => {}
+      type: 'research',
+      action: () => (navigation as any).navigate('SpecializedCapability', { type: 'research' })
     },
     {
       title: 'Deal Finding',
       subtitle: 'Find best offers, negotiate deals, compare prices',
       icon: 'pricetag-outline',
-      action: () => {}
+      type: 'deals',
+      action: () => (navigation as any).navigate('SpecializedCapability', { type: 'deals' })
     },
     {
       title: 'Travel Planning',
       subtitle: 'Plan trips, book flights, find accommodations',
       icon: 'airplane-outline',
-      action: () => {}
+      type: 'travel',
+      action: () => (navigation as any).navigate('SpecializedCapability', { type: 'travel' })
     },
     {
       title: 'Document Processing',
       subtitle: 'Analyze documents, extract insights, create summaries',
       icon: 'document-text-outline',
-      action: () => {}
+      type: 'documents',
+      action: () => (navigation as any).navigate('SpecializedCapability', { type: 'documents' })
     },
     {
       title: 'Financial Monitoring',
       subtitle: 'Track expenses, monitor investments, budget analysis',
       icon: 'card-outline',
-      action: () => {}
+      type: 'financial',
+      action: () => (navigation as any).navigate('SpecializedCapability', { type: 'financial' })
     },
     {
       title: 'Event Planning',
       subtitle: 'Organize events, coordinate logistics, manage RSVPs',
       icon: 'calendar-number-outline',
-      action: () => {}
+      type: 'events',
+      action: () => (navigation as any).navigate('SpecializedCapability', { type: 'events' })
     },
   ];
 
   if (loading) {
     return (
       <View style={[styles.container, styles.loadingContainer, { backgroundColor: theme.background }]}>
-        <ActivityIndicator size="large" color="#3396D3" />
+        <ActivityIndicator size="large" color="#C9A96E" />
         <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Loading settings...</Text>
       </View>
     );
@@ -386,8 +399,15 @@ const AIAssistantScreen: React.FC = () => {
                 onError={() => console.log('Image failed to load')}
               />
             ) : (
-              <Ionicons name="person-circle" size={32} color="#FFFFFF" />
+              <Ionicons name="person-circle" size={32} color="#C9A96E" />
             )}
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => (navigation as any).navigate('AssistantProfileImage')}
+              activeOpacity={0.7}
+            >
+              <Ionicons name="create-outline" size={16} color="#FFFFFF" />
+            </TouchableOpacity>
           </View>
           <Text style={[styles.overviewTitle, { color: theme.text }]}>
             {user?.assistantName || 'Assistant'}
@@ -410,8 +430,8 @@ const AIAssistantScreen: React.FC = () => {
               ]}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={setting.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.15)' }]}>
+                  <Ionicons name={setting.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -422,24 +442,14 @@ const AIAssistantScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
-              <View style={styles.toggleContainer}>
-                <Switch
-                  value={setting.value}
-                  onValueChange={setting.onValueChange}
-                  trackColor={{ false: theme.border, true: '#3396D3' }}
-                  thumbColor={setting.value ? 'white' : '#f4f3f4'}
-                  ios_backgroundColor={theme.border}
-                  disabled={saving}
-                />
-                {setting.value && (
-                  <Ionicons
-                    name="checkmark"
-                    size={14}
-                    color="#3396D3"
-                    style={styles.thumbIcon}
-                  />
-                )}
-              </View>
+              <Switch
+                value={setting.value}
+                onValueChange={setting.onValueChange}
+                trackColor={{ false: theme.border, true: '#C9A96E' }}
+                thumbColor={setting.value ? '#FFFFFF' : '#f4f3f4'}
+                ios_backgroundColor={theme.border}
+                disabled={saving}
+              />
             </View>
           ))}
         </View>
@@ -448,10 +458,14 @@ const AIAssistantScreen: React.FC = () => {
         <View style={[styles.section, { backgroundColor: theme.surface }]}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>AI PERSONALITY & BEHAVIOR</Text>
 
-          <TouchableOpacity style={[styles.settingItem, { borderBottomColor: theme.border }]}>
+          <TouchableOpacity
+            style={[styles.settingItem, { borderBottomColor: theme.border }]}
+            onPress={() => (navigation as any).navigate('AgentCreativity')}
+            activeOpacity={0.7}
+          >
             <View style={styles.settingLeft}>
-              <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                <Ionicons name="brush-outline" size={20} color="#FFFFFF" />
+              <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.15)' }]}>
+                <Ionicons name="brush-outline" size={20} color="#C9A96E" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -465,10 +479,14 @@ const AIAssistantScreen: React.FC = () => {
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.settingItem, { borderBottomColor: theme.border }]}>
+          <TouchableOpacity
+            style={[styles.settingItem, { borderBottomColor: theme.border }]}
+            onPress={() => (navigation as any).navigate('AgentCommunicationStyle')}
+            activeOpacity={0.7}
+          >
             <View style={styles.settingLeft}>
-              <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                <Ionicons name="chatbubble-outline" size={20} color="#FFFFFF" />
+              <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.15)' }]}>
+                <Ionicons name="chatbubble-outline" size={20} color="#C9A96E" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -482,10 +500,14 @@ const AIAssistantScreen: React.FC = () => {
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.settingItem, styles.lastItem]}>
+          <TouchableOpacity
+            style={[styles.settingItem, styles.lastItem]}
+            onPress={() => (navigation as any).navigate('AgentProactivity')}
+            activeOpacity={0.7}
+          >
             <View style={styles.settingLeft}>
-              <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                <Ionicons name="trending-up-outline" size={20} color="#FFFFFF" />
+              <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.15)' }]}>
+                <Ionicons name="trending-up-outline" size={20} color="#C9A96E" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -513,8 +535,8 @@ const AIAssistantScreen: React.FC = () => {
               ]}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={setting.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.15)' }]}>
+                  <Ionicons name={setting.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -525,24 +547,14 @@ const AIAssistantScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
-              <View style={styles.toggleContainer}>
-                <Switch
-                  value={setting.value}
-                  onValueChange={setting.onValueChange}
-                  trackColor={{ false: theme.border, true: '#3396D3' }}
-                  thumbColor={setting.value ? 'white' : '#f4f3f4'}
-                  ios_backgroundColor={theme.border}
-                  disabled={saving}
-                />
-                {setting.value && (
-                  <Ionicons
-                    name="checkmark"
-                    size={14}
-                    color="#3396D3"
-                    style={styles.thumbIcon}
-                  />
-                )}
-              </View>
+              <Switch
+                value={setting.value}
+                onValueChange={setting.onValueChange}
+                trackColor={{ false: theme.border, true: '#C9A96E' }}
+                thumbColor={setting.value ? '#FFFFFF' : '#f4f3f4'}
+                ios_backgroundColor={theme.border}
+                disabled={saving}
+              />
             </View>
           ))}
         </View>
@@ -560,8 +572,8 @@ const AIAssistantScreen: React.FC = () => {
               ]}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={setting.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.15)' }]}>
+                  <Ionicons name={setting.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -572,24 +584,14 @@ const AIAssistantScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
-              <View style={styles.toggleContainer}>
-                <Switch
-                  value={setting.value}
-                  onValueChange={setting.onValueChange}
-                  trackColor={{ false: theme.border, true: '#3396D3' }}
-                  thumbColor={setting.value ? 'white' : '#f4f3f4'}
-                  ios_backgroundColor={theme.border}
-                  disabled={saving}
-                />
-                {setting.value && (
-                  <Ionicons
-                    name="checkmark"
-                    size={14}
-                    color="#3396D3"
-                    style={styles.thumbIcon}
-                  />
-                )}
-              </View>
+              <Switch
+                value={setting.value}
+                onValueChange={setting.onValueChange}
+                trackColor={{ false: theme.border, true: '#C9A96E' }}
+                thumbColor={setting.value ? '#FFFFFF' : '#f4f3f4'}
+                ios_backgroundColor={theme.border}
+                disabled={saving}
+              />
             </View>
           ))}
         </View>
@@ -607,8 +609,8 @@ const AIAssistantScreen: React.FC = () => {
               ]}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={setting.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.15)' }]}>
+                  <Ionicons name={setting.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -619,24 +621,14 @@ const AIAssistantScreen: React.FC = () => {
                   </Text>
                 </View>
               </View>
-              <View style={styles.toggleContainer}>
-                <Switch
-                  value={setting.value}
-                  onValueChange={setting.onValueChange}
-                  trackColor={{ false: theme.border, true: '#3396D3' }}
-                  thumbColor={setting.value ? 'white' : '#f4f3f4'}
-                  ios_backgroundColor={theme.border}
-                  disabled={saving}
-                />
-                {setting.value && (
-                  <Ionicons
-                    name="checkmark"
-                    size={14}
-                    color="#3396D3"
-                    style={styles.thumbIcon}
-                  />
-                )}
-              </View>
+              <Switch
+                value={setting.value}
+                onValueChange={setting.onValueChange}
+                trackColor={{ false: theme.border, true: '#C9A96E' }}
+                thumbColor={setting.value ? '#FFFFFF' : '#f4f3f4'}
+                ios_backgroundColor={theme.border}
+                disabled={saving}
+              />
             </View>
           ))}
         </View>
@@ -655,8 +647,8 @@ const AIAssistantScreen: React.FC = () => {
               onPress={capability.action}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={capability.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.15)' }]}>
+                  <Ionicons name={capability.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -716,15 +708,32 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(21, 183, 232, 0.1)',
+    backgroundColor: 'rgba(201, 169, 110, 0.15)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 16,
+    position: 'relative',
   },
   profileImage: {
     width: 64,
     height: 64,
     borderRadius: 32,
+  },
+  editButton: {
+    position: 'absolute',
+    right: -2,
+    bottom: -2,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#C9A96E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3,
+    elevation: 5,
   },
   overviewTitle: {
     fontSize: 20,
@@ -791,16 +800,6 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-  },
-  toggleContainer: {
-    position: 'relative',
-  },
-  thumbIcon: {
-    position: 'absolute',
-    right: Platform.OS === 'ios' ? 6 : 4,
-    top: Platform.OS === 'ios' ? 5 : 6,
-    zIndex: 1,
-    pointerEvents: 'none',
   },
 });
 

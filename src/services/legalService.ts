@@ -71,14 +71,63 @@ class LegalService {
   // Get combined terms and privacy
   async getCombined(language: string = 'en'): Promise<LegalContent | null> {
     try {
-      const response = await apiService['api'].get('/api/legal/combined', {
-        params: { language }
+      // Try to fetch from API with short timeout
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+
+      const response = await fetch(`${apiService.getBaseURL()}/api/legal/combined?language=${language}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal,
       });
-      return response.data.success ? response.data.data : null;
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.success ? data.data : this.getFallbackContent(language);
     } catch (error) {
-      console.error('Failed to fetch combined legal content:', error);
-      return null;
+      console.warn('API unavailable, using fallback legal content:', error);
+      // Return fallback content immediately
+      return this.getFallbackContent(language);
     }
+  }
+
+  // Fallback legal content when API is unavailable
+  private getFallbackContent(language: string = 'en'): LegalContent {
+    return {
+      _id: 'fallback',
+      type: 'combined',
+      version: '1.0',
+      language,
+      title: 'Terms of Service & Privacy Policy',
+      content: {
+        mainTitle: 'Yo! Personal Assistant - Terms & Privacy',
+        sections: [
+          {
+            title: '1. Acceptance of Terms',
+            content: 'By using Yo! Personal Assistant, you agree to these terms and our privacy policy.'
+          },
+          {
+            title: '2. Privacy & Data',
+            content: 'We collect and process your data to provide personalized assistant services. Your data is encrypted and secure.'
+          },
+          {
+            title: '3. User Responsibilities',
+            content: 'You are responsible for maintaining the confidentiality of your account credentials.'
+          }
+        ]
+      },
+      isActive: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      effectiveDate: new Date().toISOString()
+    };
   }
 
   // Get all legal content

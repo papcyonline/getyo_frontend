@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -7,13 +7,16 @@ import {
   Switch,
   ScrollView,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
+import ApiService from '../services/api';
 
 const { height } = Dimensions.get('window');
 
@@ -27,9 +30,44 @@ const PrivacySecurityScreen: React.FC = () => {
   const [analyticsSharing, setAnalyticsSharing] = useState(false);
   const [crashReporting, setCrashReporting] = useState(true);
   const [locationAccess, setLocationAccess] = useState(true);
+  const [loading, setLoading] = useState(true);
+
+  // Load privacy settings on mount
+  useEffect(() => {
+    const loadPrivacySettings = async () => {
+      try {
+        const settings = await ApiService.getPrivacySettings();
+        setBiometricLock(settings.biometricLock ?? true);
+        setDataEncryption(settings.dataEncryption ?? true);
+        setAnalyticsSharing(settings.analyticsSharing ?? false);
+        setCrashReporting(settings.crashReporting ?? true);
+        setLocationAccess(settings.locationAccess ?? true);
+      } catch (error) {
+        console.error('Failed to load privacy settings:', error);
+        Alert.alert('Error', 'Failed to load privacy settings');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadPrivacySettings();
+  }, []);
 
   const handleBackPress = () => {
     navigation.goBack();
+  };
+
+  // Update handlers to save changes to API
+  const handleToggle = async (
+    setting: 'biometricLock' | 'dataEncryption' | 'analyticsSharing' | 'crashReporting' | 'locationAccess',
+    value: boolean
+  ) => {
+    try {
+      await ApiService.updatePrivacySettings({ [setting]: value });
+    } catch (error) {
+      console.error(`Failed to update ${setting}:`, error);
+      Alert.alert('Error', 'Failed to save setting. Please try again.');
+    }
   };
 
   const privacySettings = [
@@ -37,35 +75,50 @@ const PrivacySecurityScreen: React.FC = () => {
       title: 'Biometric Lock',
       subtitle: 'Use Face ID or Touch ID to secure app',
       value: biometricLock,
-      onValueChange: setBiometricLock,
+      onValueChange: (value: boolean) => {
+        setBiometricLock(value);
+        handleToggle('biometricLock', value);
+      },
       icon: 'finger-print-outline'
     },
     {
       title: 'Data Encryption',
       subtitle: 'Encrypt all data stored locally',
       value: dataEncryption,
-      onValueChange: setDataEncryption,
+      onValueChange: (value: boolean) => {
+        setDataEncryption(value);
+        handleToggle('dataEncryption', value);
+      },
       icon: 'shield-checkmark-outline'
     },
     {
       title: 'Analytics Sharing',
       subtitle: 'Share anonymous usage data to improve app',
       value: analyticsSharing,
-      onValueChange: setAnalyticsSharing,
+      onValueChange: (value: boolean) => {
+        setAnalyticsSharing(value);
+        handleToggle('analyticsSharing', value);
+      },
       icon: 'analytics-outline'
     },
     {
       title: 'Crash Reporting',
       subtitle: 'Send crash reports to help fix issues',
       value: crashReporting,
-      onValueChange: setCrashReporting,
+      onValueChange: (value: boolean) => {
+        setCrashReporting(value);
+        handleToggle('crashReporting', value);
+      },
       icon: 'bug-outline'
     },
     {
       title: 'Location Access',
       subtitle: 'Allow location-based features',
       value: locationAccess,
-      onValueChange: setLocationAccess,
+      onValueChange: (value: boolean) => {
+        setLocationAccess(value);
+        handleToggle('locationAccess', value);
+      },
       icon: 'location-outline'
     },
   ];
@@ -75,19 +128,19 @@ const PrivacySecurityScreen: React.FC = () => {
       title: 'Change Passcode',
       subtitle: 'Update your app passcode',
       icon: 'keypad-outline',
-      action: () => {}
+      action: () => (navigation as any).navigate('ChangePasscode')
     },
     {
       title: 'Two-Factor Authentication',
       subtitle: 'Add extra security to your account',
       icon: 'shield-outline',
-      action: () => {}
+      action: () => (navigation as any).navigate('TwoFactorAuth')
     },
     {
       title: 'Active Sessions',
       subtitle: 'Manage your active login sessions',
       icon: 'phone-portrait-outline',
-      action: () => {}
+      action: () => (navigation as any).navigate('ActiveSessions')
     },
   ];
 
@@ -113,16 +166,18 @@ const PrivacySecurityScreen: React.FC = () => {
     },
   ];
 
+  if (loading) {
+    return (
+      <View style={[styles.container, { backgroundColor: theme.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <ActivityIndicator size="large" color="#C9A96E" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Blue-Black Gradient Background */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.15)', 'rgba(51, 150, 211, 0.05)', 'transparent']}
-        style={styles.gradientBackground}
-        start={{ x: 0.5, y: 0.6 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-      />
+
       <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
@@ -151,8 +206,8 @@ const PrivacySecurityScreen: React.FC = () => {
               ]}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={setting.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                  <Ionicons name={setting.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -166,9 +221,9 @@ const PrivacySecurityScreen: React.FC = () => {
               <Switch
                 value={setting.value}
                 onValueChange={setting.onValueChange}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: '#3396D3' }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor="rgba(255, 255, 255, 0.3)"
+                trackColor={{ false: 'rgba(201, 169, 110, 0.3)', true: '#C9A96E' }}
+                thumbColor="#C9A96E"
+                ios_backgroundColor="rgba(201, 169, 110, 0.3)"
               />
             </View>
           ))}
@@ -188,8 +243,8 @@ const PrivacySecurityScreen: React.FC = () => {
               onPress={option.action}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={option.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                  <Ionicons name={option.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -221,12 +276,12 @@ const PrivacySecurityScreen: React.FC = () => {
               <View style={styles.settingLeft}>
                 <View style={[
                   styles.iconContainer,
-                  { backgroundColor: option.isDanger ? 'rgba(239, 68, 68, 0.1)' : 'rgba(21, 183, 232, 0.1)' }
+                  { backgroundColor: option.isDanger ? 'rgba(239, 68, 68, 0.1)' : 'rgba(201, 169, 110, 0.1)' }
                 ]}>
                   <Ionicons
                     name={option.icon as any}
                     size={20}
-                    color={option.isDanger ? (theme.error || '#ef4444') : '#FFFFFF'}
+                    color={option.isDanger ? (theme.error || '#ef4444') : '#C9A96E'}
                   />
                 </View>
                 <View style={styles.textContainer}>

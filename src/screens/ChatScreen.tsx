@@ -18,7 +18,7 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import ApiService from '../services/api';
@@ -364,18 +364,13 @@ const ChatScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
+      
 
       <SafeAreaView style={styles.safeArea}>
         {/* Fixed Header */}
         <View style={styles.header}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="rgba(255, 255, 255, 0.9)" />
+            <Ionicons name="arrow-back" size={24} color="rgba(255, 247, 245, 0.9)" />
           </TouchableOpacity>
         </View>
 
@@ -420,7 +415,7 @@ const ChatScreen: React.FC = () => {
                     value={inputText}
                     onChangeText={setInputText}
                     placeholder="Type your message..."
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    placeholderTextColor="rgba(255, 247, 245, 0.5)"
                     multiline
                     maxLength={500}
                     editable={!isLoading}
@@ -521,13 +516,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 26,
     fontWeight: '700',
-    color: 'rgba(255, 255, 255, 0.95)',
+    color: 'rgba(255, 247, 245, 0.95)',
     marginBottom: 8,
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     letterSpacing: 0.3,
   },
   slidingContainer: {
@@ -536,11 +531,11 @@ const styles = StyleSheet.create({
   },
   glassPanel: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 247, 245, 0.15)',
     overflow: 'hidden',
     paddingTop: 20,
   },
@@ -557,7 +552,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     fontWeight: '500',
   },
   progressPercentage: {
@@ -567,7 +562,7 @@ const styles = StyleSheet.create({
   },
   progressBarBackground: {
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderRadius: 2,
     overflow: 'hidden',
   },
@@ -600,17 +595,17 @@ const styles = StyleSheet.create({
     color: 'rgba(51, 150, 211, 0.9)',
   },
   assistantLabel: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   messageContent: {
     fontSize: 16,
     lineHeight: 24,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 247, 245, 0.9)',
     fontWeight: '400',
   },
   messageDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginTop: 16,
   },
   typingContainer: {
@@ -620,13 +615,13 @@ const styles = StyleSheet.create({
   },
   typingText: {
     fontSize: 20,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 247, 245, 0.5)',
     opacity: 0.6,
   },
   inputContainer: {
     backgroundColor: 'rgba(0, 0, 0, 0.4)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.15)',
+    borderTopColor: 'rgba(255, 247, 245, 0.15)',
     paddingHorizontal: 20,
     paddingVertical: 16,
   },
@@ -638,14 +633,14 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.25)',
+    borderColor: 'rgba(255, 247, 245, 0.25)',
     borderRadius: 22,
     paddingHorizontal: 18,
     paddingVertical: 12,
     fontSize: 16,
     maxHeight: 100,
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    color: 'rgba(255, 255, 255, 0.95)',
+    backgroundColor: 'rgba(255, 247, 245, 0.15)',
+    color: 'rgba(255, 247, 245, 0.95)',
   },
   voiceButton: {
     width: 44,
@@ -678,8 +673,8 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   sendButtonDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    shadowColor: 'rgba(255, 255, 255, 0.3)',
+    backgroundColor: 'rgba(255, 247, 245, 0.3)',
+    shadowColor: 'rgba(255, 247, 245, 0.3)',
   },
   recordingIndicator: {
     flexDirection: 'row',

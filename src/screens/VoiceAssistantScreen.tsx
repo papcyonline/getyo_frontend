@@ -11,7 +11,7 @@ import {
 import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -98,13 +98,7 @@ const VoiceAssistantScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Blue-Black Gradient Background */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.15)', 'rgba(51, 150, 211, 0.05)', 'transparent']}
-        style={styles.gradientBackground}
-        start={{ x: 0.5, y: 0.6 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-      />
+      
       <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
@@ -134,7 +128,7 @@ const VoiceAssistantScreen: React.FC = () => {
             >
               <View style={styles.settingLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={setting.icon as any} size={20} color="#FFFFFF" />
+                  <Ionicons name={setting.icon as any} size={20} color="#FFF7F5" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -148,9 +142,9 @@ const VoiceAssistantScreen: React.FC = () => {
               <Switch
                 value={setting.value}
                 onValueChange={setting.onValueChange}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: '#3396D3' }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor="rgba(255, 255, 255, 0.3)"
+                trackColor={{ false: 'rgba(255, 247, 245, 0.3)', true: '#3396D3' }}
+                thumbColor="#FFF7F5"
+                ios_backgroundColor="rgba(255, 247, 245, 0.3)"
               />
             </View>
           ))}
@@ -171,7 +165,7 @@ const VoiceAssistantScreen: React.FC = () => {
             >
               <View style={styles.settingLeft}>
                 <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={option.icon as any} size={20} color="#FFFFFF" />
+                  <Ionicons name={option.icon as any} size={20} color="#FFF7F5" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -193,7 +187,7 @@ const VoiceAssistantScreen: React.FC = () => {
           <TouchableOpacity style={[styles.settingItem, { borderBottomColor: theme.border }]}>
             <View style={styles.settingLeft}>
               <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                <Ionicons name="play-circle-outline" size={20} color="#FFFFFF" />
+                <Ionicons name="play-circle-outline" size={20} color="#FFF7F5" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -210,7 +204,7 @@ const VoiceAssistantScreen: React.FC = () => {
           <TouchableOpacity style={[styles.settingItem, styles.lastItem]}>
             <View style={styles.settingLeft}>
               <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                <Ionicons name="school-outline" size={20} color="#FFFFFF" />
+                <Ionicons name="school-outline" size={20} color="#FFF7F5" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={[styles.settingTitle, { color: theme.text }]}>

@@ -253,8 +253,8 @@ const EmailManagementScreen: React.FC = () => {
         >
           <View style={[
             styles.checkboxInner,
-            { borderColor: selectedEmails.includes(email.id) ? '#FFFFFF' : theme.border },
-            selectedEmails.includes(email.id) && { backgroundColor: '#FFFFFF' }
+            { borderColor: selectedEmails.includes(email.id) ? '#FFF7F5' : theme.border },
+            selectedEmails.includes(email.id) && { backgroundColor: '#FFF7F5' }
           ]}>
             {selectedEmails.includes(email.id) && (
               <Ionicons name="checkmark" size={14} color="white" />
@@ -295,8 +295,8 @@ const EmailManagementScreen: React.FC = () => {
 
           {email.aiSummary && (
             <View style={styles.aiSummaryContainer}>
-              <Ionicons name="sparkles" size={12} color="#FFFFFF" />
-              <Text style={[styles.aiSummary, { color: '#FFFFFF' }]} numberOfLines={1}>
+              <Ionicons name="sparkles" size={12} color="#FFF7F5" />
+              <Text style={[styles.aiSummary, { color: '#FFF7F5' }]} numberOfLines={1}>
                 AI: {email.aiSummary}
               </Text>
             </View>
@@ -350,7 +350,7 @@ const EmailManagementScreen: React.FC = () => {
           )}
         </View>
         <TouchableOpacity style={styles.composeButton}>
-          <Ionicons name="create-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="create-outline" size={24} color="#FFF7F5" />
         </TouchableOpacity>
       </View>
 
@@ -381,7 +381,7 @@ const EmailManagementScreen: React.FC = () => {
             </Text>
           </View>
           <TouchableOpacity
-            style={[styles.connectButton, { backgroundColor: '#FFFFFF' }]}
+            style={[styles.connectButton, { backgroundColor: '#FFF7F5' }]}
             onPress={connectToGmail}
           >
             <Text style={styles.connectButtonText}>Connect Gmail</Text>
@@ -413,7 +413,7 @@ const EmailManagementScreen: React.FC = () => {
             style={[
               styles.folderTab,
               { backgroundColor: theme.surface },
-              selectedFolder === folder.key && { backgroundColor: '#FFFFFF' }
+              selectedFolder === folder.key && { backgroundColor: '#FFF7F5' }
             ]}
             onPress={() => setSelectedFolder(folder.key)}
           >
@@ -431,7 +431,7 @@ const EmailManagementScreen: React.FC = () => {
             {folder.count > 0 && (
               <View style={[
                 styles.folderBadge,
-                { backgroundColor: selectedFolder === folder.key ? 'rgba(255,255,255,0.3)' : '#FFFFFF' }
+                { backgroundColor: selectedFolder === folder.key ? 'rgba(255, 247, 245,0.3)' : '#FFF7F5' }
               ]}>
                 <Text style={styles.folderBadgeText}>{folder.count}</Text>
               </View>
@@ -479,7 +479,7 @@ const EmailManagementScreen: React.FC = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFF7F5" />
         }
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
@@ -733,7 +733,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7F5',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,

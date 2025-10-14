@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -35,7 +35,6 @@ interface PrivacySetting {
   critical: boolean;
   category: 'data' | 'permissions' | 'security';
 }
-
 
 const privacySettings: PrivacySetting[] = [
   {
@@ -121,7 +120,6 @@ const privacySettings: PrivacySetting[] = [
   },
 ];
 
-
 const AgentPrivacyScreen: React.FC = () => {
   const navigation = useNavigation<AgentPrivacyNavigationProp>();
   const dispatch = useDispatch();
@@ -151,13 +149,30 @@ const AgentPrivacyScreen: React.FC = () => {
       if (existingConfig?.privacy) {
         const privacy = existingConfig.privacy;
 
-        // Update settings based on existing config
-        // Note: The frontend has many more settings than what the backend stores
-        // We only update the ones that map to backend fields
+        // Map backend privacy settings to frontend UI
         const updatedSettings = settings.map(setting => {
-          // Map the few frontend settings that correspond to backend privacy fields
-          // Most frontend settings are UI-only and don't map to backend
-          return setting; // Keep original settings for now as mapping is complex
+          switch (setting.id) {
+            case 'local_processing':
+              return { ...setting, enabled: privacy.localProcessing !== false };
+            case 'encrypted_storage':
+              return { ...setting, enabled: privacy.encryptedStorage !== false };
+            case 'data_minimization':
+              return { ...setting, enabled: privacy.dataMinimization !== false };
+            case 'conversation_history':
+              return { ...setting, enabled: privacy.conversationHistory !== false };
+            case 'biometric_lock':
+              return { ...setting, enabled: privacy.biometricLock || false };
+            case 'auto_delete':
+              return { ...setting, enabled: privacy.autoDelete || false };
+            case 'location_access':
+              return { ...setting, enabled: privacy.locationAccess || false };
+            case 'contacts_access':
+              return { ...setting, enabled: privacy.contactsAccess || false };
+            case 'calendar_access':
+              return { ...setting, enabled: privacy.calendarAccess !== false };
+            default:
+              return setting;
+          }
         });
 
         setSettings(updatedSettings);
@@ -180,17 +195,32 @@ const AgentPrivacyScreen: React.FC = () => {
     );
   };
 
-
   const handleContinue = async () => {
     try {
       setSaving(true);
 
-      // Map privacy settings to backend format
+      // Map all 9 privacy settings to backend format
       const privacyData = {
-        dataRetentionDays: 90, // Default value
-        shareAnalytics: settings.find(s => s.id === 'analytics_sharing')?.enabled || false,
-        personalizeExperience: settings.find(s => s.id === 'personalization')?.enabled !== false,
-        crossDeviceSync: settings.find(s => s.id === 'cloud_sync')?.enabled || false,
+        // Data Processing & Storage
+        localProcessing: settings.find(s => s.id === 'local_processing')?.enabled !== false,
+        encryptedStorage: settings.find(s => s.id === 'encrypted_storage')?.enabled !== false,
+        dataMinimization: settings.find(s => s.id === 'data_minimization')?.enabled !== false,
+        conversationHistory: settings.find(s => s.id === 'conversation_history')?.enabled !== false,
+        autoDelete: settings.find(s => s.id === 'auto_delete')?.enabled || false,
+        dataRetentionDays: 90,
+
+        // Security Features
+        biometricLock: settings.find(s => s.id === 'biometric_lock')?.enabled || false,
+
+        // Permissions
+        locationAccess: settings.find(s => s.id === 'location_access')?.enabled || false,
+        contactsAccess: settings.find(s => s.id === 'contacts_access')?.enabled || false,
+        calendarAccess: settings.find(s => s.id === 'calendar_access')?.enabled !== false,
+
+        // Keep defaults for analytics/personalization (not shown in UI but needed by backend)
+        shareAnalytics: false,
+        personalizeExperience: true,
+        crossDeviceSync: true,
       };
 
       // Save privacy preferences to backend
@@ -243,7 +273,7 @@ const AgentPrivacyScreen: React.FC = () => {
               <MaterialIcons
                 name={setting.icon as any}
                 size={20}
-                color={setting.critical ? '#FF6B6B' : '#FFFFFF'}
+                color={setting.critical ? '#FF6B6B' : '#FFF7F5'}
               />
             </View>
             <View style={styles.settingTextContainer}>
@@ -261,9 +291,9 @@ const AgentPrivacyScreen: React.FC = () => {
               value={setting.enabled}
               onValueChange={(value) => !setting.critical && handleSettingToggle(setting.id)}
               disabled={setting.critical}
-              trackColor={{ false: 'rgba(255, 255, 255, 0.1)', true: '#3396D3' }}
-              thumbColor={setting.enabled ? '#FFFFFF' : 'rgba(255, 255, 255, 0.6)'}
-              ios_backgroundColor="rgba(255, 255, 255, 0.1)"
+              trackColor={{ false: 'rgba(255, 247, 245, 0.1)', true: '#3396D3' }}
+              thumbColor={setting.enabled ? '#FFF7F5' : 'rgba(255, 247, 245, 0.6)'}
+              ios_backgroundColor="rgba(255, 247, 245, 0.1)"
             />
           </View>
         </View>
@@ -271,7 +301,6 @@ const AgentPrivacyScreen: React.FC = () => {
       </View>
     );
   };
-
 
   const renderCategory = (categoryKey: string, categoryName: string) => {
     const categorySettings = getSettingsByCategory(categoryKey);
@@ -289,14 +318,7 @@ const AgentPrivacyScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(51, 150, 211, 0.2)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.6 }}
-        pointerEvents="none"
-      />
-
+      
 
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
@@ -364,7 +386,7 @@ const AgentPrivacyScreen: React.FC = () => {
               >
                 {saving ? (
                   <View style={styles.savingContainer}>
-                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <ActivityIndicator size="small" color="#FFF7F5" style={{ marginRight: 8 }} />
                     <Text style={styles.continueButtonText}>Completing Setup...</Text>
                   </View>
                 ) : (
@@ -405,7 +427,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
@@ -423,7 +445,7 @@ const styles = StyleSheet.create({
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
@@ -439,20 +461,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   backButtonText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontSize: 22,
     fontWeight: '600',
   },
   step: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
     letterSpacing: 0.5,
   },
@@ -475,14 +497,14 @@ const styles = StyleSheet.create({
   },
   infoText: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     textAlign: 'center',
     fontWeight: '600',
     marginBottom: 4,
   },
   infoSubtext: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     textAlign: 'center',
     fontWeight: '400',
   },
@@ -492,19 +514,19 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 8,
     letterSpacing: 0.3,
   },
   sectionDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     marginBottom: 20,
     lineHeight: 20,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginHorizontal: 4,
   },
   category: {
@@ -513,7 +535,7 @@ const styles = StyleSheet.create({
   categoryTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 16,
     letterSpacing: 0.3,
   },
@@ -551,7 +573,7 @@ const styles = StyleSheet.create({
   settingTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     flex: 1,
   },
   criticalBadge: {
@@ -569,7 +591,7 @@ const styles = StyleSheet.create({
   },
   settingDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     lineHeight: 18,
   },
   footer: {
@@ -586,11 +608,11 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     letterSpacing: 0.5,
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
   },
   savingContainer: {
     flexDirection: 'row',
@@ -605,7 +627,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     marginTop: 16,
     fontWeight: '500',
   },

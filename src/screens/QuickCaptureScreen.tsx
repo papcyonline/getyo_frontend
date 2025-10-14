@@ -101,7 +101,7 @@ const QuickCaptureScreen: React.FC = () => {
   ];
 
   const categories = [
-    { key: 'general', label: 'General', icon: 'document-text', color: '#FFFFFF' },
+    { key: 'general', label: 'General', icon: 'document-text', color: '#FFF7F5' },
     { key: 'meetings', label: 'Meetings', icon: 'people', color: '#8B5CF6' },
     { key: 'ideas', label: 'Ideas', icon: 'bulb', color: '#F59E0B' },
     { key: 'clients', label: 'Clients', icon: 'briefcase', color: '#10B981' },
@@ -136,7 +136,7 @@ const QuickCaptureScreen: React.FC = () => {
             <Text style={[styles.headerTitle, { color: theme.text }]}>Quick Capture</Text>
           </View>
           <TouchableOpacity style={styles.saveButton} onPress={handleSaveNote}>
-            <Text style={[styles.saveButtonText, { color: '#FFFFFF' }]}>Save</Text>
+            <Text style={[styles.saveButtonText, { color: '#FFF7F5' }]}>Save</Text>
           </TouchableOpacity>
         </View>
 
@@ -145,13 +145,13 @@ const QuickCaptureScreen: React.FC = () => {
           <TouchableOpacity
             style={[
               styles.tab,
-              selectedTab === 'capture' && { borderBottomColor: '#FFFFFF', borderBottomWidth: 2 }
+              selectedTab === 'capture' && { borderBottomColor: '#FFF7F5', borderBottomWidth: 2 }
             ]}
             onPress={() => setSelectedTab('capture')}
           >
             <Text style={[
               styles.tabText,
-              { color: selectedTab === 'capture' ? '#FFFFFF' : theme.textSecondary }
+              { color: selectedTab === 'capture' ? '#FFF7F5' : theme.textSecondary }
             ]}>
               Capture
             </Text>
@@ -159,13 +159,13 @@ const QuickCaptureScreen: React.FC = () => {
           <TouchableOpacity
             style={[
               styles.tab,
-              selectedTab === 'notes' && { borderBottomColor: '#FFFFFF', borderBottomWidth: 2 }
+              selectedTab === 'notes' && { borderBottomColor: '#FFF7F5', borderBottomWidth: 2 }
             ]}
             onPress={() => setSelectedTab('notes')}
           >
             <Text style={[
               styles.tabText,
-              { color: selectedTab === 'notes' ? '#FFFFFF' : theme.textSecondary }
+              { color: selectedTab === 'notes' ? '#FFF7F5' : theme.textSecondary }
             ]}>
               Recent Notes
             </Text>
@@ -191,7 +191,7 @@ const QuickCaptureScreen: React.FC = () => {
                     <Ionicons
                       name={action.icon as any}
                       size={24}
-                      color={action.label === 'Voice' && isRecording ? 'white' : '#FFFFFF'}
+                      color={action.label === 'Voice' && isRecording ? 'white' : '#FFF7F5'}
                     />
                   </View>
                   <Text style={[styles.quickActionLabel, { color: theme.textSecondary }]}>
@@ -259,7 +259,7 @@ const QuickCaptureScreen: React.FC = () => {
             {/* AI Suggestions */}
             <View style={[styles.aiSuggestionsCard, { backgroundColor: theme.surface }]}>
               <View style={styles.aiHeader}>
-                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                <Ionicons name="sparkles" size={16} color="#FFF7F5" />
                 <Text style={[styles.aiTitle, { color: theme.text }]}>
                   {user?.assistantName || 'Yo!'} Suggestions
                 </Text>
@@ -269,21 +269,21 @@ const QuickCaptureScreen: React.FC = () => {
                 <Text style={[styles.suggestionText, { color: theme.textSecondary }]}>
                   "Convert this to a task with deadline"
                 </Text>
-                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                <Ionicons name="arrow-forward" size={16} color="#FFF7F5" />
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.suggestionItem}>
                 <Text style={[styles.suggestionText, { color: theme.textSecondary }]}>
                   "Extract action items from meeting notes"
                 </Text>
-                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                <Ionicons name="arrow-forward" size={16} color="#FFF7F5" />
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.suggestionItem}>
                 <Text style={[styles.suggestionText, { color: theme.textSecondary }]}>
                   "Create follow-up reminders"
                 </Text>
-                <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                <Ionicons name="arrow-forward" size={16} color="#FFF7F5" />
               </TouchableOpacity>
             </View>
           </ScrollView>
@@ -316,8 +316,8 @@ const QuickCaptureScreen: React.FC = () => {
                         </Text>
                         {note.hasAudio && (
                           <View style={styles.audioIndicator}>
-                            <Ionicons name="mic" size={14} color="#FFFFFF" />
-                            <Text style={[styles.audioText, { color: '#FFFFFF' }]}>
+                            <Ionicons name="mic" size={14} color="#FFF7F5" />
+                            <Text style={[styles.audioText, { color: '#FFF7F5' }]}>
                               Audio
                             </Text>
                           </View>
@@ -334,7 +334,7 @@ const QuickCaptureScreen: React.FC = () => {
 
             {/* Search Notes */}
             <TouchableOpacity
-              style={[styles.searchNotesButton, { backgroundColor: '#FFFFFF' }]}
+              style={[styles.searchNotesButton, { backgroundColor: '#FFF7F5' }]}
             >
               <Ionicons name="search" size={20} color="white" />
               <Text style={styles.searchNotesText}>Search All Notes</Text>
@@ -567,7 +567,7 @@ const styles = StyleSheet.create({
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7F5',
     alignItems: 'center',
     justifyContent: 'center',
     elevation: 8,

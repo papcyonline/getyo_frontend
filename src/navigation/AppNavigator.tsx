@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Animated, Easing, Text, TouchableOpacity } from 'react-native';
+import { View, Animated, Easing, Text, TouchableOpacity, ScrollView, Modal } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -7,17 +7,18 @@ import { useSelector } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
 import { RootState } from '../store';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
 import { SubscriptionProvider } from '../contexts/SubscriptionContext';
 import { voiceService } from '../services/voiceService';
 
 // Onboarding Screens
 import SplashScreen from '../screens/SplashScreen';
 import LanguageSelectionScreen from '../screens/LanguageSelectionScreen';
-import PhoneInputScreen from '../screens/PhoneInputScreen';
-import OTPVerificationScreen from '../screens/OTPVerificationScreen';
-import EmailInputScreen from '../screens/EmailInputScreen';
-import PasswordCreationScreen from '../screens/PasswordCreationScreen';
+import WelcomeScreen from '../screens/WelcomeScreen';
+import AuthOptionsScreen from '../screens/AuthOptionsScreen';
+import EmailSignUpScreen from '../screens/EmailSignUpScreen';
 import CongratulationsScreen from '../screens/CongratulationsScreen';
+import UserProfileSetupScreen from '../screens/UserProfileSetupScreen';
 import AssistantNamingScreen from '../screens/AssistantNamingScreen';
 import AssistantGenderScreen from '../screens/AssistantGenderScreen';
 import AssistantConversationScreen from '../screens/AssistantConversationScreen';
@@ -30,11 +31,15 @@ import AgentAvailabilityScreen from '../screens/AgentAvailabilityScreen';
 import AgentTaskCategoriesScreen from '../screens/AgentTaskCategoriesScreen';
 import AgentLearningScreen from '../screens/AgentLearningScreen';
 import AgentPrivacyScreen from '../screens/AgentPrivacyScreen';
+import AssistantProfileImageScreen from '../screens/AssistantProfileImageScreen';
+import AgentCreativityScreen from '../screens/AgentCreativityScreen';
+import AgentCommunicationStyleScreen from '../screens/AgentCommunicationStyleScreen';
+import AgentProactivityScreen from '../screens/AgentProactivityScreen';
+import SpecializedCapabilityScreen from '../screens/SpecializedCapabilityScreen';
 
 // Authentication Screens
 import WelcomeAuthScreen from '../screens/WelcomeAuthScreen';
 import SignInScreen from '../screens/SignInScreen';
-import SignUpScreen from '../screens/SignUpScreen';
 import ForgotPasswordScreen from '../screens/ForgotPasswordScreen';
 import ResetPasswordOTPScreen from '../screens/ResetPasswordOTPScreen';
 import ResetPasswordScreen from '../screens/ResetPasswordScreen';
@@ -55,6 +60,9 @@ import PrivacySecurityScreen from '../screens/PrivacySecurityScreen';
 import HelpSupportScreen from '../screens/HelpSupportScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import AIAssistantScreen from '../screens/AIAssistantScreen';
+import ChangePasscodeScreen from '../screens/ChangePasscodeScreen';
+import TwoFactorAuthScreen from '../screens/TwoFactorAuthScreen';
+import ActiveSessionsScreen from '../screens/ActiveSessionsScreen';
 import IntegrationScreen from '../screens/IntegrationScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
 import NotificationFeedScreen from '../screens/NotificationFeedScreen';
@@ -70,6 +78,11 @@ import AddTaskScreen from '../screens/AddTaskScreen';
 import AddReminderScreen from '../screens/AddReminderScreen';
 import AddEventScreen from '../screens/AddEventScreen';
 import QuickNoteScreen from '../screens/QuickNoteScreen';
+
+// Detail Screens
+import TaskDetailScreen from '../screens/TaskDetailScreen';
+import EventDetailScreen from '../screens/EventDetailScreen';
+import ReminderDetailScreen from '../screens/ReminderDetailScreen';
 
 // Components
 
@@ -502,6 +515,7 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   const currentRoute = state.routes[state.index];
   const [isListening, setIsListening] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
 
   // Safety timeout to reset states if something goes wrong
   useEffect(() => {
@@ -609,249 +623,148 @@ const CustomTabBar = ({ state, descriptors, navigation }: any) => {
   return (
     <View style={{
       position: 'absolute',
-      bottom: 0,
+      bottom: 40,
       left: 0,
       right: 0,
-      height: 120,
       backgroundColor: 'transparent',
-      zIndex: 100,
-      elevation: 100,
     }}>
-      {/* Tab bar with 5 tabs */}
-      <View style={{
-        position: 'absolute',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: 80,
-        flexDirection: 'row',
-        backgroundColor: theme.surface,
-        borderTopColor: theme.border,
-        borderTopWidth: 0.5,
-        paddingBottom: 20,
-      }}>
+      <LinearGradient
+        colors={['rgba(10, 10, 10, 0.95)', 'rgba(0, 0, 0, 0.98)']}
+        style={{
+          flexDirection: 'row',
+          paddingTop: 16,
+          paddingBottom: 16,
+          paddingHorizontal: 16,
+          borderTopWidth: 1,
+          borderTopColor: 'rgba(255, 255, 255, 0.05)',
+        }}
+      >
         {/* Home */}
-        <View
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onStartShouldSetResponder={() => true}
-          onResponderGrant={() => navigation.navigate('Home')}
+        <TouchableOpacity
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          onPress={() => navigation.navigate('Home')}
         >
-          <View style={{
-            width: 22,
-            height: 22,
-            backgroundColor: 'transparent',
-            borderWidth: 2,
-            borderColor: currentRoute?.name === 'Home' ? '#FFFFFF' : theme.textSecondary,
-            borderRadius: 4,
-            position: 'relative'
-          }}>
-            <View style={{
-              position: 'absolute',
-              top: 6,
-              left: 6,
-              width: 6,
-              height: 6,
-              backgroundColor: currentRoute?.name === 'Home' ? '#FFFFFF' : theme.textSecondary,
-              borderRadius: 1
-            }} />
+          <View style={{ alignItems: 'center' }}>
+            <Ionicons
+              name={currentRoute?.name === 'Home' ? 'list' : 'list-outline'}
+              size={24}
+              color={currentRoute?.name === 'Home' ? '#FFF' : 'rgba(255,255,255,0.5)'}
+            />
+            <Text style={{
+              fontSize: 10,
+              marginTop: 4,
+              fontWeight: currentRoute?.name === 'Home' ? '600' : '500',
+              color: currentRoute?.name === 'Home' ? '#FFF' : 'rgba(255,255,255,0.5)',
+            }}>Home</Text>
           </View>
-          <Text style={{
-            fontSize: 10,
-            marginTop: 2,
-            color: currentRoute?.name === 'Home' ? '#FFFFFF' : theme.textSecondary,
-          }}>
-            Home
-          </Text>
-        </View>
-
-        {/* Integrations */}
-        <View
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onStartShouldSetResponder={() => true}
-          onResponderGrant={() => navigation.navigate('Integration')}
-        >
-          <View style={{
-            width: 22,
-            height: 22,
-            borderWidth: 2,
-            borderColor: currentRoute?.name === 'Integration' ? '#FFFFFF' : theme.textSecondary,
-            borderRadius: 11,
-            position: 'relative',
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}>
-            <View style={{
-              width: 8,
-              height: 8,
-              borderWidth: 1,
-              borderColor: currentRoute?.name === 'Integration' ? '#FFFFFF' : theme.textSecondary,
-              borderRadius: 4,
-            }} />
-          </View>
-          <Text style={{
-            fontSize: 10,
-            marginTop: 2,
-            color: currentRoute?.name === 'Integration' ? '#FFFFFF' : theme.textSecondary,
-          }}>
-            Integrations
-          </Text>
-        </View>
-
-        {/* Center space for floating button */}
-        <View style={{ flex: 1 }} />
+        </TouchableOpacity>
 
         {/* Analytics */}
-        <View
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onStartShouldSetResponder={() => true}
-          onResponderGrant={() => navigation.navigate('Analytics')}
-        >
-          <View style={{
-            flexDirection: 'row',
-            alignItems: 'flex-end',
-            justifyContent: 'center',
-            width: 22,
-            height: 20
-          }}>
-            <View style={{
-              width: 3,
-              height: 12,
-              backgroundColor: currentRoute?.name === 'Analytics' ? '#FFFFFF' : theme.textSecondary,
-              borderRadius: 1.5,
-              marginRight: 2
-            }} />
-            <View style={{
-              width: 3,
-              height: 16,
-              backgroundColor: currentRoute?.name === 'Analytics' ? '#FFFFFF' : theme.textSecondary,
-              borderRadius: 1.5,
-              marginRight: 2
-            }} />
-            <View style={{
-              width: 3,
-              height: 10,
-              backgroundColor: currentRoute?.name === 'Analytics' ? '#FFFFFF' : theme.textSecondary,
-              borderRadius: 1.5,
-              marginRight: 2
-            }} />
-            <View style={{
-              width: 3,
-              height: 18,
-              backgroundColor: currentRoute?.name === 'Analytics' ? '#FFFFFF' : theme.textSecondary,
-              borderRadius: 1.5
-            }} />
-          </View>
-          <Text style={{
-            fontSize: 10,
-            marginTop: 2,
-            color: currentRoute?.name === 'Analytics' ? '#FFFFFF' : theme.textSecondary,
-          }}>
-            Analytics
-          </Text>
-        </View>
-
-        {/* Settings */}
-        <View
-          style={{
-            flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onStartShouldSetResponder={() => true}
-          onResponderGrant={() => navigation.navigate('Profile')}
-        >
-          <View style={{
-            width: 20,
-            height: 20,
-            position: 'relative'
-          }}>
-            <View style={{
-              width: 20,
-              height: 20,
-              borderWidth: 2,
-              borderColor: currentRoute?.name === 'Profile' ? '#FFFFFF' : theme.textSecondary,
-              borderRadius: 10,
-              position: 'absolute'
-            }} />
-            <View style={{
-              position: 'absolute',
-              top: 4,
-              left: 4,
-              width: 12,
-              height: 2,
-              backgroundColor: currentRoute?.name === 'Profile' ? '#FFFFFF' : theme.textSecondary
-            }} />
-            <View style={{
-              position: 'absolute',
-              top: 8,
-              left: 4,
-              width: 8,
-              height: 2,
-              backgroundColor: currentRoute?.name === 'Profile' ? '#FFFFFF' : theme.textSecondary
-            }} />
-            <View style={{
-              position: 'absolute',
-              top: 12,
-              left: 4,
-              width: 10,
-              height: 2,
-              backgroundColor: currentRoute?.name === 'Profile' ? '#FFFFFF' : theme.textSecondary
-            }} />
-          </View>
-          <Text style={{
-            fontSize: 10,
-            marginTop: 2,
-            color: currentRoute?.name === 'Profile' ? '#FFFFFF' : theme.textSecondary,
-          }}>
-            Settings
-          </Text>
-        </View>
-      </View>
-
-      {/* Center floating Listen button */}
-      <View style={{
-        position: 'absolute',
-        bottom: 15,
-        left: '50%',
-        marginLeft: isListening || isProcessing ? -50 : -40,
-        width: isListening || isProcessing ? 100 : 80,
-        height: isListening || isProcessing ? 100 : 80,
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 101,
-        elevation: 101,
-      }}>
         <TouchableOpacity
-          style={{
-            width: isListening || isProcessing ? 100 : 80,
-            height: isListening || isProcessing ? 100 : 80,
-            borderRadius: isListening || isProcessing ? 50 : 40,
-            backgroundColor: theme.surface,
-            shadowColor: isListening ? '#FF4757' : isProcessing ? '#FF6B35' : '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: isListening || isProcessing ? 0.25 : 0.15,
-            shadowRadius: isListening || isProcessing ? 12 : 8,
-            elevation: isListening || isProcessing ? 12 : 8,
-            alignItems: 'center',
-            justifyContent: 'center',
-          }}
-          onPress={handleVoiceButtonPress}
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          onPress={() => navigation.navigate('Analytics')}
         >
-          <SiriWaveButton focused={true} isListening={isListening} isProcessing={isProcessing} />
+          <View style={{ alignItems: 'center' }}>
+            <Ionicons
+              name={currentRoute?.name === 'Analytics' ? 'stats-chart' : 'stats-chart-outline'}
+              size={24}
+              color={currentRoute?.name === 'Analytics' ? '#FFF' : 'rgba(255,255,255,0.5)'}
+            />
+            <Text style={{
+              fontSize: 10,
+              marginTop: 4,
+              fontWeight: currentRoute?.name === 'Analytics' ? '600' : '500',
+              color: currentRoute?.name === 'Analytics' ? '#FFF' : 'rgba(255,255,255,0.5)',
+            }}>Analytics</Text>
+          </View>
         </TouchableOpacity>
-      </View>
+
+        {/* Voice Button - CENTER */}
+        <View style={{ flex: 1, alignItems: 'center', marginTop: -32 }}>
+          <TouchableOpacity
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: 34,
+              overflow: 'hidden',
+              elevation: 12,
+              shadowColor: '#3B82F6',
+              shadowOffset: { width: 0, height: 6 },
+              shadowOpacity: 0.5,
+              shadowRadius: 16,
+            }}
+            onPress={handleVoiceButtonPress}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={isListening || isProcessing ? ['#EF4444', '#DC2626'] : ['#3B82F6', '#2563EB']}
+              style={{
+                width: '100%',
+                height: '100%',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: 'rgba(255, 255, 255, 0.15)',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}>
+                <Ionicons
+                  name={isListening ? 'mic' : isProcessing ? 'radio-outline' : 'mic-outline'}
+                  size={30}
+                  color="#FFF"
+                />
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+
+        {/* Integration */}
+        <TouchableOpacity
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          onPress={() => navigation.navigate('Integration')}
+        >
+          <View style={{ alignItems: 'center' }}>
+            <Ionicons
+              name={currentRoute?.name === 'Integration' ? 'link' : 'link-outline'}
+              size={24}
+              color={currentRoute?.name === 'Integration' ? '#FFF' : 'rgba(255,255,255,0.5)'}
+            />
+            <Text style={{
+              fontSize: 10,
+              marginTop: 4,
+              fontWeight: currentRoute?.name === 'Integration' ? '600' : '500',
+              color: currentRoute?.name === 'Integration' ? '#FFF' : 'rgba(255,255,255,0.5)',
+            }}>Connect</Text>
+          </View>
+        </TouchableOpacity>
+
+        {/* Chat */}
+        <TouchableOpacity
+          style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+          onPress={() => navigation.navigate('Chat')}
+        >
+          <View style={{ alignItems: 'center' }}>
+            <Ionicons
+              name={currentRoute?.name === 'Chat' ? 'document-text' : 'document-text-outline'}
+              size={24}
+              color={currentRoute?.name === 'Chat' ? '#FFF' : 'rgba(255,255,255,0.5)'}
+            />
+            <Text style={{
+              fontSize: 10,
+              marginTop: 4,
+              fontWeight: currentRoute?.name === 'Chat' ? '600' : '500',
+              color: currentRoute?.name === 'Chat' ? '#FFF' : 'rgba(255,255,255,0.5)',
+            }}>Notes</Text>
+          </View>
+        </TouchableOpacity>
+      </LinearGradient>
     </View>
   );
 };
@@ -978,22 +891,22 @@ const OnboardingNavigator = () => {
     >
       <Stack.Screen name="LanguageSelection" component={LanguageSelectionScreen} />
 
-      {/* Welcome/Auth Choice Screen */}
+      {/* New streamlined flow */}
       <Stack.Screen name="WelcomeAuth" component={WelcomeAuthScreen} />
+      <Stack.Screen name="TermsPrivacy" component={TermsPrivacyScreen} />
+      <Stack.Screen name="AuthOptions" component={AuthOptionsScreen} />
+      <Stack.Screen name="SignUp" component={EmailSignUpScreen} />
+      <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
+
+      {/* Auth Screens */}
       <Stack.Screen name="SignIn" component={SignInScreen} />
-      <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="ResetPasswordOTP" component={ResetPasswordOTPScreen} />
       <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-      <Stack.Screen name="TermsPrivacy" component={TermsPrivacyScreen} />
-      <Stack.Screen name="UserDetails" component={UserDetailsScreen} />
 
-      {/* Original registration flow */}
-      <Stack.Screen name="PhoneInput" component={PhoneInputScreen} />
-      <Stack.Screen name="OTPVerification" component={OTPVerificationScreen} />
-      <Stack.Screen name="EmailInput" component={EmailInputScreen} />
-      <Stack.Screen name="PasswordCreation" component={PasswordCreationScreen} />
+      {/* Post-registration flow */}
       <Stack.Screen name="Congratulations" component={CongratulationsScreen} />
+      <Stack.Screen name="UserProfileSetup" component={UserProfileSetupScreen} />
       <Stack.Screen name="AssistantNaming" component={AssistantNamingScreen} />
       <Stack.Screen name="AssistantGender" component={AssistantGenderScreen} />
       <Stack.Screen name="AssistantConversation" component={AssistantConversationScreen} />
@@ -1006,6 +919,7 @@ const OnboardingNavigator = () => {
       <Stack.Screen name="AgentTaskCategories" component={AgentTaskCategoriesScreen} />
       <Stack.Screen name="AgentLearning" component={AgentLearningScreen} />
       <Stack.Screen name="AgentPrivacy" component={AgentPrivacyScreen} />
+      <Stack.Screen name="AssistantProfileImage" component={AssistantProfileImageScreen} />
 
     </Stack.Navigator>
   );
@@ -1016,13 +930,14 @@ const MainAppNavigator = () => {
 
   return (
     <Stack.Navigator
-      initialRouteName="Dashboard"
+      initialRouteName="Home"
       screenOptions={{
         headerShown: false,
         gestureEnabled: false, // Prevent swipe back to onboarding
       }}
     >
-      <Stack.Screen name="Dashboard" component={TabNavigator} />
+      {/* Bottom tab navigation removed - HomeScreen has integrated swipeable panels */}
+      {/* <Stack.Screen name="Dashboard" component={TabNavigator} /> */}
       <Stack.Screen
         name="Conversation"
         component={ConversationScreen}
@@ -1038,8 +953,7 @@ const MainAppNavigator = () => {
         }}
       />
 
-      {/* Individual Tab Screens (for direct navigation) */}
-      <Stack.Screen name="Main" component={TabNavigator} />
+      {/* Individual Screens (for direct navigation) */}
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Tasks" component={TasksScreen} />
       <Stack.Screen name="Calendar" component={CalendarScreen} />
@@ -1050,7 +964,15 @@ const MainAppNavigator = () => {
       <Stack.Screen name="PrivacySecurity" component={PrivacySecurityScreen} />
       <Stack.Screen name="HelpSupport" component={HelpSupportScreen} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} />
+      <Stack.Screen name="ChangePasscode" component={ChangePasscodeScreen} />
+      <Stack.Screen name="TwoFactorAuth" component={TwoFactorAuthScreen} />
+      <Stack.Screen name="ActiveSessions" component={ActiveSessionsScreen} />
+      <Stack.Screen name="AssistantProfileImage" component={AssistantProfileImageScreen} />
       <Stack.Screen name="AIAssistant" component={AIAssistantScreen} />
+      <Stack.Screen name="AgentCreativity" component={AgentCreativityScreen} />
+      <Stack.Screen name="AgentCommunicationStyle" component={AgentCommunicationStyleScreen} />
+      <Stack.Screen name="AgentProactivity" component={AgentProactivityScreen} />
+      <Stack.Screen name="SpecializedCapability" component={SpecializedCapabilityScreen} />
       <Stack.Screen name="Integration" component={IntegrationScreen} />
       <Stack.Screen name="Analytics" component={AnalyticsScreen} />
       <Stack.Screen name="NotificationFeed" component={NotificationFeedScreen} />
@@ -1066,6 +988,11 @@ const MainAppNavigator = () => {
       <Stack.Screen name="AddReminder" component={AddReminderScreen} />
       <Stack.Screen name="AddEvent" component={AddEventScreen} />
       <Stack.Screen name="QuickNote" component={QuickNoteScreen} />
+
+      {/* Detail Screens */}
+      <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />
+      <Stack.Screen name="EventDetail" component={EventDetailScreen} />
+      <Stack.Screen name="ReminderDetail" component={ReminderDetailScreen} />
     </Stack.Navigator>
   );
 };

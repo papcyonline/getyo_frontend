@@ -122,7 +122,7 @@ const SmartSearchScreen: React.FC = () => {
     switch (type) {
       case 'email': return '#10B981';
       case 'meeting': return '#8B5CF6';
-      case 'task': return '#FFFFFF';
+      case 'task': return '#FFF7F5';
       case 'note': return '#F59E0B';
       case 'document': return '#EF4444';
       default: return theme.textSecondary;
@@ -140,7 +140,7 @@ const SmartSearchScreen: React.FC = () => {
           <Text style={[styles.headerTitle, { color: theme.text }]}>Smart Search</Text>
         </View>
         <TouchableOpacity style={styles.voiceButton}>
-          <Ionicons name="mic-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="mic-outline" size={24} color="#FFF7F5" />
         </TouchableOpacity>
       </View>
 
@@ -172,7 +172,7 @@ const SmartSearchScreen: React.FC = () => {
             style={[
               styles.filterChip,
               { backgroundColor: theme.surface },
-              selectedFilter === filter.key && { backgroundColor: '#FFFFFF' }
+              selectedFilter === filter.key && { backgroundColor: '#FFF7F5' }
             ]}
             onPress={() => setSelectedFilter(filter.key)}
           >
@@ -219,7 +219,7 @@ const SmartSearchScreen: React.FC = () => {
             {/* Smart Suggestions */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                <Ionicons name="sparkles" size={16} color="#FFF7F5" />
                 <Text style={[styles.sectionTitle, { color: theme.text, marginLeft: 8 }]}>
                   {user?.assistantName || 'Yo!'} Suggestions
                 </Text>
@@ -234,7 +234,7 @@ const SmartSearchScreen: React.FC = () => {
                   <Text style={[styles.suggestionText, { color: theme.text }]}>
                     {suggestion}
                   </Text>
-                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
+                  <Ionicons name="arrow-forward" size={16} color="#FFF7F5" />
                 </TouchableOpacity>
               ))}
             </View>
@@ -279,7 +279,7 @@ const SmartSearchScreen: React.FC = () => {
                               {result.title}
                             </Text>
                             <View style={styles.relevanceScore}>
-                              <Text style={[styles.relevanceText, { color: '#FFFFFF' }]}>
+                              <Text style={[styles.relevanceText, { color: '#FFF7F5' }]}>
                                 {result.relevance}%
                               </Text>
                             </View>
@@ -310,7 +310,7 @@ const SmartSearchScreen: React.FC = () => {
                   {/* AI Context */}
                   <View style={[styles.aiContextCard, { backgroundColor: theme.surface }]}>
                     <View style={styles.aiContextHeader}>
-                      <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                      <Ionicons name="sparkles" size={16} color="#FFF7F5" />
                       <Text style={[styles.aiContextTitle, { color: theme.text }]}>
                         Context Summary
                       </Text>
@@ -534,7 +534,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   aiContextButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7F5',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',

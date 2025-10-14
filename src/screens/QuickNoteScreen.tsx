@@ -87,10 +87,10 @@ const QuickNoteScreen: React.FC = () => {
   const getCategoryColor = (cat: string) => {
     switch (cat) {
       case 'personal': return '#10B981';
-      case 'work': return '#FFFFFF';
+      case 'work': return '#FFF7F5';
       case 'idea': return '#F59E0B';
       case 'urgent': return '#FF4757';
-      default: return '#FFFFFF';
+      default: return '#FFF7F5';
     }
   };
 
@@ -156,11 +156,11 @@ const QuickNoteScreen: React.FC = () => {
                   <Ionicons
                     name={getCategoryIcon(key) as any}
                     size={16}
-                    color={category === key ? '#FFFFFF' : theme.text}
+                    color={category === key ? '#FFF7F5' : theme.text}
                   />
                   <Text style={[
                     styles.categoryText,
-                    { color: category === key ? '#FFFFFF' : theme.text }
+                    { color: category === key ? '#FFF7F5' : theme.text }
                   ]}>
                     {label}
                   </Text>

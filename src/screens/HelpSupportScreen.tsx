@@ -138,8 +138,8 @@ const HelpSupportScreen: React.FC = () => {
               onPress={option.action}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={option.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                  <Ionicons name={option.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -169,8 +169,8 @@ const HelpSupportScreen: React.FC = () => {
               onPress={option.action}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={option.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                  <Ionicons name={option.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -200,8 +200,8 @@ const HelpSupportScreen: React.FC = () => {
               onPress={option.action}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={option.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                  <Ionicons name={option.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -223,7 +223,7 @@ const HelpSupportScreen: React.FC = () => {
 
         {/* Contact Info */}
         <View style={styles.contactInfo}>
-          <Text style={[styles.contactTitle, { color: '#FFFFFF' }]}>
+          <Text style={[styles.contactTitle, { color: '#C9A96E' }]}>
             Need immediate help?
           </Text>
           <Text style={[styles.contactSubtitle, { color: theme.textSecondary }]}>

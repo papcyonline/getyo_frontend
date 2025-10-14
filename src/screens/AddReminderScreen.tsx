@@ -61,11 +61,11 @@ const AddReminderScreen: React.FC = () => {
   };
 
   const getRepeatColor = (type: string) => {
-    return repeatType === type ? '#FFFFFF' : 'transparent';
+    return repeatType === type ? '#FFF7F5' : 'transparent';
   };
 
   const getRepeatTextColor = (type: string) => {
-    return repeatType === type ? '#FFFFFF' : theme.text;
+    return repeatType === type ? '#FFF7F5' : theme.text;
   };
 
   return (
@@ -139,7 +139,7 @@ const AddReminderScreen: React.FC = () => {
                   styles.repeatButton,
                   {
                     backgroundColor: getRepeatColor(type),
-                    borderColor: repeatType === type ? '#FFFFFF' : theme.border
+                    borderColor: repeatType === type ? '#FFF7F5' : theme.border
                   }
                 ]}
                 onPress={() => setRepeatType(type as any)}
@@ -173,7 +173,7 @@ const AddReminderScreen: React.FC = () => {
               value={isUrgent}
               onValueChange={setIsUrgent}
               trackColor={{ false: theme.border, true: '#FF4757' }}
-              thumbColor={isUrgent ? '#FFFFFF' : theme.textSecondary}
+              thumbColor={isUrgent ? '#FFF7F5' : theme.textSecondary}
             />
           </View>
         </View>

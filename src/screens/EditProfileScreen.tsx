@@ -7,14 +7,18 @@ import {
   ScrollView,
   TextInput,
   Alert,
+  Image,
+  ActivityIndicator,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
+
 import { RootState } from '../store';
 import { setUser } from '../store/slices/userSlice';
 import { Ionicons } from '@expo/vector-icons';
+import ApiService from '../services/api';
 
 const EditProfileScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -26,15 +30,18 @@ const EditProfileScreen: React.FC = () => {
   const [name, setName] = useState(user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
+  const [profileImage, setProfileImage] = useState<string | null>(user?.profileImage || null);
+  const [uploading, setUploading] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
     const hasNameChange = name !== (user?.name || '');
     const hasEmailChange = email !== (user?.email || '');
     const hasPhoneChange = phone !== (user?.phone || '');
+    const hasImageChange = profileImage !== (user?.profileImage || null);
 
-    setHasChanges(hasNameChange || hasEmailChange || hasPhoneChange);
-  }, [name, email, phone, user]);
+    setHasChanges(hasNameChange || hasEmailChange || hasPhoneChange || hasImageChange);
+  }, [name, email, phone, profileImage, user]);
 
   const handleBackPress = () => {
     if (hasChanges) {
@@ -51,7 +58,37 @@ const EditProfileScreen: React.FC = () => {
     }
   };
 
-  const handleSave = () => {
+  const handleChangePhoto = async () => {
+    try {
+      // Request permissions
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permission Required',
+          'Please allow access to your photos to change your profile picture.'
+        );
+        return;
+      }
+
+      // Launch image picker
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setProfileImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.error('Error picking image:', error);
+      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    }
+  };
+
+  const handleSave = async () => {
     if (!name.trim()) {
       Alert.alert('Error', 'Name cannot be empty');
       return;
@@ -70,33 +107,77 @@ const EditProfileScreen: React.FC = () => {
     }
 
     if (user) {
-      const updatedUser = {
-        ...user,
-        name: name.trim(),
-        email: email.trim(),
-        phone: phone.trim(),
-        updatedAt: new Date().toISOString(),
-      };
+      try {
+        setUploading(true);
 
-      dispatch(setUser(updatedUser));
+        // Upload profile image if changed
+        let imageUrl = user?.profileImage;
+        if (profileImage && profileImage !== user?.profileImage) {
+          try {
+            const result = await ApiService.uploadUserProfileImage(profileImage);
+            imageUrl = result.imageUrl;
+          } catch (imageError: any) {
+            console.error('Image upload failed:', imageError);
+            Alert.alert(
+              'Image Upload Failed',
+              'Failed to upload profile image. Continue without image?',
+              [
+                { text: 'Cancel', style: 'cancel', onPress: () => setUploading(false) },
+                {
+                  text: 'Continue',
+                  onPress: () => {
+                    // Continue with text-only update
+                    imageUrl = user?.profileImage;
+                  }
+                }
+              ]
+            );
+            return;
+          }
+        }
 
-      Alert.alert(
-        'Success',
-        'Profile updated successfully!',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+        // Update profile on backend
+        const profileData = {
+          name: name.trim(),
+          fullName: name.trim(),
+          preferredName: name.trim(),
+          email: email.trim(),
+          phone: phone.trim(),
+          profileImage: imageUrl,
+        };
+
+        const updatedProfile = await ApiService.updateProfile(profileData);
+
+        const updatedUser = {
+          ...user,
+          ...updatedProfile,
+        };
+
+        dispatch(setUser(updatedUser));
+
+        // Sync local state with updated values to prevent hasChanges false positive
+        setName(updatedUser.name || '');
+        setEmail(updatedUser.email || '');
+        setPhone(updatedUser.phone || '');
+        setProfileImage(updatedUser.profileImage || null);
+
+        Alert.alert(
+          'Success',
+          'Profile updated successfully!',
+          [{ text: 'OK', onPress: () => navigation.goBack() }]
+        );
+      } catch (error: any) {
+        console.error('Save profile failed:', error);
+        Alert.alert('Error', error.message || 'Failed to update profile');
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.15)', 'rgba(51, 150, 211, 0.05)', 'transparent']}
-        style={styles.gradientBackground}
-        start={{ x: 0.5, y: 0.6 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-      />
+      
       <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
@@ -116,7 +197,7 @@ const EditProfileScreen: React.FC = () => {
           >
             <Text style={[
               styles.saveButtonText,
-              { color: hasChanges ? '#3396D3' : theme.textSecondary }
+              { color: hasChanges ? '#C9A96E' : theme.textSecondary }
             ]}>
               Save
             </Text>
@@ -125,12 +206,23 @@ const EditProfileScreen: React.FC = () => {
 
         {/* Profile Avatar */}
         <View style={styles.avatarSection}>
-          <View style={[styles.avatar, { backgroundColor: '#3396D3' }]}>
-            <Ionicons name="person" size={40} color="white" />
+          <View style={[styles.avatar, { backgroundColor: '#C9A96E' }]}>
+            {profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={styles.avatarImage}
+              />
+            ) : (
+              <Ionicons name="person" size={40} color="white" />
+            )}
           </View>
-          <TouchableOpacity style={styles.changePhotoButton}>
-            <Text style={[styles.changePhotoText, { color: '#3396D3' }]}>
-              Change Photo
+          <TouchableOpacity
+            style={styles.changePhotoButton}
+            onPress={handleChangePhoto}
+            disabled={uploading}
+          >
+            <Text style={[styles.changePhotoText, { color: uploading ? '#999' : '#C9A96E' }]}>
+              {uploading ? 'Uploading...' : 'Change Photo'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -187,8 +279,8 @@ const EditProfileScreen: React.FC = () => {
 
           <TouchableOpacity style={[styles.settingItem, { borderBottomColor: theme.border }]}>
             <View style={styles.settingLeft}>
-              <View style={[styles.iconContainer, { backgroundColor: 'rgba(51, 150, 211, 0.1)' }]}>
-                <Ionicons name="key-outline" size={20} color="#3396D3" />
+              <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                <Ionicons name="key-outline" size={20} color="#C9A96E" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -204,8 +296,8 @@ const EditProfileScreen: React.FC = () => {
 
           <TouchableOpacity style={[styles.settingItem, styles.lastItem]}>
             <View style={styles.settingLeft}>
-              <View style={[styles.iconContainer, { backgroundColor: 'rgba(51, 150, 211, 0.1)' }]}>
-                <Ionicons name="shield-checkmark-outline" size={20} color="#3396D3" />
+              <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                <Ionicons name="shield-checkmark-outline" size={20} color="#C9A96E" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -293,6 +385,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 12,
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
   },
   changePhotoButton: {
     paddingVertical: 4,

@@ -15,7 +15,7 @@ import {
 import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { RootState } from '../store';
 import { Ionicons, FontAwesome, FontAwesome5, MaterialCommunityIcons } from '@expo/vector-icons';
 import ApiService from '../services/api';
@@ -601,7 +601,7 @@ const IntegrationScreen: React.FC = () => {
           style={styles.backButton}
           onPress={handleBackPress}
         >
-          <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={28} color="#FFF7F5" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Integrations</Text>
         <View style={styles.headerRight} />
@@ -613,7 +613,7 @@ const IntegrationScreen: React.FC = () => {
         {/* Overview Card */}
         <View style={styles.overviewCard}>
           <View style={styles.overviewHeader}>
-            <View style={[styles.overviewIcon, { backgroundColor: '#FFFFFF' }]}>
+            <View style={[styles.overviewIcon, { backgroundColor: '#FFF7F5' }]}>
               <Ionicons name="link" size={24} color="white" />
             </View>
             <View style={styles.overviewInfo}>
@@ -694,9 +694,9 @@ const IntegrationScreen: React.FC = () => {
                 <Switch
                   value={item.connected}
                   onValueChange={item.onToggle}
-                  trackColor={{ false: 'rgba(255, 255, 255, 0.2)', true: item.color }}
+                  trackColor={{ false: 'rgba(255, 247, 245, 0.2)', true: item.color }}
                   thumbColor={item.connected ? 'white' : 'white'}
-                  ios_backgroundColor="rgba(255, 255, 255, 0.2)"
+                  ios_backgroundColor="rgba(255, 247, 245, 0.2)"
                 />
               </View>
             ))}
@@ -797,7 +797,7 @@ const styles = StyleSheet.create({
     width: 2,
     height: 2,
     borderRadius: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
   },
   header: {
     flexDirection: 'row',
@@ -812,14 +812,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginRight: 8,
   },
   headerTitle: {
     flex: 1,
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     textAlign: 'center',
     marginRight: 48,
   },
@@ -831,9 +831,9 @@ const styles = StyleSheet.create({
     margin: 16,
     padding: 20,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
     zIndex: 5,
   },
   overviewHeader: {
@@ -857,17 +857,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 2,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   overviewSubtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   progressBar: {
     height: 6,
     borderRadius: 3,
     marginVertical: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 247, 245, 0.2)',
   },
   progressFill: {
     height: '100%',
@@ -877,16 +877,16 @@ const styles = StyleSheet.create({
   overviewDescription: {
     fontSize: 14,
     lineHeight: 20,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   section: {
     marginHorizontal: 16,
     marginBottom: 16,
     borderRadius: 16,
     padding: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 247, 245, 0.05)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 247, 245, 0.1)',
     zIndex: 5,
   },
   sectionTitle: {
@@ -894,14 +894,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginBottom: 16,
     letterSpacing: 0.5,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
   },
   integrationItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(255, 247, 245, 0.1)',
   },
   lastItem: {
     borderBottomWidth: 0,
@@ -926,12 +926,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     marginBottom: 2,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   serviceDescription: {
     fontSize: 14,
     marginBottom: 4,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   connectedStatusContainer: {
     marginTop: 8,
@@ -947,7 +947,7 @@ const styles = StyleSheet.create({
   connectedBadgeText: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     letterSpacing: 0.5,
   },
   connectedStatus: {
@@ -959,7 +959,7 @@ const styles = StyleSheet.create({
   disconnectedStatus: {
     fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 247, 245, 0.5)',
     marginTop: 4,
   },
   footerInfo: {
@@ -971,14 +971,14 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 8,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   footerText: {
     fontSize: 14,
     lineHeight: 20,
     textAlign: 'center',
     marginBottom: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   footerButton: {
     paddingHorizontal: 24,
@@ -1009,7 +1009,7 @@ const styles = StyleSheet.create({
     maxWidth: 320,
     width: '100%',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   modalHeader: {
     alignItems: 'center',
@@ -1026,13 +1026,13 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     textAlign: 'center',
     marginBottom: 8,
   },
   modalSubtitle: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     textAlign: 'center',
   },
   connectionProgress: {
@@ -1043,14 +1043,14 @@ const styles = StyleSheet.create({
   progressText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 20,
     textAlign: 'center',
   },
   progressBarContainer: {
     width: '100%',
     height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 247, 245, 0.2)',
     borderRadius: 2,
     marginBottom: 20,
     overflow: 'hidden',
@@ -1074,12 +1074,12 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 247, 245, 0.3)',
   },
   cancelButtonText: {
     fontSize: 14,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
 });
 

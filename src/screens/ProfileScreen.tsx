@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,14 +7,19 @@ import {
   Switch,
   ScrollView,
   Dimensions,
+  Image,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { RootState } from '../store';
 import { toggleTheme } from '../store/slices/themeSlice';
+import { setUser } from '../store/slices/userSlice';
 import { Ionicons } from '@expo/vector-icons';
+import ApiService from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
 const { height, width } = Dimensions.get('window');
 
@@ -34,6 +39,55 @@ const ProfileScreen: React.FC = () => {
     navigation.navigate('Home');
   };
 
+  // Refetch profile data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      const fetchProfile = async () => {
+        try {
+          const profile = await ApiService.getProfile();
+          dispatch(setUser(profile));
+        } catch (error) {
+          console.error('Failed to fetch profile:', error);
+        }
+      };
+
+      fetchProfile();
+    }, [dispatch])
+  );
+
+  const handleSignOut = () => {
+    Alert.alert(
+      'Sign Out',
+      'Are you sure you want to sign out?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel'
+        },
+        {
+          text: 'Sign Out',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              // Clear stored auth token
+              await AsyncStorage.removeItem('authToken');
+              // Clear user data from Redux
+              dispatch(setUser(null));
+              // Navigate to welcome/auth screen
+              (navigation as any).reset({
+                index: 0,
+                routes: [{ name: 'WelcomeAuth' }],
+              });
+            } catch (error) {
+              console.error('Sign out failed:', error);
+              Alert.alert('Error', 'Failed to sign out. Please try again.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const settingsItems = [
     { title: 'Notifications', icon: 'notifications-outline', action: () => navigation.navigate('Notifications') },
     { title: 'Voice Settings', icon: 'mic-outline', action: () => navigation.navigate('VoiceAssistant') },
@@ -44,13 +98,7 @@ const ProfileScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Blue-Black Gradient Background */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.15)', 'rgba(51, 150, 211, 0.05)', 'transparent']}
-        style={styles.gradientBackground}
-        start={{ x: 0.5, y: 0.6 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-      />
+      
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -68,60 +116,75 @@ const ProfileScreen: React.FC = () => {
           <View style={styles.headerRight} />
         </View>
 
-        {/* Profile Section */}
-        <TouchableOpacity
-          style={[styles.profileCard, { backgroundColor: theme.surface }]}
-          onPress={() => navigation.navigate('EditProfile')}
-        >
-          <View style={[styles.avatar, { backgroundColor: '#FFFFFF' }]}>
-            <Ionicons name="person" size={32} color="white" />
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={[styles.userName, { color: theme.text }]}>
-              {user?.name || 'John Doe'}
-            </Text>
-            <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-              {user?.email || 'john.doe@example.com'}
-            </Text>
-            <Text style={[styles.profileAction, { color: '#FFFFFF' }]}>
-              Edit Profile
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
+        {/* User Profile Section */}
+        <View style={[styles.section, { backgroundColor: theme.surface }]}>
+          <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>PROFILE</Text>
 
-        {/* AI Assistant Section */}
-        <TouchableOpacity
-          style={[styles.aiAssistantCard, { backgroundColor: theme.surface }]}
-          onPress={() => navigation.navigate('AIAssistant')}
-        >
-          <View style={[styles.aiAvatar, { backgroundColor: '#FFFFFF' }]}>
-            <Ionicons name="sparkles" size={32} color="white" />
-          </View>
-          <View style={styles.profileInfo}>
-            <Text style={[styles.userName, { color: theme.text }]}>
-              {user?.assistantName || 'Yo!'} Assistant
-            </Text>
-            <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
-              AI Personal Assistant
-            </Text>
-            <Text style={[styles.profileAction, { color: '#FFFFFF' }]}>
-              Configure Assistant
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
-        </TouchableOpacity>
+          {/* User Profile */}
+          <TouchableOpacity
+            style={[styles.profileRow, { borderBottomColor: theme.border }]}
+            onPress={() => navigation.navigate('EditProfile')}
+          >
+            <View style={[styles.avatar, { backgroundColor: '#C9A96E' }]}>
+              {user?.profileImage ? (
+                <Image
+                  source={{ uri: user.profileImage }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Ionicons name="person" size={28} color="white" />
+              )}
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileLabel, { color: theme.textSecondary }]}>Your Profile</Text>
+              <Text style={[styles.userName, { color: theme.text }]}>
+                {user?.name || 'John Doe'}
+              </Text>
+              <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
+                {user?.email || 'john.doe@example.com'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+
+          {/* AI Assistant Profile */}
+          <TouchableOpacity
+            style={[styles.profileRow]}
+            onPress={() => navigation.navigate('AIAssistant')}
+          >
+            <View style={[styles.avatar, { backgroundColor: '#C9A96E' }]}>
+              {user?.assistantProfileImage ? (
+                <Image
+                  source={{ uri: user.assistantProfileImage }}
+                  style={styles.avatarImage}
+                />
+              ) : (
+                <Ionicons name="sparkles" size={28} color="white" />
+              )}
+            </View>
+            <View style={styles.profileInfo}>
+              <Text style={[styles.profileLabel, { color: theme.textSecondary }]}>PERSONAL ASSISTANT</Text>
+              <Text style={[styles.userName, { color: theme.text }]}>
+                {user?.assistantName || 'Yo!'}
+              </Text>
+              <Text style={[styles.userEmail, { color: theme.textSecondary }]}>
+                Your AI Assistant
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
+          </TouchableOpacity>
+        </View>
 
         {/* Theme Toggle Section */}
         <View style={[styles.section, { backgroundColor: theme.surface }]}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>APPEARANCE</Text>
           <View style={[styles.settingItem, { borderBottomColor: theme.border }]}>
             <View style={styles.settingLeft}>
-              <View style={[styles.iconContainer, { backgroundColor: isDark ? '#FFFFFF' : 'rgba(21, 183, 232, 0.1)' }]}>
+              <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
                 <Ionicons
                   name={isDark ? "moon" : "sunny"}
                   size={20}
-                  color={isDark ? 'white' : '#FFFFFF'}
+                  color="#C9A96E"
                 />
               </View>
               <View>
@@ -136,9 +199,9 @@ const ProfileScreen: React.FC = () => {
             <Switch
               value={isDark}
               onValueChange={handleThemeToggle}
-              trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: '#3396D3' }}
-              thumbColor="#FFFFFF"
-              ios_backgroundColor="rgba(255, 255, 255, 0.3)"
+              trackColor={{ false: 'rgba(201, 169, 110, 0.3)', true: '#C9A96E' }}
+              thumbColor="#C9A96E"
+              ios_backgroundColor="rgba(201, 169, 110, 0.3)"
             />
           </View>
         </View>
@@ -157,8 +220,8 @@ const ProfileScreen: React.FC = () => {
               onPress={item.action}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={item.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                  <Ionicons name={item.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <Text style={[styles.settingTitle, { color: theme.text }]}>
                   {item.title}
@@ -172,7 +235,10 @@ const ProfileScreen: React.FC = () => {
         {/* Danger Zone */}
         <View style={[styles.section, { backgroundColor: theme.surface, marginBottom: 20 }]}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ACCOUNT</Text>
-          <TouchableOpacity style={[styles.settingItem, { borderBottomColor: theme.border }]}>
+          <TouchableOpacity
+            style={[styles.settingItem, { borderBottomColor: theme.border }]}
+            onPress={handleSignOut}
+          >
             <View style={styles.settingLeft}>
               <View style={[styles.iconContainer, { backgroundColor: 'rgba(239, 68, 68, 0.1)' }]}>
                 <Ionicons name="log-out-outline" size={20} color={theme.error || '#ef4444'} />
@@ -187,7 +253,7 @@ const ProfileScreen: React.FC = () => {
 
         {/* App Info */}
         <View style={styles.appInfo}>
-          <Text style={[styles.appName, { color: '#FFFFFF' }]}>
+          <Text style={[styles.appName, { color: '#C9A96E' }]}>
             Yo! Assistant
           </Text>
           <Text style={[styles.appVersion, { color: theme.textSecondary }]}>
@@ -240,57 +306,44 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
   },
-  profileCard: {
+  profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 20,
-    marginHorizontal: 16,
-    marginTop: 20,
-    marginBottom: 10,
-    borderRadius: 16,
-  },
-  aiAssistantCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-    marginHorizontal: 16,
-    marginTop: 5,
-    marginBottom: 10,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(21, 183, 232, 0.2)',
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+    borderBottomWidth: 0.5,
   },
   avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 16,
+    marginRight: 14,
+    overflow: 'hidden',
   },
-  aiAvatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: 16,
+  avatarImage: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
   },
   profileInfo: {
     flex: 1,
   },
+  profileLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 4,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
   userName: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '600',
     marginBottom: 2,
   },
   userEmail: {
-    fontSize: 14,
-    marginBottom: 6,
-  },
-  profileAction: {
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 13,
   },
   section: {
     marginHorizontal: 16,

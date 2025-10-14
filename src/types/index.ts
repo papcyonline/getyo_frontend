@@ -1,3 +1,24 @@
+export interface LegalAcceptance {
+  termsOfService?: {
+    accepted: boolean;
+    version?: string;
+    acceptedAt?: string;
+    ipAddress?: string;
+  };
+  privacyPolicy?: {
+    accepted: boolean;
+    version?: string;
+    acceptedAt?: string;
+    ipAddress?: string;
+  };
+  acceptanceHistory?: Array<{
+    documentType: 'terms' | 'privacy';
+    version: string;
+    acceptedAt: string;
+    ipAddress: string;
+  }>;
+}
+
 export interface User {
   id: string;
   fullName: string;
@@ -10,8 +31,13 @@ export interface User {
   assistantGender?: 'male' | 'female' | 'non-binary';
   assistantVoice?: 'alloy' | 'echo' | 'fable' | 'onyx' | 'nova' | 'shimmer';
   assistantProfileImage?: string;
+  hasCompletedOnboarding?: boolean;
+  agentConfiguration?: {
+    setupCompleted?: boolean;
+  };
   preferences: UserPreferences;
   integrations: UserIntegrations;
+  legalAcceptance?: LegalAcceptance;
   createdAt: string;
   updatedAt: string;
 }
@@ -127,6 +153,8 @@ export interface UserDetailsData {
   fullName: string;
   preferredName: string;
   title?: string;
+  email?: string;
+  password?: string;
 }
 
 export type RootStackParamList = {
@@ -134,6 +162,7 @@ export type RootStackParamList = {
   LanguageSelection: undefined;
   WelcomeAuth: undefined;
   SignIn: undefined;
+  SignUp: undefined;
   ForgotPassword: undefined;
   ResetPasswordOTP: { email: string };
   ResetPassword: { email: string; code: string };
@@ -156,9 +185,17 @@ export type RootStackParamList = {
     token?: string;
     passwordGenerated?: boolean;
   };
+  UserProfileSetup: {
+    phone?: string;
+    email?: string;
+    userDetails?: UserDetailsData;
+    user?: User;
+    token?: string;
+    passwordGenerated?: boolean;
+  };
   AssistantNaming: {
-    phone: string;
-    email: string;
+    phone?: string;
+    email?: string;
     userDetails?: UserDetailsData;
     user?: User;
     token?: string;
@@ -173,6 +210,7 @@ export type RootStackParamList = {
   AgentTaskCategories: undefined;
   AgentLearning: undefined;
   AgentPrivacy: undefined;
+  AssistantProfileImage: undefined;
   Dashboard: undefined;
   Main: undefined;
   Home: undefined;
@@ -196,6 +234,9 @@ export type RootStackParamList = {
   AddReminder: undefined;
   AddEvent: undefined;
   QuickNote: undefined;
+  TaskDetail: { taskId: string };
+  EventDetail: { eventId: string };
+  ReminderDetail: { reminderId: string };
   Subscription: undefined;
   EditProfile: undefined;
   AIAssistant: undefined;
@@ -203,6 +244,13 @@ export type RootStackParamList = {
   Notifications: undefined;
   PrivacySecurity: undefined;
   HelpSupport: undefined;
+  AgentCreativity: undefined;
+  AgentCommunicationStyle: undefined;
+  AgentProactivity: undefined;
+  SpecializedCapability: { type: 'research' | 'deals' | 'travel' | 'documents' | 'financial' | 'events' };
+  ChangePasscode: undefined;
+  TwoFactorAuth: undefined;
+  ActiveSessions: undefined;
 };
 
 export type TabParamList = {

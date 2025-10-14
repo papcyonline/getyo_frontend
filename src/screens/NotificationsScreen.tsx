@@ -11,7 +11,7 @@ import {
 import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -81,13 +81,7 @@ const NotificationsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Blue-Black Gradient Background */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.15)', 'rgba(51, 150, 211, 0.05)', 'transparent']}
-        style={styles.gradientBackground}
-        start={{ x: 0.5, y: 0.6 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-      />
+      
       <ScrollView showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
@@ -116,8 +110,8 @@ const NotificationsScreen: React.FC = () => {
               ]}
             >
               <View style={styles.settingLeft}>
-                <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                  <Ionicons name={setting.icon as any} size={20} color="#FFFFFF" />
+                <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                  <Ionicons name={setting.icon as any} size={20} color="#C9A96E" />
                 </View>
                 <View style={styles.textContainer}>
                   <Text style={[styles.settingTitle, { color: theme.text }]}>
@@ -131,9 +125,9 @@ const NotificationsScreen: React.FC = () => {
               <Switch
                 value={setting.value}
                 onValueChange={setting.onValueChange}
-                trackColor={{ false: 'rgba(255, 255, 255, 0.3)', true: '#3396D3' }}
-                thumbColor="#FFFFFF"
-                ios_backgroundColor="rgba(255, 255, 255, 0.3)"
+                trackColor={{ false: 'rgba(201, 169, 110, 0.3)', true: '#C9A96E' }}
+                thumbColor="#C9A96E"
+                ios_backgroundColor="rgba(201, 169, 110, 0.3)"
               />
             </View>
           ))}
@@ -144,8 +138,8 @@ const NotificationsScreen: React.FC = () => {
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>QUIET HOURS</Text>
           <TouchableOpacity style={[styles.settingItem, { borderBottomColor: theme.border }]}>
             <View style={styles.settingLeft}>
-              <View style={[styles.iconContainer, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                <Ionicons name="moon-outline" size={20} color="#FFFFFF" />
+              <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
+                <Ionicons name="moon-outline" size={20} color="#C9A96E" />
               </View>
               <View style={styles.textContainer}>
                 <Text style={[styles.settingTitle, { color: theme.text }]}>

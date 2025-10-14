@@ -151,21 +151,7 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
             ]}
           >
             <TouchableOpacity activeOpacity={1}>
-              <LinearGradient
-                colors={['rgba(40, 40, 40, 0.95)', 'rgba(30, 30, 30, 0.98)']}
-                style={styles.alertBox}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 0, y: 1 }}
-              >
-                {/* Icon */}
-                <View style={[styles.iconContainer, { backgroundColor: getIconColor() + '20' }]}>
-                  <MaterialIcons
-                    name={getIconName()}
-                    size={32}
-                    color={getIconColor()}
-                  />
-                </View>
-
+              <View style={styles.alertBox}>
                 {/* Title */}
                 <Text style={styles.title}>{title}</Text>
 
@@ -189,7 +175,6 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
                   <TouchableOpacity
                     style={[
                       styles.primaryButton,
-                      { backgroundColor: getIconColor() },
                       secondaryButton ? { flex: 1 } : { width: '100%' }
                     ]}
                     onPress={handlePrimaryAction}
@@ -200,15 +185,7 @@ const CustomAlert: React.FC<CustomAlertProps> = ({
                     </Text>
                   </TouchableOpacity>
                 </View>
-
-                {/* Decorative gradient border */}
-                <LinearGradient
-                  colors={getGradientColors()}
-                  style={styles.borderGradient}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                />
-              </LinearGradient>
+              </View>
             </TouchableOpacity>
           </Animated.View>
         </TouchableOpacity>
@@ -231,21 +208,16 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   alertContainer: {
-    width: width * 0.85,
-    maxWidth: 340,
+    width: width * 0.8,
+    maxWidth: 320,
   },
   alertBox: {
-    borderRadius: 20,
-    padding: 24,
+    backgroundColor: '#000000',
+    borderRadius: 16,
+    padding: 20,
     alignItems: 'center',
-    position: 'relative',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   borderGradient: {
     position: 'absolute',
@@ -265,7 +237,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   title: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '700',
     color: '#FFFFFF',
     textAlign: 'center',
@@ -273,12 +245,11 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   message: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.85)',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 24,
-    paddingHorizontal: 8,
+    lineHeight: 20,
+    marginBottom: 20,
   },
   buttonContainer: {
     flexDirection: 'row',
@@ -286,36 +257,32 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   primaryButton: {
-    height: 48,
-    borderRadius: 24,
+    height: 44,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#3396D3',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#000000',
     letterSpacing: 0.3,
   },
   secondaryButton: {
     flex: 1,
-    height: 48,
-    borderRadius: 24,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'transparent',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   secondaryButtonText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: '#FFFFFF',
     letterSpacing: 0.3,
   },
 });

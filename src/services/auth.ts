@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from './api';
 import SocketService from './socket';
+import secureStorage from './secureStorage';
 import { User } from '../types';
 import { store } from '../store';
 import { setUser, clearUser, setUserLoading, setUserError } from '../store/slices/userSlice';
@@ -12,9 +13,9 @@ class AuthService {
     if (this.isInitialized) return;
 
     try {
-      // Check saved data from AsyncStorage
+      // Check saved data from SecureStore (auth token) and AsyncStorage (user data)
+      const savedToken = await secureStorage.getItem('authToken');
       const savedUser = await AsyncStorage.getItem('user');
-      const savedToken = await AsyncStorage.getItem('authToken');
 
       if (savedUser && savedToken) {
         const user = JSON.parse(savedUser) as User;
@@ -48,8 +49,8 @@ class AuthService {
       // Login via backend API
       const { user, token } = await ApiService.login(email, password);
 
-      // Store session token
-      await AsyncStorage.setItem('authToken', token);
+      // Store session token securely
+      await secureStorage.setItem('authToken', token);
 
       // Store user data
       await AsyncStorage.setItem('user', JSON.stringify(user));
@@ -92,8 +93,8 @@ class AuthService {
       // Register via backend API
       const { user, token } = await ApiService.register(userData);
 
-      // Store session token
-      await AsyncStorage.setItem('authToken', token);
+      // Store session token securely
+      await secureStorage.setItem('authToken', token);
 
       // Store user data
       await AsyncStorage.setItem('user', JSON.stringify(user));
@@ -222,7 +223,7 @@ class AuthService {
   async reconnectServices(): Promise<void> {
     try {
       // Check if we have valid auth data
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await secureStorage.getItem('authToken');
       if (!token) {
         throw new Error('No authentication token found');
       }
@@ -287,7 +288,7 @@ class AuthService {
     }
   }
 
-  async resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  async resetPassword(email: string, otp: string, newPassword: string): Promise<void> {
     try {
       const response = await fetch(`${ApiService.getBaseURL()}/api/auth/reset-password`, {
         method: 'POST',
@@ -296,7 +297,7 @@ class AuthService {
         },
         body: JSON.stringify({
           email: email.toLowerCase(),
-          code,
+          otp,
           newPassword,
         }),
       });
@@ -329,16 +330,82 @@ class AuthService {
     }
   }
 
-  async loginWithApple(): Promise<User> {
+  async authenticateWithApple(appleData: {
+    identityToken: string;
+    email?: string;
+    fullName?: { firstName?: string; lastName?: string };
+  }): Promise<{ user: User; token: string }> {
     try {
       store.dispatch(setUserLoading(true));
       store.dispatch(setUserError(null));
 
-      // TODO: Implement Apple OAuth with backend API
-      throw new Error('Apple OAuth login not implemented yet');
+      // Send Apple auth data to backend
+      const { user, token } = await ApiService.authenticateWithApple(appleData);
+
+      // Store session token securely
+      await secureStorage.setItem('authToken', token);
+
+      // Store user data
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      // Update Redux store
+      store.dispatch(setUser(user));
+
+      // Connect to socket
+      try {
+        console.log('🔌 Connecting to socket after Apple sign-in...');
+        await SocketService.connect();
+        console.log('✅ Socket connected successfully after Apple sign-in');
+      } catch (socketError) {
+        console.warn('⚠️ Failed to connect to socket after Apple sign-in:', socketError);
+      }
+
+      return { user, token };
     } catch (error: any) {
-      console.error('Apple login failed:', error);
-      const errorMessage = error.message || 'Apple login failed';
+      console.error('Apple authentication failed:', error);
+      const errorMessage = error.message || 'Apple authentication failed';
+      store.dispatch(setUserError(errorMessage));
+      throw error;
+    } finally {
+      store.dispatch(setUserLoading(false));
+    }
+  }
+
+  async authenticateWithGoogle(googleData: {
+    accessToken: string;
+    email: string;
+    name: string;
+    photo?: string;
+  }): Promise<{ user: User; token: string }> {
+    try {
+      store.dispatch(setUserLoading(true));
+      store.dispatch(setUserError(null));
+
+      // Send Google auth data to backend
+      const { user, token } = await ApiService.authenticateWithGoogle(googleData);
+
+      // Store session token securely
+      await secureStorage.setItem('authToken', token);
+
+      // Store user data
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      // Update Redux store
+      store.dispatch(setUser(user));
+
+      // Connect to socket
+      try {
+        console.log('🔌 Connecting to socket after Google sign-in...');
+        await SocketService.connect();
+        console.log('✅ Socket connected successfully after Google sign-in');
+      } catch (socketError) {
+        console.warn('⚠️ Failed to connect to socket after Google sign-in:', socketError);
+      }
+
+      return { user, token };
+    } catch (error: any) {
+      console.error('Google authentication failed:', error);
+      const errorMessage = error.message || 'Google authentication failed';
       store.dispatch(setUserError(errorMessage));
       throw error;
     } finally {
@@ -348,7 +415,10 @@ class AuthService {
 
   private async clearAuthData(): Promise<void> {
     try {
-      await AsyncStorage.multiRemove(['authToken', 'user']);
+      // Clear secure storage (auth token)
+      await secureStorage.deleteItem('authToken');
+      // Clear regular storage (user data)
+      await AsyncStorage.removeItem('user');
     } catch (error) {
       console.error('Failed to clear auth data:', error);
     }
@@ -357,7 +427,7 @@ class AuthService {
   // Utility methods
   async isLoggedIn(): Promise<boolean> {
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await secureStorage.getItem('authToken');
       return token !== null;
     } catch (error) {
       return false;
@@ -375,7 +445,7 @@ class AuthService {
 
   async getAuthToken(): Promise<string | null> {
     try {
-      return await AsyncStorage.getItem('authToken');
+      return await secureStorage.getItem('authToken');
     } catch (error) {
       return null;
     }
@@ -394,7 +464,7 @@ class AuthService {
   // Auto-refresh token if needed (implement JWT token refresh logic)
   async refreshTokenIfNeeded(): Promise<boolean> {
     try {
-      const token = await AsyncStorage.getItem('authToken');
+      const token = await secureStorage.getItem('authToken');
       if (!token) return false;
 
       // Decode JWT to check expiration (simplified)

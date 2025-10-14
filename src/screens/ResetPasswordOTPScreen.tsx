@@ -12,7 +12,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -172,12 +172,7 @@ const ResetPasswordOTPScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
+      
 
       {/* Background dotted pattern */}
       <View style={styles.backgroundPattern}>
@@ -231,7 +226,7 @@ const ResetPasswordOTPScreen: React.FC = () => {
                     maxLength={6} // Allow paste
                     selectTextOnFocus
                     returnKeyType="done"
-                    selectionColor="#FFFFFF"
+                    selectionColor="#FFF7F5"
                   />
                 ))}
               </View>
@@ -246,7 +241,7 @@ const ResetPasswordOTPScreen: React.FC = () => {
                 activeOpacity={0.8}
               >
                 {resendLoading ? (
-                  <ActivityIndicator color="#FFFFFF" size="small" />
+                  <ActivityIndicator color="#FFF7F5" size="small" />
                 ) : (
                   <Text style={[
                     styles.resendText,
@@ -277,7 +272,7 @@ const ResetPasswordOTPScreen: React.FC = () => {
                 activeOpacity={0.9}
               >
                 {loading ? (
-                  <ActivityIndicator color="#FFFFFF" size="large" />
+                  <ActivityIndicator color="#FFF7F5" size="large" />
                 ) : (
                   <Text style={[
                     styles.continueButtonText,
@@ -324,7 +319,7 @@ const styles = StyleSheet.create({
     width: 2,
     height: 2,
     borderRadius: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 247, 245, 0.8)',
     margin: 12,
   },
   safeArea: {
@@ -341,21 +336,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     marginBottom: 8,
     textAlign: 'center',
     fontWeight: '400',
   },
   emailText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '600',
     marginTop: 5,
     textAlign: 'center',
@@ -363,7 +358,7 @@ const styles = StyleSheet.create({
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     marginTop: 20,
@@ -384,20 +379,20 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   backButtonText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontSize: 28,
     fontWeight: '600',
   },
   step: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
     letterSpacing: 0.5,
   },
@@ -408,7 +403,7 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     textAlign: 'center',
     fontWeight: '500',
     marginBottom: 30,
@@ -423,20 +418,20 @@ const styles = StyleSheet.create({
   otpInput: {
     width: 50,
     height: 65,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     borderRadius: 16,
     fontSize: 28,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     textAlign: 'center',
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 247, 245, 0.15)',
     letterSpacing: 1,
   },
   filledInput: {
     backgroundColor: 'rgba(201, 169, 110, 0.1)',
-    borderColor: '#FFFFFF',
-    color: '#FFFFFF',
+    borderColor: '#FFF7F5',
+    color: '#FFF7F5',
   },
   resendButton: {
     alignItems: 'center',
@@ -449,28 +444,28 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   disabledResendButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.05)',
+    borderColor: 'rgba(255, 247, 245, 0.1)',
   },
   resendText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '600',
     letterSpacing: 0.3,
   },
   disabledResendText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: 'rgba(255, 247, 245, 0.4)',
   },
   helpContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 247, 245, 0.05)',
     borderRadius: 12,
     padding: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 247, 245, 0.1)',
   },
   helpText: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     textAlign: 'center',
     lineHeight: 18,
     fontWeight: '500',
@@ -492,16 +487,16 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
   },
   continueButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     letterSpacing: 0.5,
   },
   disabledButtonText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: 'rgba(255, 247, 245, 0.4)',
   },
 });
 

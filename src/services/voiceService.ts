@@ -573,6 +573,120 @@ class VoiceService {
     return this.isRecording;
   }
 
+  // Voice-First Command Processing
+  async recordAndProcessCommand(
+    onStart?: () => void,
+    onProcessing?: () => void,
+    onComplete?: (result: any) => void,
+    onError?: (error: any) => void
+  ): Promise<void> {
+    try {
+      // Step 1: Start recording
+      if (onStart) onStart();
+      const recordingStarted = await this.startRecording();
+
+      if (!recordingStarted) {
+        const errorMsg = 'Failed to start recording';
+        if (onError) onError(errorMsg);
+        return;
+      }
+
+      // Let user speak (auto-stop after 10 seconds, or they can manually stop)
+      // For now, we'll auto-stop after 5 seconds
+      await new Promise(resolve => setTimeout(resolve, 5000));
+
+      // Step 2: Stop recording and get audio URI
+      const audioUri = await this.stopRecording();
+      if (!audioUri) {
+        const errorMsg = 'No audio recorded';
+        if (onError) onError(errorMsg);
+        return;
+      }
+
+      // Step 3: Convert audio to base64
+      if (onProcessing) onProcessing();
+      const audioBase64 = await FileSystem.readAsStringAsync(audioUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Step 4: Send to backend for processing
+      const ApiService = require('./api').default;
+      const result = await ApiService.processVoiceCommand(audioBase64, 'm4a');
+
+      // Step 5: Speak the confirmation message
+      if (result && result.message) {
+        await this.speak(result.message);
+      }
+
+      // Step 6: Call completion callback
+      if (onComplete) onComplete(result);
+
+    } catch (error) {
+      console.error('Voice command processing error:', error);
+      if (onError) onError(error);
+    }
+  }
+
+  // Quick voice command capture (manual stop)
+  async startVoiceCommand(): Promise<boolean> {
+    try {
+      const started = await this.startRecording();
+      if (started) {
+        await this.speak('Listening');
+      }
+      return started;
+    } catch (error) {
+      console.error('Error starting voice command:', error);
+      return false;
+    }
+  }
+
+  async stopAndProcessVoiceCommand(): Promise<{
+    success: boolean;
+    transcription?: string;
+    action?: string;
+    entity?: any;
+    message?: string;
+    error?: string;
+  }> {
+    try {
+      // Stop recording
+      const audioUri = await this.stopRecording();
+      if (!audioUri) {
+        return { success: false, error: 'No audio recorded' };
+      }
+
+      // Convert to base64
+      const audioBase64 = await FileSystem.readAsStringAsync(audioUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      // Process via API
+      const ApiService = require('./api').default;
+      const result = await ApiService.processVoiceCommand(audioBase64, 'm4a');
+
+      // Speak confirmation
+      if (result && result.message) {
+        await this.speak(result.message);
+      }
+
+      return {
+        success: true,
+        transcription: result.transcription,
+        action: result.action,
+        entity: result.entity,
+        message: result.message,
+      };
+
+    } catch (error: any) {
+      console.error('Error processing voice command:', error);
+      return {
+        success: false,
+        error: error.message || 'Failed to process voice command',
+      };
+    }
+  }
+
   // Cleanup
   destroy(): void {
     if (this.isRecording && this.recording) {

@@ -170,7 +170,7 @@ const TeamManagementScreen: React.FC = () => {
           <Text style={[styles.headerTitle, { color: theme.text }]}>Team Management</Text>
         </View>
         <TouchableOpacity style={styles.addButton}>
-          <Ionicons name="person-add-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="person-add-outline" size={24} color="#FFF7F5" />
         </TouchableOpacity>
       </View>
 
@@ -179,13 +179,13 @@ const TeamManagementScreen: React.FC = () => {
         <TouchableOpacity
           style={[
             styles.tab,
-            selectedTab === 'team' && { borderBottomColor: '#FFFFFF', borderBottomWidth: 2 }
+            selectedTab === 'team' && { borderBottomColor: '#FFF7F5', borderBottomWidth: 2 }
           ]}
           onPress={() => setSelectedTab('team')}
         >
           <Text style={[
             styles.tabText,
-            { color: selectedTab === 'team' ? '#FFFFFF' : theme.textSecondary }
+            { color: selectedTab === 'team' ? '#FFF7F5' : theme.textSecondary }
           ]}>
             Team Overview
           </Text>
@@ -193,13 +193,13 @@ const TeamManagementScreen: React.FC = () => {
         <TouchableOpacity
           style={[
             styles.tab,
-            selectedTab === 'meetings' && { borderBottomColor: '#FFFFFF', borderBottomWidth: 2 }
+            selectedTab === 'meetings' && { borderBottomColor: '#FFF7F5', borderBottomWidth: 2 }
           ]}
           onPress={() => setSelectedTab('meetings')}
         >
           <Text style={[
             styles.tabText,
-            { color: selectedTab === 'meetings' ? '#FFFFFF' : theme.textSecondary }
+            { color: selectedTab === 'meetings' ? '#FFF7F5' : theme.textSecondary }
           ]}>
             1-on-1s
           </Text>
@@ -263,7 +263,7 @@ const TeamManagementScreen: React.FC = () => {
                   <View style={styles.memberHeader}>
                     <View style={styles.memberLeft}>
                       <View style={styles.memberAvatarContainer}>
-                        <View style={[styles.memberAvatar, { backgroundColor: '#FFFFFF' }]}>
+                        <View style={[styles.memberAvatar, { backgroundColor: '#FFF7F5' }]}>
                           <Text style={styles.memberAvatarText}>{member.avatar}</Text>
                         </View>
                         <View style={[
@@ -332,8 +332,8 @@ const TeamManagementScreen: React.FC = () => {
 
                   <View style={styles.memberActions}>
                     <TouchableOpacity style={styles.actionButton}>
-                      <Ionicons name="chatbubble-outline" size={16} color="#FFFFFF" />
-                      <Text style={[styles.actionText, { color: '#FFFFFF' }]}>
+                      <Ionicons name="chatbubble-outline" size={16} color="#FFF7F5" />
+                      <Text style={[styles.actionText, { color: '#FFF7F5' }]}>
                         Message
                       </Text>
                     </TouchableOpacity>
@@ -374,8 +374,8 @@ const TeamManagementScreen: React.FC = () => {
                         {meeting.role}
                       </Text>
                       <View style={styles.meetingDateTime}>
-                        <Ionicons name="calendar-outline" size={14} color="#FFFFFF" />
-                        <Text style={[styles.meetingDate, { color: '#FFFFFF' }]}>
+                        <Ionicons name="calendar-outline" size={14} color="#FFF7F5" />
+                        <Text style={[styles.meetingDate, { color: '#FFF7F5' }]}>
                           {meeting.date} at {meeting.time}
                         </Text>
                       </View>
@@ -394,7 +394,7 @@ const TeamManagementScreen: React.FC = () => {
                     </Text>
                     {meeting.topics.map((topic, topicIndex) => (
                       <View key={topicIndex} style={styles.topicItem}>
-                        <Ionicons name="ellipse" size={6} color="#FFFFFF" />
+                        <Ionicons name="ellipse" size={6} color="#FFF7F5" />
                         <Text style={[styles.topicText, { color: theme.text }]}>
                           {topic}
                         </Text>
@@ -408,7 +408,7 @@ const TeamManagementScreen: React.FC = () => {
             {/* AI Recommendations */}
             <View style={[styles.section, { backgroundColor: theme.surface }]}>
               <View style={styles.aiHeader}>
-                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                <Ionicons name="sparkles" size={16} color="#FFF7F5" />
                 <Text style={[styles.sectionTitle, { color: theme.text, marginLeft: 8 }]}>
                   {user?.assistantName || 'Yo!'} Team Insights
                 </Text>

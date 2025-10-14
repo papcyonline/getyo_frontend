@@ -159,8 +159,8 @@ const MeetingPrepScreen: React.FC = () => {
               </View>
             </View>
             <View style={styles.timeUntilBadge}>
-              <Ionicons name="hourglass-outline" size={12} color="#FFFFFF" />
-              <Text style={[styles.timeUntilText, { color: '#FFFFFF' }]}>
+              <Ionicons name="hourglass-outline" size={12} color="#FFF7F5" />
+              <Text style={[styles.timeUntilText, { color: '#FFF7F5' }]}>
                 {meeting.timeUntil}
               </Text>
             </View>
@@ -258,7 +258,7 @@ const MeetingPrepScreen: React.FC = () => {
               </Text>
               {meeting.talkingPoints.map((point: string, index: number) => (
                 <View key={index} style={styles.talkingPoint}>
-                  <Ionicons name="checkmark-circle" size={16} color="#FFFFFF" />
+                  <Ionicons name="checkmark-circle" size={16} color="#FFF7F5" />
                   <Text style={[styles.talkingPointText, { color: theme.text }]}>
                     {point}
                   </Text>
@@ -269,7 +269,7 @@ const MeetingPrepScreen: React.FC = () => {
             {/* AI Insights */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
-                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                <Ionicons name="sparkles" size={16} color="#FFF7F5" />
                 <Text style={[styles.sectionTitle, { color: theme.text, marginLeft: 6 }]}>
                   AI Insights
                 </Text>
@@ -303,7 +303,7 @@ const MeetingPrepScreen: React.FC = () => {
               </Text>
               {meeting.documents.map((doc: any, index: number) => (
                 <TouchableOpacity key={index} style={styles.documentItem}>
-                  <Ionicons name="document-text-outline" size={20} color="#FFFFFF" />
+                  <Ionicons name="document-text-outline" size={20} color="#FFF7F5" />
                   <View style={styles.documentInfo}>
                     <Text style={[styles.documentName, { color: theme.text }]}>
                       {doc.name}
@@ -319,7 +319,7 @@ const MeetingPrepScreen: React.FC = () => {
 
             {/* Action Buttons */}
             <View style={styles.actionButtons}>
-              <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FFFFFF' }]}>
+              <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FFF7F5' }]}>
                 <Ionicons name="sparkles" size={16} color="white" />
                 <Text style={styles.actionButtonText}>Generate Brief</Text>
               </TouchableOpacity>
@@ -345,7 +345,7 @@ const MeetingPrepScreen: React.FC = () => {
           <Text style={[styles.headerTitle, { color: theme.text }]}>Meeting Prep</Text>
         </View>
         <TouchableOpacity style={styles.calendarButton}>
-          <Ionicons name="calendar-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="calendar-outline" size={24} color="#FFF7F5" />
         </TouchableOpacity>
       </View>
 
@@ -353,7 +353,7 @@ const MeetingPrepScreen: React.FC = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFF7F5" />
         }
         contentContainerStyle={styles.content}
       >
@@ -366,7 +366,7 @@ const MeetingPrepScreen: React.FC = () => {
         {/* AI Assistant Section */}
         <View style={[styles.aiAssistantCard, { backgroundColor: theme.surface }]}>
           <View style={styles.aiHeader}>
-            <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+            <Ionicons name="sparkles" size={20} color="#FFF7F5" />
             <Text style={[styles.aiTitle, { color: theme.text }]}>
               {user?.assistantName || 'Yo!'} Meeting Assistant
             </Text>
@@ -545,7 +545,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7F5',
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: 12,
@@ -677,7 +677,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   aiButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7F5',
     paddingVertical: 12,
     borderRadius: 12,
     alignItems: 'center',

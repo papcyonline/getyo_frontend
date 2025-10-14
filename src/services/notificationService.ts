@@ -72,6 +72,9 @@ class NotificationService {
 
   async initialize(): Promise<boolean> {
     try {
+      // Check if running in Expo Go (push notifications not supported in SDK 53+)
+      const isExpoGo = !__DEV__ || typeof (global as any).__expo !== 'undefined';
+
       // Request permissions
       const { status: existingStatus } = await Notifications.getPermissionsAsync();
       let finalStatus = existingStatus;
@@ -87,13 +90,17 @@ class NotificationService {
       }
 
       // Get the token that uniquely identifies this device
-      // For Expo Go compatibility, simulate device check
-      try {
-        const token = await Notifications.getExpoPushTokenAsync();
-        this.expoPushToken = token.data;
-        await AsyncStorage.setItem('expo_push_token', token.data);
-      } catch (error) {
-        console.warn('Push notifications may not work in Expo Go:', error);
+      // Skip in Expo Go to avoid SDK 53+ warning
+      if (!isExpoGo) {
+        try {
+          const token = await Notifications.getExpoPushTokenAsync();
+          this.expoPushToken = token.data;
+          await AsyncStorage.setItem('expo_push_token', token.data);
+        } catch (error) {
+          console.warn('Failed to get push token:', error);
+        }
+      } else {
+        console.log('ℹ️ Running in Expo Go - push notifications require a development/production build');
       }
 
       // Configure notification categories for interactive notifications

@@ -1,8 +1,11 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import secureStorage from './secureStorage';
 import { ApiResponse, User, Task, Event, Conversation } from '../types';
 import config from '../config/environment';
 import NetInfo from '@react-native-community/netinfo';
+import * as FileSystem from 'expo-file-system';
+import { fromByteArray } from 'base64-js';
 
 // Enhanced error types
 interface ApiError {
@@ -54,7 +57,7 @@ class ApiService {
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       async (config) => {
-        const token = await AsyncStorage.getItem('authToken');
+        const token = await secureStorage.getItem('authToken');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
@@ -100,7 +103,7 @@ class ApiService {
     // Handle 401 - Unauthorized (token expired/invalid)
     if (error.response?.status === 401) {
       console.log('🔑 Unauthorized - clearing auth data');
-      await AsyncStorage.removeItem('authToken');
+      await secureStorage.deleteItem('authToken');
       await AsyncStorage.removeItem('user');
 
       return {
@@ -279,8 +282,8 @@ class ApiService {
 
       const { user, token } = response.data.data;
 
-      // Store token and user data
-      await AsyncStorage.setItem('authToken', token);
+      // Store token securely and user data
+      await secureStorage.setItem('authToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
       console.log('✅ Login successful for:', email);
@@ -321,8 +324,8 @@ class ApiService {
 
       const { user, token } = response.data.data;
 
-      // Store token and user data
-      await AsyncStorage.setItem('authToken', token);
+      // Store token securely and user data
+      await secureStorage.setItem('authToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
       console.log('✅ Registration successful for:', userData.email);
@@ -338,6 +341,71 @@ class ApiService {
     }
   }
 
+  async authenticateWithApple(appleData: {
+    identityToken: string;
+    email?: string;
+    fullName?: { firstName?: string; lastName?: string };
+  }): Promise<{ user: User; token: string }> {
+    try {
+      const isConnected = await this.checkNetworkConnectivity();
+      if (!isConnected) {
+        throw {
+          message: 'No internet connection. Please check your network.',
+          code: 'NETWORK_ERROR',
+          status: 0
+        };
+      }
+
+      console.log('🍎 Attempting Apple authentication');
+
+      const response = await this.api.post('/api/auth/oauth/apple', appleData);
+
+      const { user, token } = response.data.data;
+
+      await secureStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      console.log('✅ Apple authentication successful');
+      return { user, token };
+    } catch (error: any) {
+      console.error('❌ Apple authentication failed:', error);
+      throw error;
+    }
+  }
+
+  async authenticateWithGoogle(googleData: {
+    accessToken: string;
+    email: string;
+    name: string;
+    photo?: string;
+  }): Promise<{ user: User; token: string }> {
+    try {
+      const isConnected = await this.checkNetworkConnectivity();
+      if (!isConnected) {
+        throw {
+          message: 'No internet connection. Please check your network.',
+          code: 'NETWORK_ERROR',
+          status: 0
+        };
+      }
+
+      console.log('🔵 Attempting Google authentication');
+
+      const response = await this.api.post('/api/auth/oauth/google', googleData);
+
+      const { user, token } = response.data.data;
+
+      await secureStorage.setItem('authToken', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      console.log('✅ Google authentication successful');
+      return { user, token };
+    } catch (error: any) {
+      console.error('❌ Google authentication failed:', error);
+      throw error;
+    }
+  }
+
   async logout(): Promise<void> {
     try {
       await this.api.post('/api/auth/logout');
@@ -345,7 +413,7 @@ class ApiService {
       console.error('Logout error:', error);
     } finally {
       // Clear local storage regardless
-      await AsyncStorage.removeItem('authToken');
+      await secureStorage.deleteItem('authToken');
       await AsyncStorage.removeItem('user');
     }
   }
@@ -360,8 +428,8 @@ class ApiService {
       const response = await this.api.post('/api/auth/oauth/google', googleUser);
       const { user, token } = response.data.data;
 
-      // Store token and user data
-      await AsyncStorage.setItem('authToken', token);
+      // Store token securely and user data
+      await secureStorage.setItem('authToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
       console.log('✅ Google OAuth successful');
@@ -382,8 +450,8 @@ class ApiService {
       const response = await this.api.post('/api/auth/oauth/apple', appleUser);
       const { user, token } = response.data.data;
 
-      // Store token and user data
-      await AsyncStorage.setItem('authToken', token);
+      // Store token securely and user data
+      await secureStorage.setItem('authToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
       console.log('✅ Apple OAuth successful');
@@ -417,7 +485,7 @@ class ApiService {
 
   async verifyOTP(identifier: string, otp: string, type: 'phone' | 'email'): Promise<ApiResponse<null>> {
     try {
-      const response = await this.api.post('/api/auth/verify-otp', {
+      const response = await this.api.post('/api/auth/verify-reset-otp', {
         identifier,
         otp,
         type
@@ -640,13 +708,16 @@ class ApiService {
     phone: string;
     assistantName: string;
     password?: string;
+    preferences?: {
+      language?: string;
+    };
   }): Promise<{ user: User; token: string; passwordGenerated: boolean }> {
     try {
       const response = await this.api.post('/api/auth/register-enhanced', data);
       const { user, token, passwordGenerated } = response.data.data;
 
-      // Store token and user data
-      await AsyncStorage.setItem('authToken', token);
+      // Store token securely and user data
+      await secureStorage.setItem('authToken', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
       return { user, token, passwordGenerated };
@@ -715,6 +786,68 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Update assistant voice failed:', error);
+      throw error;
+    }
+  }
+
+  async updateUserProfile(profileData: {
+    fullName?: string;
+    preferredName?: string;
+    title?: string;
+  }): Promise<User> {
+    try {
+      const response = await this.api.put('/api/users/profile', profileData);
+      return response.data.data.user;
+    } catch (error) {
+      console.error('Update user profile failed:', error);
+      throw error;
+    }
+  }
+
+  // Upload user profile image
+  async uploadUserProfileImage(imageUri: string): Promise<{ imageUrl: string }> {
+    try {
+      const formData = new FormData();
+      formData.append('profileImage', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'profile.jpg'
+      } as any);
+
+      const response = await this.api.post('/api/users/profile/image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data.data;
+    } catch (error) {
+      console.error('Upload user profile image failed:', error);
+      throw error;
+    }
+  }
+
+  // Update assistant profile image (after onboarding)
+  async updateAssistantProfileImage(imageUri: string): Promise<ApiResponse<{
+    assistantProfileImage: string;
+  }>> {
+    try {
+      const formData = new FormData();
+      formData.append('profileImage', {
+        uri: imageUri,
+        type: 'image/jpeg',
+        name: 'assistant.jpg'
+      } as any);
+
+      const response = await this.api.put('/api/assistant/profile-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error('Update assistant profile image failed:', error);
       throw error;
     }
   }
@@ -869,6 +1002,53 @@ class ApiService {
     }
   }
 
+  // Voice Synthesis using OpenAI TTS
+  async synthesizeSpeech(text: string, voice: string): Promise<string> {
+    try {
+      const token = await secureStorage.getItem('authToken');
+
+      // Fetch audio from OpenAI TTS API
+      const response = await fetch(`${this.baseURL}/api/voice/synthesize`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ text, voice }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      // Get audio data as ArrayBuffer
+      const arrayBuffer = await response.arrayBuffer();
+
+      // Convert to base64
+      const base64Audio = await this.arrayBufferToBase64(arrayBuffer);
+
+      // Save to file
+      const filename = `tts_${voice}_${Date.now()}.mp3`;
+      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+
+      await FileSystem.writeAsStringAsync(fileUri, base64Audio, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+
+      console.log('✅ Audio saved to:', fileUri);
+      return fileUri;
+    } catch (error) {
+      console.error('Speech synthesis failed:', error);
+      throw error;
+    }
+  }
+
+  // Helper to convert ArrayBuffer to Base64
+  private async arrayBufferToBase64(buffer: ArrayBuffer): Promise<string> {
+    const bytes = new Uint8Array(buffer);
+    return fromByteArray(bytes);
+  }
+
   async checkConnection(): Promise<boolean> {
     try {
       // First check network connectivity
@@ -958,6 +1138,19 @@ class ApiService {
       return response.data.data;
     } catch (error) {
       console.error('Toggle AI Assistant setting failed:', error);
+      throw error;
+    }
+  }
+
+  async updateIntelligenceLevel(levelType: 'creativity' | 'formality' | 'proactivity', value: number): Promise<any> {
+    try {
+      const response = await this.api.put('/api/agent-config/intelligence-level', {
+        levelType,
+        value
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Update intelligence level failed:', error);
       throw error;
     }
   }
@@ -1135,6 +1328,244 @@ class ApiService {
       return response.data;
     } catch (error) {
       console.error('Create reminder failed:', error);
+      throw error;
+    }
+  }
+
+  async getReminders(params?: { status?: string; isUrgent?: boolean }): Promise<any> {
+    try {
+      const response = await this.api.get('/api/reminders', { params });
+      return response.data.data;
+    } catch (error) {
+      console.error('Get reminders failed:', error);
+      throw error;
+    }
+  }
+
+  async getUpcomingReminders(hours: number = 24): Promise<any> {
+    try {
+      const response = await this.api.get('/api/reminders/upcoming', {
+        params: { hours }
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Get upcoming reminders failed:', error);
+      throw error;
+    }
+  }
+
+  async getOverdueReminders(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/reminders/overdue');
+      return response.data.data;
+    } catch (error) {
+      console.error('Get overdue reminders failed:', error);
+      throw error;
+    }
+  }
+
+  async updateReminder(id: string, updates: any): Promise<any> {
+    try {
+      const response = await this.api.put(`/api/reminders/${id}`, updates);
+      return response.data.data;
+    } catch (error) {
+      console.error('Update reminder failed:', error);
+      throw error;
+    }
+  }
+
+  async deleteReminder(id: string): Promise<any> {
+    try {
+      const response = await this.api.delete(`/api/reminders/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Delete reminder failed:', error);
+      throw error;
+    }
+  }
+
+  async snoozeReminder(id: string, minutes: number = 10): Promise<any> {
+    try {
+      const response = await this.api.post(`/api/reminders/${id}/snooze`, { minutes });
+      return response.data.data;
+    } catch (error) {
+      console.error('Snooze reminder failed:', error);
+      throw error;
+    }
+  }
+
+  async toggleReminderStatus(id: string, status: 'active' | 'completed' | 'cancelled'): Promise<any> {
+    try {
+      const response = await this.api.post(`/api/reminders/${id}/toggle-status`, { status });
+      return response.data.data;
+    } catch (error) {
+      console.error('Toggle reminder status failed:', error);
+      throw error;
+    }
+  }
+
+  // AI methods
+  async getDailyBriefing(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/ai/daily-briefing');
+      return response.data.data;
+    } catch (error) {
+      console.error('Get daily briefing failed:', error);
+      throw error;
+    }
+  }
+
+  async getAISuggestions(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/ai/suggestions');
+      return response.data.data;
+    } catch (error) {
+      console.error('Get AI suggestions failed:', error);
+      throw error;
+    }
+  }
+
+  // Notification methods
+  async getNotifications(params?: { read?: boolean; type?: string; priority?: string; limit?: number }): Promise<any> {
+    try {
+      const response = await this.api.get('/api/notifications', { params });
+      return response.data.data;
+    } catch (error) {
+      console.error('Get notifications failed:', error);
+      throw error;
+    }
+  }
+
+  async getNotificationCount(): Promise<number> {
+    try {
+      const response = await this.api.get('/api/notifications/count');
+      return response.data.count;
+    } catch (error) {
+      console.error('Get notification count failed:', error);
+      return 0; // Return 0 on error instead of throwing
+    }
+  }
+
+  async getRecentNotifications(limit: number = 10): Promise<any> {
+    try {
+      const response = await this.api.get('/api/notifications/recent', {
+        params: { limit }
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Get recent notifications failed:', error);
+      throw error;
+    }
+  }
+
+  async createNotification(notification: {
+    type: string;
+    title: string;
+    message: string;
+    priority?: string;
+    relatedId?: string;
+    relatedModel?: string;
+    actionUrl?: string;
+    metadata?: Record<string, any>;
+  }): Promise<any> {
+    try {
+      const response = await this.api.post('/api/notifications', notification);
+      return response.data.data;
+    } catch (error) {
+      console.error('Create notification failed:', error);
+      throw error;
+    }
+  }
+
+  async markNotificationAsRead(id: string): Promise<any> {
+    try {
+      const response = await this.api.post(`/api/notifications/${id}/read`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Mark notification as read failed:', error);
+      throw error;
+    }
+  }
+
+  async markAllNotificationsAsRead(): Promise<any> {
+    try {
+      const response = await this.api.post('/api/notifications/read-all');
+      return response.data;
+    } catch (error) {
+      console.error('Mark all notifications as read failed:', error);
+      throw error;
+    }
+  }
+
+  async deleteNotification(id: string): Promise<any> {
+    try {
+      const response = await this.api.delete(`/api/notifications/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error('Delete notification failed:', error);
+      throw error;
+    }
+  }
+
+  async clearAllNotifications(): Promise<any> {
+    try {
+      const response = await this.api.delete('/api/notifications/read/clear');
+      return response.data;
+    } catch (error) {
+      console.error('Clear all notifications failed:', error);
+      throw error;
+    }
+  }
+
+  // ===========================
+  // Voice Command Processing
+  // ===========================
+
+  async processVoiceCommand(audioData: string, audioFormat: string = 'wav'): Promise<{
+    transcription: string;
+    action: string;
+    entity?: any;
+    confidence: number;
+    message: string;
+  }> {
+    try {
+      const response = await this.api.post('/api/voice/process-command', {
+        audioData,
+        audioFormat,
+      });
+      return response.data.data;
+    } catch (error) {
+      console.error('Process voice command failed:', error);
+      throw error;
+    }
+  }
+
+  // ===========================
+  // Privacy & Security Settings
+  // ===========================
+
+  async getPrivacySettings(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/users/privacy-settings');
+      return response.data.data;
+    } catch (error) {
+      console.error('Get privacy settings failed:', error);
+      throw error;
+    }
+  }
+
+  async updatePrivacySettings(settings: {
+    biometricLock?: boolean;
+    dataEncryption?: boolean;
+    analyticsSharing?: boolean;
+    crashReporting?: boolean;
+    locationAccess?: boolean;
+  }): Promise<any> {
+    try {
+      const response = await this.api.put('/api/users/privacy-settings', settings);
+      return response.data.data;
+    } catch (error) {
+      console.error('Update privacy settings failed:', error);
       throw error;
     }
   }

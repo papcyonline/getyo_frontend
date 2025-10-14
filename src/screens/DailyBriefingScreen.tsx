@@ -12,7 +12,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootState } from '../store';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const DailyBriefingScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -59,7 +58,7 @@ const DailyBriefingScreen: React.FC = () => {
       insights: [
         { icon: 'trending-up', text: 'Your productivity peaks at 10-11 AM. Board meeting is perfectly timed.', color: '#10B981' },
         { icon: 'alert-circle', text: 'Traffic is 20% heavier than usual. Leave 10 minutes early.', color: '#F59E0B' },
-        { icon: 'bulb', text: 'You have 2 hours of focus time. Perfect for Q3 report review.', color: '#FFFFFF' },
+        { icon: 'bulb', text: 'You have 2 hours of focus time. Perfect for Q3 report review.', color: '#FFF7F5' },
       ],
       metrics: {
         meetingLoad: 65,
@@ -92,7 +91,7 @@ const DailyBriefingScreen: React.FC = () => {
       ],
       insights: [
         { icon: 'checkmark-circle', text: 'You maintained 82% focus during deep work sessions.', color: '#10B981' },
-        { icon: 'time', text: 'Average response time to urgent emails: 23 minutes.', color: '#FFFFFF' },
+        { icon: 'time', text: 'Average response time to urgent emails: 23 minutes.', color: '#FFF7F5' },
         { icon: 'trophy', text: 'Weekly goal progress: 85% complete.', color: '#F59E0B' },
       ],
       metrics: {
@@ -109,7 +108,7 @@ const DailyBriefingScreen: React.FC = () => {
   const getEventColor = (type: string) => {
     switch (type) {
       case 'meeting': return '#EF4444';
-      case 'task': return '#FFFFFF';
+      case 'task': return '#FFF7F5';
       case 'focus': return '#10B981';
       case 'break': return '#F59E0B';
       default: return theme.textSecondary;
@@ -136,7 +135,7 @@ const DailyBriefingScreen: React.FC = () => {
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            selectedTimeframe === 'morning' && { backgroundColor: '#FFFFFF' }
+            selectedTimeframe === 'morning' && { backgroundColor: '#FFF7F5' }
           ]}
           onPress={() => setSelectedTimeframe('morning')}
         >
@@ -155,7 +154,7 @@ const DailyBriefingScreen: React.FC = () => {
         <TouchableOpacity
           style={[
             styles.toggleButton,
-            selectedTimeframe === 'evening' && { backgroundColor: '#FFFFFF' }
+            selectedTimeframe === 'evening' && { backgroundColor: '#FFF7F5' }
           ]}
           onPress={() => setSelectedTimeframe('evening')}
         >
@@ -176,18 +175,12 @@ const DailyBriefingScreen: React.FC = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFF7F5" />
         }
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
         {/* Greeting Card */}
-        <LinearGradient
-          colors={['#FFFFFF', '#FFFFFF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.greetingCard}
-        >
-          <View style={styles.greetingHeader}>
+        <View style={styles.greetingHeader}>
             <View>
               <Text style={styles.greetingText}>{currentBriefing.greeting},</Text>
               <Text style={styles.userName}>{user?.name || 'Executive'}</Text>
@@ -210,7 +203,6 @@ const DailyBriefingScreen: React.FC = () => {
               </View>
             ))}
           </View>
-        </LinearGradient>
 
         {selectedTimeframe === 'morning' ? (
           <>
@@ -268,7 +260,7 @@ const DailyBriefingScreen: React.FC = () => {
               </Text>
               {currentBriefing.news.map((headline, index) => (
                 <View key={index} style={styles.newsItem}>
-                  <Ionicons name="newspaper-outline" size={16} color="#FFFFFF" />
+                  <Ionicons name="newspaper-outline" size={16} color="#FFF7F5" />
                   <Text style={[styles.newsText, { color: theme.text }]}>
                     {headline}
                   </Text>
@@ -309,7 +301,7 @@ const DailyBriefingScreen: React.FC = () => {
                     <Text style={[styles.tomorrowTitle, { color: theme.text }]}>
                       {item.title}
                     </Text>
-                    <Text style={[styles.tomorrowTime, { color: '#FFFFFF' }]}>
+                    <Text style={[styles.tomorrowTime, { color: '#FFF7F5' }]}>
                       {item.time}
                     </Text>
                     <Text style={[styles.tomorrowPrep, { color: theme.textSecondary }]}>
@@ -323,7 +315,7 @@ const DailyBriefingScreen: React.FC = () => {
             {/* Reflection */}
             <View style={[styles.section, { backgroundColor: theme.surface }]}>
               <View style={styles.reflectionHeader}>
-                <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+                <Ionicons name="sparkles" size={16} color="#FFF7F5" />
                 <Text style={[styles.sectionTitle, { color: theme.text, marginLeft: 8 }]}>
                   AI Reflection
                 </Text>
@@ -455,7 +447,7 @@ const styles = StyleSheet.create({
   },
   metricLabel: {
     fontSize: 11,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 247, 245, 0.8)',
     textTransform: 'uppercase',
     marginTop: 4,
   },

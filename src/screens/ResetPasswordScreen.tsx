@@ -8,17 +8,20 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
-  Alert,
   Animated,
   Dimensions,
+  ScrollView,
+  SafeAreaView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons, MaterialIcons } from '@expo/vector-icons';
+
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../types';
 import AuthService from '../services/auth';
+import CustomAlert from '../components/common/CustomAlert';
+import { useCustomAlert } from '../hooks/useCustomAlert';
 
 const { height } = Dimensions.get('window');
 
@@ -26,15 +29,16 @@ type ResetPasswordNavigationProp = StackNavigationProp<RootStackParamList, 'Rese
 
 interface RouteParams {
   email: string;
-  code: string;
+  token: string;
 }
 
 const ResetPasswordScreen: React.FC = () => {
   const navigation = useNavigation<ResetPasswordNavigationProp>();
   const route = useRoute();
-  const { email, code } = (route.params as RouteParams) || {};
+  const { email, token: initialToken } = (route.params as RouteParams) || {};
   const insets = useSafeAreaInsets();
 
+  const [resetToken, setResetToken] = useState(initialToken || '');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -42,6 +46,8 @@ const ResetPasswordScreen: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  const { alertConfig, isVisible, showError, showSuccess, hideAlert } = useCustomAlert();
 
   useEffect(() => {
     // Slide up animation
@@ -65,34 +71,36 @@ const ResetPasswordScreen: React.FC = () => {
   };
 
   const handleResetPassword = async () => {
+    if (!resetToken.trim()) {
+      showError('Missing Code', 'Please enter the 6-digit code from your email');
+      return;
+    }
+
     if (!isValidPassword()) {
-      Alert.alert(
-        'Invalid Password',
-        'Passwords must be at least 6 characters and match'
-      );
+      showError('Invalid Password', 'Passwords must be at least 6 characters and match');
       return;
     }
 
     setLoading(true);
 
     try {
-      await AuthService.resetPassword(email, code, newPassword);
+      await AuthService.resetPassword(email, resetToken.trim(), newPassword);
 
-      Alert.alert(
+      showSuccess(
         'Success!',
-        'Your password has been reset successfully. You can now sign in with your new password.',
-        [
-          {
+        'Your password has been reset. You can now sign in with your new password.',
+        {
+          primaryButton: {
             text: 'Sign In',
-            onPress: () => navigation.navigate('SignIn'),
-          },
-        ]
+            onPress: () => {
+              hideAlert();
+              navigation.navigate('SignIn');
+            },
+          }
+        }
       );
     } catch (error: any) {
-      Alert.alert(
-        'Reset Failed',
-        error.message || 'Failed to reset password. Please try again.'
-      );
+      showError('Reset Failed', error.message || 'Failed to reset password. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -115,13 +123,6 @@ const ResetPasswordScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Background gradient */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
-
       {/* Background dotted pattern */}
       <View style={styles.backgroundPattern}>
         {Array.from({ length: 150 }).map((_, i) => (
@@ -147,12 +148,7 @@ const ResetPasswordScreen: React.FC = () => {
             }
           ]}
         >
-          <LinearGradient
-            colors={['rgba(40, 40, 40, 0.1)', 'rgba(30, 30, 30, 0.3)', 'rgba(20, 20, 20, 0.7)']}
-            style={styles.gradientBackground}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          >
+          
             <View style={styles.topBar}>
               <TouchableOpacity style={styles.backButton} onPress={handleBack}>
                 <Ionicons name="arrow-back" size={24} color="#3396D3" />
@@ -165,15 +161,35 @@ const ResetPasswordScreen: React.FC = () => {
               style={styles.keyboardAvoid}
             >
               <View style={styles.formContainer}>
+                {/* Reset Token Input */}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Reset Token</Text>
+                  <View style={styles.passwordInputContainer}>
+                    <MaterialIcons name="vpn-key" size={20} color="rgba(255, 247, 245, 0.7)" style={styles.inputIcon} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Enter reset token from email"
+                      placeholderTextColor="rgba(255, 247, 245, 0.4)"
+                      value={resetToken}
+                      onChangeText={setResetToken}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                    />
+                  </View>
+                  <Text style={styles.helperText}>
+                    Check your email for the reset token
+                  </Text>
+                </View>
+
                 {/* New Password Input */}
                 <View style={styles.inputContainer}>
                   <Text style={styles.inputLabel}>New Password</Text>
                   <View style={styles.passwordInputContainer}>
-                    <MaterialIcons name="lock" size={20} color="rgba(255, 255, 255, 0.7)" style={styles.inputIcon} />
+                    <MaterialIcons name="lock" size={20} color="rgba(255, 247, 245, 0.7)" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Enter new password"
-                      placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                      placeholderTextColor="rgba(255, 247, 245, 0.4)"
                       value={newPassword}
                       onChangeText={setNewPassword}
                       secureTextEntry={!showNewPassword}
@@ -187,7 +203,7 @@ const ResetPasswordScreen: React.FC = () => {
                       <MaterialIcons
                         name={showNewPassword ? "visibility" : "visibility-off"}
                         size={20}
-                        color="rgba(255, 255, 255, 0.7)"
+                        color="rgba(255, 247, 245, 0.7)"
                       />
                     </TouchableOpacity>
                   </View>
@@ -204,11 +220,11 @@ const ResetPasswordScreen: React.FC = () => {
                 <View style={styles.inputContainer}>
                   <Text style={styles.inputLabel}>Confirm Password</Text>
                   <View style={styles.passwordInputContainer}>
-                    <MaterialIcons name="lock" size={20} color="rgba(255, 255, 255, 0.7)" style={styles.inputIcon} />
+                    <MaterialIcons name="lock" size={20} color="rgba(255, 247, 245, 0.7)" style={styles.inputIcon} />
                     <TextInput
                       style={styles.input}
                       placeholder="Confirm new password"
-                      placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                      placeholderTextColor="rgba(255, 247, 245, 0.4)"
                       value={confirmPassword}
                       onChangeText={setConfirmPassword}
                       secureTextEntry={!showConfirmPassword}
@@ -222,7 +238,7 @@ const ResetPasswordScreen: React.FC = () => {
                       <MaterialIcons
                         name={showConfirmPassword ? "visibility" : "visibility-off"}
                         size={20}
-                        color="rgba(255, 255, 255, 0.7)"
+                        color="rgba(255, 247, 245, 0.7)"
                       />
                     </TouchableOpacity>
                   </View>
@@ -238,10 +254,10 @@ const ResetPasswordScreen: React.FC = () => {
                   activeOpacity={0.9}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#FFFFFF" size="large" />
+                    <ActivityIndicator color="#FFF7F5" size="large" />
                   ) : (
                     <>
-                      <MaterialIcons name="check-circle" size={20} color="#FFFFFF" />
+                      <MaterialIcons name="check-circle" size={20} color="#FFF7F5" />
                       <Text style={styles.resetButtonText}>Reset Password</Text>
                     </>
                   )}
@@ -252,9 +268,21 @@ const ResetPasswordScreen: React.FC = () => {
                 </Text>
               </View>
             </KeyboardAvoidingView>
-          </LinearGradient>
         </Animated.View>
       </View>
+
+      {/* Custom Alert */}
+      {alertConfig && (
+        <CustomAlert
+          visible={isVisible}
+          title={alertConfig.title}
+          message={alertConfig.message}
+          type={alertConfig.type}
+          onClose={hideAlert}
+          primaryButton={alertConfig.primaryButton}
+          secondaryButton={alertConfig.secondaryButton}
+        />
+      )}
     </View>
   );
 };
@@ -288,7 +316,7 @@ const styles = StyleSheet.create({
     width: 2,
     height: 2,
     borderRadius: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 247, 245, 0.8)',
     margin: 12,
   },
   safeArea: {
@@ -309,14 +337,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 247, 245, 0.8)',
     textAlign: 'center',
     fontWeight: '500',
     letterSpacing: 0.3,
@@ -334,7 +362,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 247, 245, 0.1)',
     zIndex: 10,
   },
   gradientBackground: {
@@ -354,15 +382,15 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   step: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     fontWeight: '500',
     letterSpacing: 0.5,
   },
@@ -381,19 +409,19 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 8,
     letterSpacing: 0.3,
   },
   passwordInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 247, 245, 0.15)',
+    paddingHorizontal: 18,
+    height: 56,
   },
   inputIcon: {
     marginRight: 12,
@@ -401,7 +429,7 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
   },
   eyeButton: {
@@ -432,25 +460,20 @@ const styles = StyleSheet.create({
     gap: 8,
     marginBottom: 20,
     marginTop: 10,
-    shadowColor: '#3396D3',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     opacity: 0.5,
   },
   resetButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    color: '#FFF7F5',
+    letterSpacing: 0.4,
   },
   infoText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     textAlign: 'center',
     lineHeight: 20,
     fontWeight: '400',

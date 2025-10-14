@@ -12,11 +12,15 @@ import {
   Animated,
   Dimensions,
   ScrollView,
+  SafeAreaView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
+import { RootState } from '../store';
 import ApiService from '../services/api';
 
 const { height } = Dimensions.get('window');
@@ -28,6 +32,8 @@ const NewPasswordScreen: React.FC = () => {
   const navigation = useNavigation<NewPasswordNavigationProp>();
   const route = useRoute<NewPasswordRouteProp>();
   const { email, resetCode } = route.params;
+  const insets = useSafeAreaInsets();
+  const theme = useSelector((state: RootState) => state.theme.theme);
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -170,26 +176,18 @@ const NewPasswordScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
-      {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(201, 169, 110, 0.3)', 'rgba(201, 169, 110, 0.1)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.6 }}
-      />
-
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Background dotted pattern */}
-      <View style={styles.backgroundPattern}>
+      <View style={[styles.backgroundPattern, { opacity: theme.background === '#FFFFFF' ? 0.02 : 0.05 }]}>
         {Array.from({ length: 150 }).map((_, i) => (
-          <View key={i} style={styles.dot} />
+          <View key={i} style={[styles.dot, { backgroundColor: theme.text }]} />
         ))}
       </View>
 
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
-          <Text style={styles.title}>Create New Password</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: theme.text }]}>Create New Password</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             Set a strong password to keep your account secure
           </Text>
         </View>
@@ -197,22 +195,20 @@ const NewPasswordScreen: React.FC = () => {
         <Animated.View
           style={[
             styles.slidingContainer,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             { transform: [{ translateY: slideAnim }] }
           ]}
         >
-          <LinearGradient
-            colors={['rgba(40, 40, 40, 0.2)', 'rgba(30, 30, 30, 0.6)', 'rgba(20, 20, 20, 0.95)']}
-            style={styles.gradientContainer}
-          >
+
             <KeyboardAvoidingView
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={styles.keyboardAvoid}
             >
               <View style={styles.topBar}>
-              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <Text style={styles.backButtonText}>←</Text>
+              <TouchableOpacity style={[styles.backButton, { backgroundColor: `${theme.text}10`, borderColor: theme.border }]} onPress={handleBack}>
+                <Text style={[styles.backButtonText, { color: theme.text }]}>←</Text>
               </TouchableOpacity>
-              <Text style={styles.step}>Step 2 of 2</Text>
+              <Text style={[styles.step, { color: theme.text }]}>Step 2 of 2</Text>
             </View>
 
             <ScrollView
@@ -222,15 +218,16 @@ const NewPasswordScreen: React.FC = () => {
             >
               <View style={styles.form}>
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>New Password</Text>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>New Password</Text>
                   <View style={styles.passwordContainer}>
                     <TextInput
                       style={[
                         styles.passwordInput,
+                        { color: theme.text, backgroundColor: `${theme.text}08`, borderColor: theme.border },
                         passwordError ? styles.inputError : null,
                       ]}
                       placeholder="Enter new password"
-                      placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                      placeholderTextColor={theme.textTertiary}
                       value={password}
                       onChangeText={handlePasswordChange}
                       onBlur={() => validatePassword(password)}
@@ -241,7 +238,7 @@ const NewPasswordScreen: React.FC = () => {
                       style={styles.eyeButton}
                       onPress={() => setShowPassword(!showPassword)}
                     >
-                      <Text style={styles.eyeIcon}>{showPassword ? 'Hide' : 'Show'}</Text>
+                      <Text style={[styles.eyeIcon, { color: theme.text }]}>{showPassword ? 'Hide' : 'Show'}</Text>
                     </TouchableOpacity>
                   </View>
                   {passwordError ? (
@@ -250,15 +247,16 @@ const NewPasswordScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.inputContainer}>
-                  <Text style={styles.inputLabel}>Confirm New Password</Text>
+                  <Text style={[styles.inputLabel, { color: theme.text }]}>Confirm New Password</Text>
                   <View style={styles.passwordContainer}>
                     <TextInput
                       style={[
                         styles.passwordInput,
+                        { color: theme.text, backgroundColor: `${theme.text}08`, borderColor: theme.border },
                         confirmPasswordError ? styles.inputError : null,
                       ]}
                       placeholder="Confirm new password"
-                      placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                      placeholderTextColor={theme.textTertiary}
                       value={confirmPassword}
                       onChangeText={handleConfirmPasswordChange}
                       onBlur={() => validateConfirmPassword(confirmPassword)}
@@ -270,7 +268,7 @@ const NewPasswordScreen: React.FC = () => {
                       style={styles.eyeButton}
                       onPress={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
-                      <Text style={styles.eyeIcon}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
+                      <Text style={[styles.eyeIcon, { color: theme.text }]}>{showConfirmPassword ? 'Hide' : 'Show'}</Text>
                     </TouchableOpacity>
                   </View>
                   {confirmPasswordError ? (
@@ -278,45 +276,53 @@ const NewPasswordScreen: React.FC = () => {
                   ) : null}
                 </View>
 
-                <View style={styles.requirementsContainer}>
-                  <Text style={styles.requirementsTitle}>Password Requirements:</Text>
+                <View style={[styles.requirementsContainer, { backgroundColor: `${theme.text}05`, borderColor: theme.border }]}>
+                  <Text style={[styles.requirementsTitle, { color: theme.text }]}>Password Requirements:</Text>
                   <View style={styles.requirement}>
                     <Text style={[
                       styles.requirementDot,
+                      { color: password.length >= 8 ? theme.success : theme.textSecondary },
                       password.length >= 8 && styles.requirementMet
                     ]}>•</Text>
                     <Text style={[
                       styles.requirementText,
+                      { color: password.length >= 8 ? theme.success : theme.textSecondary },
                       password.length >= 8 && styles.requirementMet
                     ]}>At least 8 characters</Text>
                   </View>
                   <View style={styles.requirement}>
                     <Text style={[
                       styles.requirementDot,
+                      { color: /[a-z]/.test(password) ? theme.success : theme.textSecondary },
                       /[a-z]/.test(password) && styles.requirementMet
                     ]}>•</Text>
                     <Text style={[
                       styles.requirementText,
+                      { color: /[a-z]/.test(password) ? theme.success : theme.textSecondary },
                       /[a-z]/.test(password) && styles.requirementMet
                     ]}>One lowercase letter</Text>
                   </View>
                   <View style={styles.requirement}>
                     <Text style={[
                       styles.requirementDot,
+                      { color: /[A-Z]/.test(password) ? theme.success : theme.textSecondary },
                       /[A-Z]/.test(password) && styles.requirementMet
                     ]}>•</Text>
                     <Text style={[
                       styles.requirementText,
+                      { color: /[A-Z]/.test(password) ? theme.success : theme.textSecondary },
                       /[A-Z]/.test(password) && styles.requirementMet
                     ]}>One uppercase letter</Text>
                   </View>
                   <View style={styles.requirement}>
                     <Text style={[
                       styles.requirementDot,
+                      { color: /\d/.test(password) ? theme.success : theme.textSecondary },
                       /\d/.test(password) && styles.requirementMet
                     ]}>•</Text>
                     <Text style={[
                       styles.requirementText,
+                      { color: /\d/.test(password) ? theme.success : theme.textSecondary },
                       /\d/.test(password) && styles.requirementMet
                     ]}>One number</Text>
                   </View>
@@ -328,6 +334,7 @@ const NewPasswordScreen: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.resetButton,
+                  { backgroundColor: theme.accent },
                   (!isFormValid() || loading) && styles.disabledButton,
                 ]}
                 onPress={handleResetPassword}
@@ -335,11 +342,12 @@ const NewPasswordScreen: React.FC = () => {
                 activeOpacity={0.9}
               >
                 {loading ? (
-                  <ActivityIndicator color="#FFFFFF" size="large" />
+                  <ActivityIndicator color={theme.background} size="large" />
                 ) : (
                   <Text style={[
                     styles.resetButtonText,
-                    !isFormValid() && styles.disabledButtonText,
+                    { color: theme.background },
+                    !isFormValid() && [styles.disabledButtonText, { color: theme.textSecondary }],
                   ]}>
                     Reset Password
                   </Text>
@@ -347,7 +355,6 @@ const NewPasswordScreen: React.FC = () => {
               </TouchableOpacity>
             </View>
             </KeyboardAvoidingView>
-          </LinearGradient>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -357,7 +364,6 @@ const NewPasswordScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   gradientFlare: {
     position: 'absolute',
@@ -377,13 +383,11 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     justifyContent: 'space-around',
     alignContent: 'space-around',
-    opacity: 0.05,
   },
   dot: {
     width: 2,
     height: 2,
     borderRadius: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
     margin: 12,
   },
   safeArea: {
@@ -400,14 +404,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#000000',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: '#F7F2ED',
     textAlign: 'center',
     fontWeight: '500',
     letterSpacing: 0.3,
@@ -421,7 +423,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
     overflow: 'hidden',
   },
   gradientContainer: {
@@ -444,20 +445,16 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   backButtonText: {
-    color: '#000000',
     fontSize: 22,
     fontWeight: '600',
   },
   step: {
     fontSize: 16,
-    color: '#000000',
     fontWeight: '500',
     letterSpacing: 0.5,
   },
@@ -477,7 +474,6 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
     marginBottom: 8,
     letterSpacing: 0.3,
   },
@@ -486,15 +482,12 @@ const styles = StyleSheet.create({
   },
   passwordInput: {
     height: 56,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderRadius: 16,
     paddingHorizontal: 20,
     paddingRight: 60,
     fontSize: 16,
     fontWeight: '500',
-    color: '#000000',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   eyeButton: {
     position: 'absolute',
@@ -504,7 +497,6 @@ const styles = StyleSheet.create({
   },
   eyeIcon: {
     fontSize: 12,
-    color: '#000000',
     fontWeight: '600',
   },
   inputError: {
@@ -519,16 +511,13 @@ const styles = StyleSheet.create({
     fontWeight: '500',
   },
   requirementsContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     borderRadius: 16,
     padding: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
   },
   requirementsTitle: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#000000',
     marginBottom: 12,
     letterSpacing: 0.3,
   },
@@ -539,19 +528,15 @@ const styles = StyleSheet.create({
   },
   requirementDot: {
     fontSize: 20,
-    color: 'rgba(255, 255, 255, 0.4)',
     marginRight: 12,
     width: 20,
     textAlign: 'center',
   },
   requirementText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
     fontWeight: '500',
   },
-  requirementMet: {
-    color: '#00C896',
-  },
+  requirementMet: {},
   footer: {
     paddingHorizontal: 30,
     paddingBottom: 40,
@@ -559,23 +544,19 @@ const styles = StyleSheet.create({
   },
   resetButton: {
     height: 56,
-    backgroundColor: '#FFFFFF',
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    opacity: 0.5,
   },
   resetButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#000000',
     letterSpacing: 0.5,
   },
-  disabledButtonText: {
-    color: 'rgba(255, 255, 255, 0.4)',
-  },
+  disabledButtonText: {},
 });
 
 export default NewPasswordScreen;

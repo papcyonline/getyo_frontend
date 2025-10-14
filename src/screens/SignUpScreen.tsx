@@ -14,7 +14,7 @@ import {
   ScrollView,
   SafeAreaView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootState } from '../store';
@@ -49,6 +49,7 @@ const SignUpScreen: React.FC = () => {
   const navigation = useNavigation<SignUpNavigationProp>();
   const insets = useSafeAreaInsets();
   const currentLanguage = useSelector((state: RootState) => state.user?.user?.preferences?.language || 'en');
+  const theme = useSelector((state: RootState) => state.theme.theme);
   const t = getTranslations(currentLanguage);
 
   useEffect(() => {
@@ -140,8 +141,8 @@ const SignUpScreen: React.FC = () => {
       return;
     }
 
-    // Navigate to proper onboarding flow - registration happens AFTER OTP verification
-    navigation.navigate('TermsPrivacy', {
+    // Navigate directly to UserDetails - terms already accepted in footer
+    navigation.navigate('UserDetails', {
       signUpData: {
         name: formData.name.trim(),
         email: formData.email.toLowerCase().trim(),
@@ -171,20 +172,13 @@ const SignUpScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
-
       <SafeAreaView style={styles.safeArea}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <View style={styles.headerTop}>
-            <Text style={styles.title}>{t.signUp?.title || 'Create Account'}</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: theme.text }]}>{t.signUp?.title || 'Create Account'}</Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
               {t.signUp?.subtitle || 'Join us and get your personal AI assistant'}
             </Text>
           </View>
@@ -193,18 +187,14 @@ const SignUpScreen: React.FC = () => {
         <Animated.View
           style={[
             styles.slidingContainer,
+            { backgroundColor: theme.surface, borderColor: theme.border },
             { transform: [{ translateY: slideAnim }] }
           ]}
         >
-          <LinearGradient
-            colors={['rgba(40, 40, 40, 0.1)', 'rgba(30, 30, 30, 0.3)', 'rgba(20, 20, 20, 0.7)']}
-            style={styles.gradientBackground}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          >
+
             <View style={styles.topBar}>
-              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <Ionicons name="chevron-back-outline" size={24} color="#FFFFFF" />
+              <TouchableOpacity style={[styles.backButton, { backgroundColor: `${theme.text}10`, borderColor: theme.border }]} onPress={handleBack}>
+                <Ionicons name="chevron-back-outline" size={24} color={theme.text} />
               </TouchableOpacity>
               <View style={{ width: 44 }} />
             </View>
@@ -222,12 +212,12 @@ const SignUpScreen: React.FC = () => {
                 <View style={styles.formContainer}>
                   {/* Name Input */}
                   <View style={styles.inputWrapper}>
-                    <View style={styles.inputRow}>
-                      <MaterialIcons name="person" size={20} color="#3396D3" style={styles.inputIcon} />
+                    <View style={[styles.inputRow, { backgroundColor: `${theme.text}05`, borderColor: theme.border }]}>
+                      <MaterialIcons name="person" size={20} color="#2196F3" style={styles.inputIcon} />
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, { color: theme.text }]}
                         placeholder={t.signUp?.namePlaceholder || 'Full Name'}
-                        placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                        placeholderTextColor={theme.textTertiary}
                         value={formData.name}
                         onChangeText={(text) => handleInputChange('name', text)}
                         onBlur={() => validateName(formData.name)}
@@ -243,12 +233,12 @@ const SignUpScreen: React.FC = () => {
 
                   {/* Email Input */}
                   <View style={styles.inputWrapper}>
-                    <View style={styles.inputRow}>
-                      <MaterialIcons name="email" size={20} color="#3396D3" style={styles.inputIcon} />
+                    <View style={[styles.inputRow, { backgroundColor: `${theme.text}05`, borderColor: theme.border }]}>
+                      <MaterialIcons name="email" size={20} color="#F44336" style={styles.inputIcon} />
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, { color: theme.text }]}
                         placeholder={t.signUp?.emailPlaceholder || 'Email Address'}
-                        placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                        placeholderTextColor={theme.textTertiary}
                         value={formData.email}
                         onChangeText={(text) => handleInputChange('email', text)}
                         onBlur={() => validateEmail(formData.email)}
@@ -266,12 +256,12 @@ const SignUpScreen: React.FC = () => {
 
                   {/* Password Input */}
                   <View style={styles.inputWrapper}>
-                    <View style={styles.inputRow}>
-                      <MaterialIcons name="lock" size={20} color="#3396D3" style={styles.inputIcon} />
+                    <View style={[styles.inputRow, { backgroundColor: `${theme.text}05`, borderColor: theme.border }]}>
+                      <MaterialIcons name="lock" size={20} color="#FFC107" style={styles.inputIcon} />
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, { color: theme.text }]}
                         placeholder={t.signUp?.passwordPlaceholder || 'Password'}
-                        placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                        placeholderTextColor={theme.textTertiary}
                         value={formData.password}
                         onChangeText={(text) => handleInputChange('password', text)}
                         onBlur={() => validatePassword(formData.password)}
@@ -286,7 +276,7 @@ const SignUpScreen: React.FC = () => {
                         <MaterialIcons
                           name={showPassword ? "visibility" : "visibility-off"}
                           size={20}
-                          color="rgba(255, 255, 255, 0.6)"
+                          color={theme.textSecondary}
                         />
                       </TouchableOpacity>
                     </View>
@@ -298,12 +288,12 @@ const SignUpScreen: React.FC = () => {
 
                   {/* Confirm Password Input */}
                   <View style={styles.inputWrapper}>
-                    <View style={styles.inputRow}>
-                      <MaterialIcons name="lock" size={20} color="#3396D3" style={styles.inputIcon} />
+                    <View style={[styles.inputRow, { backgroundColor: `${theme.text}05`, borderColor: theme.border }]}>
+                      <MaterialIcons name="lock" size={20} color="#FFC107" style={styles.inputIcon} />
                       <TextInput
-                        style={styles.input}
+                        style={[styles.input, { color: theme.text }]}
                         placeholder={t.signUp?.confirmPasswordPlaceholder || 'Confirm Password'}
-                        placeholderTextColor="rgba(255, 255, 255, 0.4)"
+                        placeholderTextColor={theme.textTertiary}
                         value={formData.confirmPassword}
                         onChangeText={(text) => handleInputChange('confirmPassword', text)}
                         onBlur={() => validateConfirmPassword(formData.confirmPassword)}
@@ -318,7 +308,7 @@ const SignUpScreen: React.FC = () => {
                         <MaterialIcons
                           name={showConfirmPassword ? "visibility" : "visibility-off"}
                           size={20}
-                          color="rgba(255, 255, 255, 0.6)"
+                          color={theme.textSecondary}
                         />
                       </TouchableOpacity>
                     </View>
@@ -330,49 +320,49 @@ const SignUpScreen: React.FC = () => {
 
                   {/* Sign Up Button */}
                   <TouchableOpacity
-                    style={[styles.signUpButton, !isFormValid() && styles.disabledButton]}
+                    style={[styles.signUpButton, { backgroundColor: theme.accent }, !isFormValid() && styles.disabledButton]}
                     onPress={handleSignUp}
                     disabled={!isFormValid()}
                     activeOpacity={0.9}
                   >
-                    <MaterialIcons name="person-add" size={20} color="#FFFFFF" />
-                    <Text style={styles.signUpButtonText}>{t.signUp?.signUpButton || 'Create Account'}</Text>
+                    <MaterialIcons name="person-add" size={20} color={theme.background} />
+                    <Text style={[styles.signUpButtonText, { color: theme.background }]}>{t.signUp?.signUpButton || 'Create Account'}</Text>
                   </TouchableOpacity>
 
                   {/* OR Divider */}
                   <View style={styles.dividerContainer}>
-                    <View style={styles.dividerLine} />
-                    <Text style={styles.dividerText}>OR</Text>
-                    <View style={styles.dividerLine} />
+                    <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                    <Text style={[styles.dividerText, { color: theme.textSecondary }]}>OR</Text>
+                    <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                   </View>
 
                   {/* Google Sign In Button */}
                   <TouchableOpacity
-                    style={styles.socialButton}
+                    style={[styles.socialButton, { backgroundColor: `${theme.text}10`, borderColor: theme.border }]}
                     onPress={handleGoogleSignIn}
                     activeOpacity={0.8}
                   >
-                    <MaterialIcons name="login" size={20} color="#FFFFFF" />
-                    <Text style={styles.socialButtonText}>Continue with Google</Text>
+                    <MaterialIcons name="login" size={20} color="#4285F4" />
+                    <Text style={[styles.socialButtonText, { color: theme.text }]}>Continue with Google</Text>
                   </TouchableOpacity>
 
                   {/* Apple Sign In Button */}
                   <TouchableOpacity
-                    style={styles.socialButton}
+                    style={[styles.socialButton, { backgroundColor: `${theme.text}10`, borderColor: theme.border }]}
                     onPress={handleAppleSignIn}
                     activeOpacity={0.8}
                   >
-                    <MaterialIcons name="apple" size={20} color="#FFFFFF" />
-                    <Text style={styles.socialButtonText}>Continue with Apple</Text>
+                    <MaterialIcons name="apple" size={20} color={theme.background === '#FFFFFF' ? '#000000' : '#FFFFFF'} />
+                    <Text style={[styles.socialButtonText, { color: theme.text }]}>Continue with Apple</Text>
                   </TouchableOpacity>
                 </View>
               </ScrollView>
 
               <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-                <Text style={styles.footerText}>
+                <Text style={[styles.footerText, { color: theme.textSecondary }]}>
                   {t.signUp?.haveAccount || 'Already have an account?'}{' '}
                   <Text
-                    style={styles.signInLink}
+                    style={[styles.signInLink, { color: theme.text }]}
                     onPress={() => navigation.navigate('SignIn')}
                   >
                     {t.signUp?.signIn || 'Sign In'}
@@ -380,7 +370,6 @@ const SignUpScreen: React.FC = () => {
                 </Text>
               </View>
             </KeyboardAvoidingView>
-          </LinearGradient>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -390,7 +379,6 @@ const SignUpScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   gradientFlare: {
     position: 'absolute',
@@ -418,14 +406,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#FFFFFF',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
     fontWeight: '500',
     letterSpacing: 0.3,
@@ -443,7 +429,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 10,
   },
   gradientBackground: {
@@ -463,11 +448,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   keyboardAvoid: {
     flex: 1,
@@ -483,12 +466,16 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inputWrapper: {
-    marginBottom: 25,
+    marginBottom: 20,
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    borderRadius: 38,
+    borderWidth: 2,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    height: 56,
   },
   inputIcon: {
     marginRight: 12,
@@ -496,12 +483,10 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#FFFFFF',
     fontWeight: '500',
   },
   underline: {
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    height: 0,
   },
   eyeButton: {
     padding: 4,
@@ -516,8 +501,7 @@ const styles = StyleSheet.create({
   },
   signUpButton: {
     height: 56,
-    backgroundColor: '#3396D3',
-    borderRadius: 28,
+    borderRadius: 38,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -525,12 +509,11 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   disabledButton: {
-    backgroundColor: 'rgba(51, 150, 211, 0.3)',
+    opacity: 0.5,
   },
   signUpButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   footer: {
@@ -540,11 +523,9 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
   },
   signInLink: {
-    color: '#3396D3',
     fontWeight: '600',
   },
   dividerContainer: {
@@ -555,20 +536,16 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   dividerText: {
-    color: 'rgba(255, 255, 255, 0.5)',
     paddingHorizontal: 15,
     fontSize: 14,
     fontWeight: '600',
   },
   socialButton: {
     height: 52,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 26,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderRadius: 35,
+    borderWidth: 2,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -578,7 +555,6 @@ const styles = StyleSheet.create({
   socialButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#FFFFFF',
     letterSpacing: 0.3,
   },
 });

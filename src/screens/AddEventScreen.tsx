@@ -132,7 +132,7 @@ const AddEventScreen: React.FC = () => {
               value={allDay}
               onValueChange={setAllDay}
               trackColor={{ false: theme.border, true: '#10B981' }}
-              thumbColor={allDay ? '#FFFFFF' : theme.textSecondary}
+              thumbColor={allDay ? '#FFF7F5' : theme.textSecondary}
             />
           </View>
         </View>
@@ -234,7 +234,7 @@ const AddEventScreen: React.FC = () => {
               value={hasReminder}
               onValueChange={setHasReminder}
               trackColor={{ false: theme.border, true: '#10B981' }}
-              thumbColor={hasReminder ? '#FFFFFF' : theme.textSecondary}
+              thumbColor={hasReminder ? '#FFF7F5' : theme.textSecondary}
             />
           </View>
           {hasReminder && (
@@ -254,7 +254,7 @@ const AddEventScreen: React.FC = () => {
                   <Text style={[
                     styles.reminderOptionText,
                     {
-                      color: reminderMinutes === minutes ? '#FFFFFF' : theme.text
+                      color: reminderMinutes === minutes ? '#FFF7F5' : theme.text
                     }
                   ]}>
                     {minutes < 60 ? `${minutes}m` : minutes < 1440 ? `${minutes/60}h` : `${minutes/1440}d`}

@@ -86,7 +86,7 @@ const AddTaskScreen: React.FC = () => {
       case 'high': return '#FF4757';
       case 'medium': return '#F59E0B';
       case 'low': return '#10B981';
-      default: return '#FFFFFF';
+      default: return '#FFF7F5';
     }
   };
 
@@ -163,7 +163,7 @@ const AddTaskScreen: React.FC = () => {
                 <Text style={[
                   styles.priorityText,
                   { color: theme.text },
-                  priority === p && { color: '#FFFFFF' }
+                  priority === p && { color: '#FFF7F5' }
                 ]}>
                   {p.charAt(0).toUpperCase() + p.slice(1)}
                 </Text>
@@ -196,8 +196,8 @@ const AddTaskScreen: React.FC = () => {
             <Switch
               value={hasReminder}
               onValueChange={setHasReminder}
-              trackColor={{ false: theme.border, true: '#FFFFFF' }}
-              thumbColor={hasReminder ? '#FFFFFF' : theme.textSecondary}
+              trackColor={{ false: theme.border, true: '#FFF7F5' }}
+              thumbColor={hasReminder ? '#FFF7F5' : theme.textSecondary}
             />
           </View>
           {hasReminder && (
@@ -237,7 +237,7 @@ const AddTaskScreen: React.FC = () => {
               </TouchableOpacity>
               <Text style={[styles.datePickerTitle, { color: theme.text }]}>Select Date</Text>
               <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                <Text style={[styles.datePickerButton, { color: '#FFFFFF' }]}>Done</Text>
+                <Text style={[styles.datePickerButton, { color: '#FFF7F5' }]}>Done</Text>
               </TouchableOpacity>
             </View>
             <DateTimePicker
@@ -275,7 +275,7 @@ const AddTaskScreen: React.FC = () => {
               </TouchableOpacity>
               <Text style={[styles.datePickerTitle, { color: theme.text }]}>Select Reminder Time</Text>
               <TouchableOpacity onPress={() => setShowReminderPicker(false)}>
-                <Text style={[styles.datePickerButton, { color: '#FFFFFF' }]}>Done</Text>
+                <Text style={[styles.datePickerButton, { color: '#FFF7F5' }]}>Done</Text>
               </TouchableOpacity>
             </View>
             <DateTimePicker
@@ -316,7 +316,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   saveButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7F5',
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,

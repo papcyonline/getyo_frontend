@@ -12,7 +12,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootState } from '../store';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const SubscriptionScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -155,13 +154,7 @@ const SubscriptionScreen: React.FC = () => {
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
       >
         {/* Hero Section */}
-        <LinearGradient
-          colors={['#FFFFFF', '#FFFFFF']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.heroSection}
-        >
-          <Text style={styles.heroTitle}>Unlock Your Executive Potential</Text>
+        <Text style={styles.heroTitle}>Unlock Your Executive Potential</Text>
           <Text style={styles.heroSubtitle}>
             Join 10,000+ executives using AI to maximize productivity and drive results
           </Text>
@@ -177,7 +170,7 @@ const SubscriptionScreen: React.FC = () => {
             >
               <Text style={[
                 styles.billingText,
-                { color: billingCycle === 'monthly' ? '#FFFFFF' : 'rgba(255,255,255,0.8)' }
+                { color: billingCycle === 'monthly' ? '#FFF7F5' : 'rgba(255, 247, 245,0.8)' }
               ]}>
                 Monthly
               </Text>
@@ -191,7 +184,7 @@ const SubscriptionScreen: React.FC = () => {
             >
               <Text style={[
                 styles.billingText,
-                { color: billingCycle === 'annual' ? '#FFFFFF' : 'rgba(255,255,255,0.8)' }
+                { color: billingCycle === 'annual' ? '#FFF7F5' : 'rgba(255, 247, 245,0.8)' }
               ]}>
                 Annual
               </Text>
@@ -200,7 +193,6 @@ const SubscriptionScreen: React.FC = () => {
               </View>
             </TouchableOpacity>
           </View>
-        </LinearGradient>
 
         {/* Subscription Plans */}
         <View style={styles.plansContainer}>
@@ -309,7 +301,7 @@ const SubscriptionScreen: React.FC = () => {
                 <Text style={[styles.comparisonValue, { color: theme.textSecondary }]}>
                   {item.starter}
                 </Text>
-                <Text style={[styles.comparisonValue, { color: '#FFFFFF' }]}>
+                <Text style={[styles.comparisonValue, { color: '#FFF7F5' }]}>
                   {item.executive}
                 </Text>
                 <Text style={[styles.comparisonValue, { color: '#8B5CF6' }]}>
@@ -329,7 +321,7 @@ const SubscriptionScreen: React.FC = () => {
             </Text>
           </View>
           <View style={styles.trustItem}>
-            <Ionicons name="refresh" size={24} color="#FFFFFF" />
+            <Ionicons name="refresh" size={24} color="#FFF7F5" />
             <Text style={[styles.trustText, { color: theme.text }]}>
               Cancel anytime, no questions asked
             </Text>
@@ -425,14 +417,14 @@ const styles = StyleSheet.create({
   },
   heroSubtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 247, 245, 0.9)',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 22,
   },
   billingToggle: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 247, 245, 0.2)',
     borderRadius: 12,
     padding: 4,
   },
@@ -560,7 +552,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     paddingBottom: 12,
     borderBottomWidth: 2,
-    borderBottomColor: '#FFFFFF',
+    borderBottomColor: '#FFF7F5',
     marginBottom: 8,
   },
   comparisonHeaderText: {

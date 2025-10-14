@@ -11,8 +11,9 @@ import {
   Animated,
   Dimensions,
   SafeAreaView,
+  ScrollView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -37,6 +38,7 @@ const SignInScreen: React.FC = () => {
 
   // Get current language from Redux store
   const currentLanguage = useSelector((state: RootState) => state.user?.user?.preferences?.language || 'en');
+  const theme = useSelector((state: RootState) => state.theme.theme);
   const t = getTranslations(currentLanguage);
 
   // Custom alert hook
@@ -168,20 +170,13 @@ const SignInScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Background gradient */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
-
       <SafeAreaView style={styles.safeArea}>
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
           <View style={styles.header}>
-            <Text style={styles.title}>{t.signIn.title}</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: theme.text }]}>{t.signIn.title}</Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
               {t.signIn.subtitle}
             </Text>
           </View>
@@ -191,19 +186,16 @@ const SignInScreen: React.FC = () => {
           style={[
             styles.slidingContainer,
             {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
               transform: [{ translateY: slideAnim }],
             }
           ]}
         >
-          <LinearGradient
-            colors={['rgba(40, 40, 40, 0.1)', 'rgba(30, 30, 30, 0.3)', 'rgba(20, 20, 20, 0.7)']}
-            style={styles.gradientBackground}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          >
+
             <View style={styles.topBar}>
-              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <Ionicons name="chevron-back-outline" size={24} color="#FFFFFF" />
+              <TouchableOpacity style={[styles.backButton, { backgroundColor: `${theme.text}10`, borderColor: theme.border }]} onPress={handleBack}>
+                <Ionicons name="chevron-back-outline" size={24} color={theme.text} />
               </TouchableOpacity>
               <View style={{ width: 44 }} />
             </View>
@@ -212,14 +204,20 @@ const SignInScreen: React.FC = () => {
               behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
               style={styles.keyboardAvoid}
             >
-              <View style={styles.formContainer}>
+              <ScrollView
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                <View style={styles.formContainer}>
                 {/* Email Input */}
-                <View style={styles.inputContainer}>
-                  <MaterialIcons name="email" size={20} color="rgba(255, 255, 255, 0.7)" style={styles.inputIcon} />
+                <View style={[styles.inputContainer, { backgroundColor: `${theme.text}08`, borderColor: theme.border }]}>
+                  <MaterialIcons name="email" size={20} color={theme.textSecondary} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: theme.text }]}
                     placeholder={t.signIn.emailPlaceholder}
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    placeholderTextColor={theme.textTertiary}
                     value={email}
                     onChangeText={setEmail}
                     keyboardType="email-address"
@@ -229,12 +227,12 @@ const SignInScreen: React.FC = () => {
                 </View>
 
                 {/* Password Input */}
-                <View style={styles.inputContainer}>
-                  <MaterialIcons name="lock" size={20} color="rgba(255, 255, 255, 0.7)" style={styles.inputIcon} />
+                <View style={[styles.inputContainer, { backgroundColor: `${theme.text}08`, borderColor: theme.border }]}>
+                  <MaterialIcons name="lock" size={20} color={theme.textSecondary} style={styles.inputIcon} />
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: theme.text }]}
                     placeholder={t.signIn.passwordPlaceholder}
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    placeholderTextColor={theme.textTertiary}
                     value={password}
                     onChangeText={setPassword}
                     secureTextEntry={!showPassword}
@@ -246,8 +244,8 @@ const SignInScreen: React.FC = () => {
                   >
                     <MaterialIcons
                       name={showPassword ? "visibility" : "visibility-off"}
-                      size={20}
-                      color="rgba(255, 255, 255, 0.7)"
+                      size={22}
+                      color={theme.textTertiary}
                     />
                   </TouchableOpacity>
                 </View>
@@ -258,80 +256,80 @@ const SignInScreen: React.FC = () => {
                     style={styles.rememberMeContainer}
                     onPress={() => setRememberMe(!rememberMe)}
                   >
-                    <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                    <View style={[styles.checkbox, { borderColor: theme.textSecondary }, rememberMe && [styles.checkboxChecked, { backgroundColor: theme.accent, borderColor: theme.accent }]]}>
                       {rememberMe && (
-                        <MaterialIcons name="check" size={14} color="#FFFFFF" />
+                        <MaterialIcons name="check" size={14} color={theme.background} />
                       )}
                     </View>
-                    <Text style={styles.rememberMeText}>{t.signIn.rememberMe}</Text>
+                    <Text style={[styles.rememberMeText, { color: theme.textSecondary }]}>{t.signIn.rememberMe}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity onPress={handleForgotPassword}>
-                    <Text style={styles.forgotPasswordText}>{t.signIn.forgotPassword}</Text>
+                    <Text style={[styles.forgotPasswordText, { color: theme.text }]}>{t.signIn.forgotPassword}</Text>
                   </TouchableOpacity>
                 </View>
 
                 {/* Sign In Button */}
                 <TouchableOpacity
-                  style={[styles.signInButton, !isValidForm() && styles.disabledButton]}
+                  style={[styles.signInButton, { backgroundColor: theme.accent }, !isValidForm() && styles.disabledButton]}
                   onPress={handleSignIn}
                   disabled={!isValidForm() || loading}
                   activeOpacity={0.9}
                 >
                   {loading ? (
-                    <ActivityIndicator color="#FFFFFF" size="large" />
+                    <ActivityIndicator color={theme.background} size="large" />
                   ) : (
                     <>
-                      <MaterialIcons name="login" size={20} color="#FFFFFF" />
-                      <Text style={styles.signInButtonText}>{t.signIn.signInButton}</Text>
+                      <MaterialIcons name="login" size={20} color={theme.background} />
+                      <Text style={[styles.signInButtonText, { color: theme.background }]}>{t.signIn.signInButton}</Text>
                     </>
                   )}
                 </TouchableOpacity>
 
                 {/* Divider */}
                 <View style={styles.dividerContainer}>
-                  <View style={styles.dividerLine} />
-                  <Text style={styles.dividerText}>{t.signIn.orContinueWith}</Text>
-                  <View style={styles.dividerLine} />
+                  <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
+                  <Text style={[styles.dividerText, { color: theme.textSecondary }]}>{t.signIn.orContinueWith}</Text>
+                  <View style={[styles.dividerLine, { backgroundColor: theme.border }]} />
                 </View>
 
                 {/* Social Sign In Options */}
                 <View style={styles.socialButtonsRow}>
                   <TouchableOpacity
-                    style={styles.googleButton}
+                    style={[styles.googleButton, { backgroundColor: theme.surface, borderColor: theme.border }]}
                     onPress={handleGoogleSignIn}
                     disabled={loading}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="logo-google" size={18} color="#333333" />
-                    <Text style={styles.googleButtonText}>{t.signIn.google}</Text>
+                    <Ionicons name="logo-google" size={18} color={theme.text} />
+                    <Text style={[styles.googleButtonText, { color: theme.text }]}>{t.signIn.google}</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.appleButton}
+                    style={[styles.appleButton, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
                     onPress={handleAppleSignIn}
                     disabled={loading}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
-                    <Text style={styles.appleButtonText}>{t.signIn.apple}</Text>
+                    <Ionicons name="logo-apple" size={18} color={theme.text} />
+                    <Text style={[styles.appleButtonText, { color: theme.text }]}>{t.signIn.apple}</Text>
                   </TouchableOpacity>
                 </View>
-              </View>
+                </View>
 
-              <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
-                <Text style={styles.footerText}>
-                  {t.signIn.noAccount}{' '}
-                  <Text
-                    style={styles.signUpLink}
-                    onPress={() => navigation.navigate('TermsPrivacy')}
-                  >
-                    {t.signIn.signUp}
+                <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+                  <Text style={[styles.footerText, { color: theme.textSecondary }]}>
+                    {t.signIn.noAccount}{' '}
+                    <Text
+                      style={[styles.signUpLink, { color: theme.text }]}
+                      onPress={() => navigation.navigate('TermsPrivacy')}
+                    >
+                      {t.signIn.signUp}
+                    </Text>
                   </Text>
-                </Text>
-              </View>
+                </View>
+              </ScrollView>
             </KeyboardAvoidingView>
-          </LinearGradient>
         </Animated.View>
       </SafeAreaView>
 
@@ -354,7 +352,6 @@ const SignInScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   gradientFlare: {
     position: 'absolute',
@@ -382,14 +379,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 36,
     fontWeight: '900',
-    color: '#FFFFFF',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
     textAlign: 'center',
     fontWeight: '500',
     letterSpacing: 0.3,
@@ -407,7 +402,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 10,
   },
   gradientBackground: {
@@ -427,36 +421,38 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   step: {
     fontSize: 18,
-    color: '#FFFFFF',
     fontWeight: '600',
     letterSpacing: 0.5,
   },
   keyboardAvoid: {
     flex: 1,
   },
-  formContainer: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20,
+  },
+  formContainer: {
     paddingHorizontal: 30,
     paddingTop: 20,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 16,
+    borderRadius: 30,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-    paddingHorizontal: 20,
-    paddingVertical: 18,
+    borderWidth: 1.5,
+    paddingHorizontal: 18,
+    minHeight: 56,
+    paddingVertical: 12,
   },
   inputIcon: {
     marginRight: 12,
@@ -464,11 +460,13 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: 16,
-    color: '#FFFFFF',
     fontWeight: '500',
   },
   eyeButton: {
-    padding: 4,
+    padding: 8,
+    marginLeft: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   optionsRow: {
     flexDirection: 'row',
@@ -485,50 +483,36 @@ const styles = StyleSheet.create({
     height: 18,
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
     backgroundColor: 'transparent',
     marginRight: 8,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkboxChecked: {
-    backgroundColor: '#3396D3',
-    borderColor: '#3396D3',
-  },
+  checkboxChecked: {},
   rememberMeText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.8)',
     fontWeight: '500',
   },
   forgotPasswordText: {
     fontSize: 14,
-    color: '#FFFFFF',
     fontWeight: '600',
   },
   signInButton: {
     height: 56,
-    backgroundColor: '#3396D3',
     borderRadius: 28,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
     marginBottom: 20,
-    shadowColor: '#3396D3',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     opacity: 0.5,
   },
   signInButtonText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   dividerContainer: {
     flexDirection: 'row',
@@ -538,11 +522,9 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   dividerText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.5)',
     marginHorizontal: 16,
     fontWeight: '500',
   },
@@ -554,36 +536,30 @@ const styles = StyleSheet.create({
   googleButton: {
     flex: 1,
     height: 48,
-    backgroundColor: '#3396D3',
     borderRadius: 24,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(0, 0, 0, 0.1)',
   },
   googleButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#333333',
   },
   appleButton: {
     flex: 1,
     height: 48,
-    backgroundColor: '#000000',
     borderRadius: 24,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   appleButtonText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#FFFFFF',
   },
   footer: {
     paddingHorizontal: 30,
@@ -592,12 +568,10 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
     textAlign: 'center',
     fontWeight: '400',
   },
   signUpLink: {
-    color: '#FFFFFF',
     fontWeight: '600',
     textDecorationLine: 'underline',
   },

@@ -5,9 +5,9 @@ import {
   StyleSheet,
   Animated,
   Dimensions,
+  Image,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { RootStackParamList } from '../types';
@@ -57,14 +57,11 @@ const SplashScreen: React.FC = () => {
           },
         ]}
       >
-        <LinearGradient
-          colors={['#3396D3', '#5DADE2', '#85C1E9']}
-          style={styles.logoCircle}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-        >
-          <Text style={styles.logoText}>Yo!</Text>
-        </LinearGradient>
+        <Image
+          source={require('../../assets/splash-icon.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
       </Animated.View>
 
       {/* Tagline */}
@@ -90,26 +87,9 @@ const styles = StyleSheet.create({
   logoContainer: {
     marginBottom: 30,
   },
-  logoCircle: {
+  logo: {
     width: 200,
     height: 200,
-    borderRadius: 100,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#3396D3',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
-  },
-  logoText: {
-    fontSize: 64,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 3,
   },
   taglineContainer: {
     alignItems: 'center',
@@ -118,7 +98,7 @@ const styles = StyleSheet.create({
   },
   tagline: {
     fontSize: 18,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '600',
     textAlign: 'center',
   },

@@ -12,14 +12,17 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, CommonActions } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useDispatch } from 'react-redux';
+
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { RootStackParamList } from '../types';
 import ApiService from '../services/api';
+import { completeOnboarding } from '../store/slices/userSlice';
+import ProgressBar from '../components/ProgressBar';
 
 const { height, width } = Dimensions.get('window');
 
@@ -79,6 +82,7 @@ const meetingPreferences = [
 
 const AssistantPersonalizationScreen: React.FC = () => {
   const navigation = useNavigation<AssistantPersonalizationNavigationProp>();
+  const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -200,23 +204,31 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
       console.log('✅ Personalization saved successfully');
 
-      // Mark onboarding as complete and navigate to home
+      // Mark onboarding as complete and navigate to main app
       await ApiService.completeAgentSetup();
 
-      // Navigate to home screen (reset navigation stack)
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Home' }],
-      });
+      // Update Redux to trigger navigation to MainAppNavigator
+      dispatch(completeOnboarding());
+
+      console.log('✅ Onboarding completed - switching to Main App');
 
     } catch (error: any) {
       console.error('Failed to save personalization:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to save your preferences';
       Alert.alert(
-        'Error',
-        'Failed to save your preferences. Would you like to continue with manual setup?',
+        'Setup Failed',
+        errorMessage + '. You can retry, complete the setup manually, or continue anyway.',
         [
           { text: 'Retry', onPress: handleContinue },
           { text: 'Manual Setup', onPress: () => navigation.navigate('AgentPersonality') },
+          {
+            text: 'Complete Anyway',
+            onPress: () => {
+              // Update Redux to trigger navigation to MainAppNavigator even if setup failed
+              dispatch(completeOnboarding());
+            },
+            style: 'cancel'
+          },
         ]
       );
     } finally {
@@ -331,7 +343,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
             <MaterialIcons
               name={role.icon as any}
               size={20}
-              color={data.role === role.id ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)'}
+              color={data.role === role.id ? '#FFF7F5' : 'rgba(255, 247, 245, 0.7)'}
             />
             <Text style={[
               styles.chipText,
@@ -347,7 +359,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
         <TextInput
           style={styles.customInput}
           placeholder="Enter your role..."
-          placeholderTextColor="rgba(255, 255, 255, 0.5)"
+          placeholderTextColor="rgba(255, 247, 245, 0.5)"
           value={data.customRole}
           onChangeText={(text) => setData(prev => ({ ...prev, customRole: text }))}
           autoFocus
@@ -376,7 +388,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
               <MaterialIcons
                 name={challenge.icon as any}
                 size={20}
-                color={isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)'}
+                color={isSelected ? '#FFF7F5' : 'rgba(255, 247, 245, 0.7)'}
               />
               <Text style={[
                 styles.chipText,
@@ -385,7 +397,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
                 {challenge.label}
               </Text>
               {isSelected && (
-                <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                <Ionicons name="checkmark-circle" size={18} color="#FFF7F5" />
               )}
             </TouchableOpacity>
           );
@@ -418,7 +430,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
           value={data.workStyle}
           onValueChange={(value) => setData(prev => ({ ...prev, workStyle: value }))}
           minimumTrackTintColor="#3396D3"
-          maximumTrackTintColor="rgba(255, 255, 255, 0.3)"
+          maximumTrackTintColor="rgba(255, 247, 245, 0.3)"
           thumbTintColor="#3396D3"
         />
 
@@ -449,7 +461,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
               <MaterialIcons
                 name={time.icon as any}
                 size={20}
-                color={isSelected ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)'}
+                color={isSelected ? '#FFF7F5' : 'rgba(255, 247, 245, 0.7)'}
               />
               <Text style={[
                 styles.chipText,
@@ -458,7 +470,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
                 {time.label}
               </Text>
               {isSelected && (
-                <Ionicons name="checkmark-circle" size={18} color="#FFFFFF" />
+                <Ionicons name="checkmark-circle" size={18} color="#FFF7F5" />
               )}
             </TouchableOpacity>
           );
@@ -485,7 +497,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
             <MaterialIcons
               name={pref.icon as any}
               size={32}
-              color={data.communicationPreference === pref.id ? '#3396D3' : 'rgba(255, 255, 255, 0.5)'}
+              color={data.communicationPreference === pref.id ? '#3396D3' : 'rgba(255, 247, 245, 0.5)'}
             />
             <Text style={[
               styles.optionCardText,
@@ -517,7 +529,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
             <MaterialIcons
               name={pref.icon as any}
               size={32}
-              color={data.meetingPreference === pref.id ? '#3396D3' : 'rgba(255, 255, 255, 0.5)'}
+              color={data.meetingPreference === pref.id ? '#3396D3' : 'rgba(255, 247, 245, 0.5)'}
             />
             <Text style={[
               styles.optionCardText,
@@ -533,31 +545,20 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
+
 
       <SafeAreaView style={styles.safeArea}>
-        {/* Header */}
-        <View style={styles.header}>
+        {/* Top Bar - Fixed on black background */}
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="rgba(255, 255, 255, 0.9)" />
+            <Ionicons name="chevron-back" size={24} color="#FFF7F5" />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Personalize Your Assistant</Text>
-          <View style={{ width: 40 }} />
+          <Text style={styles.headerTitle}>Personalize</Text>
+          <View style={styles.placeholder} />
         </View>
 
-        {/* Progress Indicator */}
-        <View style={styles.progressContainer}>
-          <Text style={styles.progressText}>
-            {data.challenges.length > 0 && data.productiveTime.length > 0 && data.role
-              ? 'Almost done! 🎉'
-              : 'Tell me about yourself'}
-          </Text>
-        </View>
+        {/* Progress Bar */}
+        <ProgressBar currentStep={4} totalSteps={4} />
 
         {/* Scrollable Content */}
         <Animated.View
@@ -595,11 +596,11 @@ const AssistantPersonalizationScreen: React.FC = () => {
             disabled={!isFormValid() || loading}
           >
             {loading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <ActivityIndicator color="#FFF7F5" />
             ) : (
               <>
                 <Text style={styles.continueButtonText}>Continue</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFFFFF" />
+                <Ionicons name="arrow-forward" size={20} color="#FFF7F5" />
               </>
             )}
           </TouchableOpacity>
@@ -626,39 +627,41 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingVertical: 15,
+    paddingBottom: 20,
+    backgroundColor: '#000000',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
-  progressContainer: {
-    paddingHorizontal: 20,
-    paddingBottom: 15,
-  },
-  progressText: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+    fontSize: 24,
+    color: '#FFF7F5',
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    flex: 1,
     textAlign: 'center',
-    fontWeight: '500',
+    marginHorizontal: 10,
+  },
+  placeholder: {
+    width: 40,
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: '#1A1A1A',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 247, 245, 0.1)',
   },
   scrollView: {
     flex: 1,
@@ -672,12 +675,12 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 8,
   },
   sectionSubtitle: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     marginBottom: 20,
   },
   chipsContainer: {
@@ -692,9 +695,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 25,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   chipSelected: {
     backgroundColor: '#3396D3',
@@ -702,22 +705,22 @@ const styles = StyleSheet.create({
   },
   chipText: {
     fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     fontWeight: '500',
   },
   chipTextSelected: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   customInput: {
     marginTop: 15,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderRadius: 12,
     paddingHorizontal: 16,
     paddingVertical: 14,
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   sliderContainer: {
     paddingVertical: 10,
@@ -733,7 +736,7 @@ const styles = StyleSheet.create({
   },
   sliderLabelText: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     fontWeight: '500',
   },
   slider: {
@@ -757,9 +760,9 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingHorizontal: 10,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 247, 245, 0.15)',
   },
   optionCardSelected: {
     borderColor: '#3396D3',
@@ -768,44 +771,37 @@ const styles = StyleSheet.create({
   optionCardText: {
     marginTop: 12,
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     textAlign: 'center',
     fontWeight: '500',
   },
   optionCardTextSelected: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '600',
   },
   bottomContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    paddingBottom: 30,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 32,
   },
   continueButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: '#3396D3',
-    paddingVertical: 18,
-    borderRadius: 30,
-    shadowColor: '#3396D3',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    height: 56,
+    borderRadius: 28,
   },
   continueButtonDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    shadowOpacity: 0,
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
+    opacity: 0.5,
   },
   continueButtonText: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
+    letterSpacing: 0.4,
   },
 });
 

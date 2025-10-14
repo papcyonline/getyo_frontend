@@ -9,8 +9,10 @@ import {
   Alert,
   SafeAreaView,
   ActivityIndicator,
+  Image,
+  ScrollView,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { AntDesign, MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
@@ -19,6 +21,7 @@ import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
 import { RootState } from '../store';
 import { getTranslations } from '../utils/translations';
+import { MockNotificationScreen, MockAISuggestionsScreen, MockTasksScreen } from '../components/MockScreens';
 
 const { height, width } = Dimensions.get('window');
 
@@ -32,10 +35,31 @@ const WelcomeAuthScreen: React.FC = () => {
   const currentLanguage = useSelector((state: RootState) => state.user?.user?.preferences?.language || 'en');
   const t = getTranslations(currentLanguage);
 
+  const [currentSlide, setCurrentSlide] = useState(0);
+  const scrollViewRef = useRef<ScrollView>(null);
+
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
+
+  const mockScreens = [
+    {
+      component: MockNotificationScreen,
+      title: 'Smart Notifications',
+      description: 'Get timely reminders for calls, meetings, traffic & more'
+    },
+    {
+      component: MockAISuggestionsScreen,
+      title: 'AI-Powered Suggestions',
+      description: 'Find cheap flights, optimize schedule, remember important dates'
+    },
+    {
+      component: MockTasksScreen,
+      title: 'Stay Organized',
+      description: 'Manage tasks, track progress, never miss a deadline'
+    },
+  ];
 
   useEffect(() => {
     // Slide up animation
@@ -87,7 +111,6 @@ const WelcomeAuthScreen: React.FC = () => {
     ).start();
   }, []);
 
-
   const handleSignUp = () => {
     // Navigate to Terms & Privacy (mandatory before sign up)
     navigation.navigate('TermsPrivacy');
@@ -101,84 +124,73 @@ const WelcomeAuthScreen: React.FC = () => {
     navigation.goBack();
   };
 
+  const handleScroll = (event: any) => {
+    const slideSize = width;
+    const index = Math.round(event.nativeEvent.contentOffset.x / slideSize);
+    setCurrentSlide(index);
+  };
 
   return (
     <View style={styles.container}>
-      {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
-
       <SafeAreaView style={styles.safeArea}>
+        {/* Top Bar - Fixed on black background */}
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#FFF7F5" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Welcome</Text>
+          <Animated.View style={[
+            styles.topLogo,
+            { transform: [{ scale: pulseAnim }] }
+          ]}>
+            <Image
+              source={require('../../assets/icon.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+          </Animated.View>
+        </View>
+
         <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-          {/* Logo Section */}
-          <View style={styles.logoSection}>
-            <Animated.View style={[
-              styles.logoContainer,
-              { transform: [{ scale: pulseAnim }, { translateY: floatAnim }] }
-            ]}>
-              <LinearGradient
-                colors={['#3396D3', '#2578B5', '#1A5A97']}
-                style={styles.logoCircle}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <MaterialIcons name="assistant" size={60} color="#FFFFFF" />
-              </LinearGradient>
+          {/* Carousel */}
+          <View style={styles.carouselContainer}>
+            <ScrollView
+              ref={scrollViewRef}
+              horizontal
+              pagingEnabled
+              showsHorizontalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              snapToInterval={width}
+              decelerationRate="fast"
+            >
+              {mockScreens.map((screen, index) => {
+                const ScreenComponent = screen.component;
+                return (
+                  <View key={index} style={styles.screenshotSlide}>
+                    <View style={styles.mockScreenWrapper}>
+                      <ScreenComponent />
+                      <View style={styles.screenshotOverlay}>
+                        <Text style={styles.screenshotTitle}>{screen.title}</Text>
+                        <Text style={styles.screenshotDescription}>{screen.description}</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
 
-              {/* Glow effect */}
-              <View style={styles.glowCircle} />
-            </Animated.View>
-
-            <Text style={styles.appName}>Yo!</Text>
-            <Text style={styles.tagline}>Your Personal AI Assistant</Text>
-          </View>
-
-          {/* Features Grid */}
-          <View style={styles.featuresGrid}>
-            <View style={styles.featureCard}>
-              <View style={styles.featureIconContainer}>
-                <MaterialIcons name="chat" size={28} color="#3396D3" />
-              </View>
-              <Text style={styles.featureCardTitle}>Smart Conversations</Text>
-              <Text style={styles.featureCardDesc}>Natural voice & text interactions</Text>
-            </View>
-
-            <View style={styles.featureCard}>
-              <View style={styles.featureIconContainer}>
-                <MaterialIcons name="schedule" size={28} color="#3396D3" />
-              </View>
-              <Text style={styles.featureCardTitle}>Task Management</Text>
-              <Text style={styles.featureCardDesc}>Organize your day effortlessly</Text>
-            </View>
-
-            <View style={styles.featureCard}>
-              <View style={styles.featureIconContainer}>
-                <MaterialIcons name="notifications-active" size={28} color="#3396D3" />
-              </View>
-              <Text style={styles.featureCardTitle}>Smart Reminders</Text>
-              <Text style={styles.featureCardDesc}>Never miss what matters</Text>
-            </View>
-          </View>
-
-          {/* Stats/Trust indicators */}
-          <View style={styles.statsRow}>
-            <View style={styles.statItem}>
-              <MaterialIcons name="security" size={20} color="#3396D3" />
-              <Text style={styles.statText}>Secure</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <MaterialIcons name="cloud-done" size={20} color="#3396D3" />
-              <Text style={styles.statText}>Cloud Sync</Text>
-            </View>
-            <View style={styles.statDivider} />
-            <View style={styles.statItem}>
-              <MaterialIcons name="offline-bolt" size={20} color="#3396D3" />
-              <Text style={styles.statText}>Always On</Text>
+            {/* Pagination Dots */}
+            <View style={styles.paginationContainer}>
+              {mockScreens.map((_, index) => (
+                <View
+                  key={index}
+                  style={[
+                    styles.dot,
+                    currentSlide === index && styles.activeDot
+                  ]}
+                />
+              ))}
             </View>
           </View>
         </Animated.View>
@@ -186,23 +198,9 @@ const WelcomeAuthScreen: React.FC = () => {
         <Animated.View
           style={[
             styles.slidingContainer,
-            {
-              transform: [{ translateY: slideAnim }],
-            }
+            { transform: [{ translateY: slideAnim }] }
           ]}
         >
-          <LinearGradient
-            colors={['rgba(40, 40, 40, 0.2)', 'rgba(30, 30, 30, 0.6)', 'rgba(20, 20, 20, 0.95)']}
-            style={styles.gradientBackground}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-          >
-          <View style={styles.topBar}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Ionicons name="chevron-back-outline" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-            <View style={{ width: 40 }} />
-          </View>
 
           <View style={styles.authOptions}>
             {/* Sign Up Button */}
@@ -211,7 +209,7 @@ const WelcomeAuthScreen: React.FC = () => {
               onPress={handleSignUp}
               activeOpacity={0.9}
             >
-              <MaterialIcons name="person-add" size={20} color="#FFFFFF" />
+              <MaterialIcons name="person-add" size={20} color="#FFF7F5" />
               <Text style={styles.signUpButtonText}>{t.welcome.signUp}</Text>
             </TouchableOpacity>
 
@@ -228,7 +226,7 @@ const WelcomeAuthScreen: React.FC = () => {
               onPress={handleSignIn}
               activeOpacity={0.9}
             >
-              <MaterialIcons name="login" size={18} color="rgba(255, 255, 255, 0.9)" />
+              <MaterialIcons name="login" size={18} color="rgba(255, 247, 245, 0.9)" />
               <Text style={styles.signInButtonText}>{t.welcome.signIn}</Text>
             </TouchableOpacity>
           </View>
@@ -238,7 +236,6 @@ const WelcomeAuthScreen: React.FC = () => {
               {t.welcome.footerText}
             </Text>
           </View>
-          </LinearGradient>
         </Animated.View>
       </SafeAreaView>
     </View>
@@ -250,177 +247,154 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  gradientFlare: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: height * 0.5,
-    zIndex: 1,
-  },
   safeArea: {
     flex: 1,
-    zIndex: 2,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: '#000000',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 247, 245, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 24,
+    color: '#FFF7F5',
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 10,
+  },
+  topLogo: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  logo: {
+    width: 36,
+    height: 36,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 40,
-    zIndex: 2,
   },
-  logoSection: {
+  carouselContainer: {
+    flex: 1,
+    justifyContent: 'flex-start',
+    paddingTop: 0,
+  },
+  screenshotSlide: {
+    width: width,
     alignItems: 'center',
-    marginBottom: 40,
+    justifyContent: 'flex-start',
   },
-  logoContainer: {
-    position: 'relative',
-    marginBottom: 20,
-  },
-  logoCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    justifyContent: 'center',
+  mockScreenWrapper: {
     alignItems: 'center',
-    shadowColor: '#3396D3',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 15,
   },
-  glowCircle: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    backgroundColor: 'rgba(51, 150, 211, 0.2)',
-    top: -10,
-    left: -10,
-    zIndex: -1,
+  screenshotOverlay: {
+    marginTop: 12,
+    alignItems: 'center',
   },
-  appName: {
-    fontSize: 48,
-    fontWeight: '900',
-    color: '#FFFFFF',
-    letterSpacing: 2,
-    marginBottom: 8,
-  },
-  tagline: {
+  screenshotTitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontWeight: '500',
-    letterSpacing: 0.5,
+    fontWeight: '700',
+    color: '#FFF7F5',
+    letterSpacing: 0.3,
+    marginBottom: 4,
+    textAlign: 'center',
   },
-  featuresGrid: {
-    gap: 12,
-    marginBottom: 30,
+  screenshotDescription: {
+    fontSize: 13,
+    color: 'rgba(255, 247, 245, 0.7)',
+    fontWeight: '400',
+    letterSpacing: 0.2,
+    textAlign: 'center',
+    lineHeight: 18,
+  },
+  featureSlide: {
+    width: width - 48,
+    marginRight: 0,
   },
   featureCard: {
     backgroundColor: 'rgba(51, 150, 211, 0.08)',
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(51, 150, 211, 0.2)',
-    padding: 16,
-    flexDirection: 'row',
+    padding: 24,
     alignItems: 'center',
+    minHeight: 200,
+    justifyContent: 'center',
   },
   featureIconContainer: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 70,
+    height: 70,
+    borderRadius: 35,
     backgroundColor: 'rgba(51, 150, 211, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginBottom: 16,
   },
-  featureCardTitle: {
-    fontSize: 16,
+  featureTitle: {
+    fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     letterSpacing: 0.3,
-    marginBottom: 4,
-    flex: 1,
+    marginBottom: 8,
+    textAlign: 'center',
   },
-  featureCardDesc: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
+  featureDescription: {
+    fontSize: 14,
+    color: 'rgba(255, 247, 245, 0.7)',
     fontWeight: '400',
     letterSpacing: 0.2,
-    position: 'absolute',
-    left: 82,
-    bottom: 16,
+    textAlign: 'center',
+    lineHeight: 20,
   },
-  statsRow: {
+  paginationContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  statItem: {
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    paddingVertical: 20,
   },
-  statText: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '600',
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 247, 245, 0.3)',
+    marginHorizontal: 4,
   },
-  statDivider: {
-    width: 1,
-    height: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginHorizontal: 16,
+  activeDot: {
+    width: 24,
+    backgroundColor: '#3396D3',
   },
   slidingContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    height: height * 0.32,
+    height: height * 0.28,
+    backgroundColor: '#1A1A1A',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 247, 245, 0.1)',
     zIndex: 10,
-  },
-  gradientBackground: {
-    flex: 1,
-    paddingTop: 10,
-    zIndex: 10,
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingTop: 15,
-    paddingBottom: 20,
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '600',
   },
   authOptions: {
     paddingHorizontal: 30,
-    paddingTop: 10,
+    paddingTop: 20,
     paddingBottom: 10,
   },
   dividerContainer: {
@@ -431,11 +405,11 @@ const styles = StyleSheet.create({
   dividerLine: {
     flex: 1,
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 247, 245, 0.2)',
   },
   dividerText: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 247, 245, 0.5)',
     marginHorizontal: 16,
     fontWeight: '500',
   },
@@ -447,30 +421,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     gap: 6,
-    shadowColor: '#3396D3',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 2,
-    elevation: 2,
   },
   signUpButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    color: '#FFF7F5',
+    letterSpacing: 0.4,
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     opacity: 0.5,
   },
   signInButton: {
     height: 48,
     backgroundColor: 'transparent',
     borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 247, 245, 0.3)',
     borderRadius: 24,
     flexDirection: 'row',
     justifyContent: 'center',
@@ -480,7 +446,7 @@ const styles = StyleSheet.create({
   signInButtonText: {
     fontSize: 15,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 247, 245, 0.9)',
     letterSpacing: 0.3,
   },
   footer: {
@@ -489,7 +455,7 @@ const styles = StyleSheet.create({
   },
   footerText: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 247, 245, 0.5)',
     textAlign: 'center',
     lineHeight: 16,
     fontWeight: '400',

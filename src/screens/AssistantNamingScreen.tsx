@@ -22,10 +22,11 @@ import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { RootStackParamList } from '../types';
 import { setUser } from '../store/slices/userSlice';
 import ApiService from '../services/api';
+import ProgressBar from '../components/ProgressBar';
 
 const { height } = Dimensions.get('window');
 
@@ -135,8 +136,12 @@ const AssistantNamingScreen: React.FC = () => {
 
         dispatch(setUser(updatedUser));
 
-        // Navigate to assistant gender selection (don't complete onboarding yet)
-        navigation.navigate('AssistantGender');
+        // Navigate to UserProfileSetup where PA asks "What should I call you?"
+        navigation.navigate('UserProfileSetup', {
+          assistantName: response.data.assistantName,
+          assistantProfileImage: response.data.assistantProfileImage,
+          showAsConversation: true,
+        } as any);
       } else {
         Alert.alert('Error', response.error || 'Failed to setup assistant. Please try again.');
       }
@@ -153,24 +158,43 @@ const AssistantNamingScreen: React.FC = () => {
     navigation.goBack();
   };
 
+  const handleSkip = () => {
+    // Skip assistant setup and go directly to Main app
+    navigation.reset({
+      index: 0,
+      routes: [{ name: 'Main' as any }],
+    });
+  };
+
   return (
     <View style={styles.container}>
       {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
 
 
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Setup Assistant</Text>
-          <Text style={styles.subtitle}>
-            Name & customize your AI
-          </Text>
+        {/* Top Bar - Fixed on black background */}
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#FFF7F5" />
+          </TouchableOpacity>
+          <Text style={styles.step}>Setup Your Assistant</Text>
+          <TouchableOpacity
+            style={styles.photoButton}
+            onPress={pickImage}
+            activeOpacity={0.8}
+          >
+            {profileImage ? (
+              <Image source={{ uri: profileImage }} style={styles.topPhotoImage} />
+            ) : (
+              <View style={styles.photoButtonPlaceholder}>
+                <Ionicons name="camera" size={20} color="#3396D3" />
+              </View>
+            )}
+          </TouchableOpacity>
         </View>
+
+        {/* Progress Bar */}
+        <ProgressBar currentStep={1} totalSteps={4} />
 
         <Animated.View
           style={[
@@ -183,12 +207,6 @@ const AssistantNamingScreen: React.FC = () => {
             style={styles.keyboardAvoid}
             keyboardVerticalOffset={-50}
           >
-            <View style={styles.topBar}>
-              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <Text style={styles.backButtonText}>←</Text>
-              </TouchableOpacity>
-              <Text style={styles.step}>Setup</Text>
-            </View>
 
             <ScrollView
               style={styles.scrollView}
@@ -201,37 +219,15 @@ const AssistantNamingScreen: React.FC = () => {
                   { opacity: fadeAnim },
                 ]}
               >
-                <Text style={styles.instructionText}>Add a profile photo (optional)</Text>
-                <Text style={styles.descriptionText}>
-                  Choose a photo to represent your AI assistant
-                </Text>
-
-                {/* Profile Photo Selector */}
-                <View style={styles.profilePhotoContainer}>
-                  <TouchableOpacity
-                    style={styles.profilePhotoButton}
-                    onPress={pickImage}
-                    activeOpacity={0.8}
-                  >
-                    {profileImage ? (
-                      <Image source={{ uri: profileImage }} style={styles.profileImage} />
-                    ) : (
-                      <View style={styles.profilePlaceholder}>
-                        <Ionicons name="camera" size={32} color="rgba(255, 255, 255, 0.5)" />
-                        <Text style={styles.profilePlaceholderText}>Add Photo</Text>
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </View>
-
-                <Text style={styles.nameInstructionText}>Give your assistant a name</Text>
+                <Text style={styles.instructionText}>Name your AI assistant</Text>
 
                 <View style={styles.inputContainer}>
+                  <MaterialIcons name="assistant" size={24} color="rgba(255, 247, 245, 0.5)" style={styles.inputIcon} />
                   <TextInput
                     ref={nameInputRef}
                     style={styles.nameInput}
-                    placeholder="Enter assistant name"
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    placeholder="e.g., Alex, Sam, Jordan"
+                    placeholderTextColor="rgba(255, 247, 245, 0.5)"
                     value={assistantName}
                     onChangeText={setAssistantName}
                     autoCapitalize="words"
@@ -242,31 +238,32 @@ const AssistantNamingScreen: React.FC = () => {
                   />
                 </View>
 
-                <View style={styles.previewContainer}>
-                  <View style={styles.previewBox}>
-                    <View style={styles.previewHeader}>
-                      {profileImage ? (
-                        <Image source={{ uri: profileImage }} style={styles.previewImage} />
-                      ) : (
-                        <View style={styles.previewImagePlaceholder}>
-                          <Ionicons name="person" size={20} color="rgba(255, 255, 255, 0.5)" />
+                {assistantName.length > 0 && (
+                  <View style={styles.previewContainer}>
+                    <View style={styles.previewBox}>
+                      <View style={styles.previewHeader}>
+                        {profileImage ? (
+                          <Image source={{ uri: profileImage }} style={styles.previewImage} />
+                        ) : (
+                          <View style={styles.previewImagePlaceholder}>
+                            <Ionicons name="sparkles" size={20} color="#3396D3" />
+                          </View>
+                        )}
+                        <View style={styles.previewInfo}>
+                          <Text style={styles.previewName}>
+                            {assistantName}
+                          </Text>
+                          <Text style={styles.previewPersonality}>
+                            Your AI Assistant
+                          </Text>
                         </View>
-                      )}
-                      <View style={styles.previewInfo}>
-                        <Text style={styles.previewName}>
-                          {assistantName || '[Assistant Name]'}
-                        </Text>
-                        <Text style={styles.previewPersonality}>
-                          Personal AI Assistant
-                        </Text>
                       </View>
+                      <Text style={styles.previewText}>
+                        "Hey {assistantName}, what's on my schedule?"
+                      </Text>
                     </View>
-                    <Text style={styles.previewLabel}>Example usage:</Text>
-                    <Text style={styles.previewText}>
-                      "Hey {assistantName || '[name]'}, what's the weather like today?"
-                    </Text>
                   </View>
-                </View>
+                )}
               </Animated.View>
             </ScrollView>
 
@@ -286,20 +283,16 @@ const AssistantNamingScreen: React.FC = () => {
                 activeOpacity={0.9}
               >
                 {loading ? (
-                  <ActivityIndicator color="#FFFFFF" size="large" />
+                  <ActivityIndicator color="#FFF7F5" size="large" />
                 ) : (
                   <Text style={[
                     styles.continueButtonText,
                     !isValidSetup() && styles.disabledButtonText,
                   ]}>
-                    Complete Setup
+                    Continue
                   </Text>
                 )}
               </TouchableOpacity>
-
-              <Text style={styles.finalText}>
-                You're almost ready to start your Yo! experience!
-              </Text>
             </Animated.View>
           </KeyboardAvoidingView>
         </Animated.View>
@@ -325,31 +318,9 @@ const styles = StyleSheet.create({
     flex: 1,
     zIndex: 2,
   },
-  header: {
-    paddingHorizontal: 30,
-    paddingTop: 15,
-    paddingBottom: 10,
-    alignItems: 'center',
-    zIndex: 2,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 8,
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    fontWeight: '400',
-    lineHeight: 20,
-  },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
@@ -360,30 +331,48 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingTop: 10,
-    paddingBottom: 5,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: '#000000',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '600',
   },
   step: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '500',
+    fontSize: 24,
+    color: '#FFF7F5',
+    fontWeight: '800',
     letterSpacing: 0.5,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 10,
+  },
+  photoButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(51, 150, 211, 0.1)',
+    borderWidth: 2,
+    borderColor: 'rgba(51, 150, 211, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  photoButtonPlaceholder: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  topPhotoImage: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
   },
   scrollView: {
     flex: 1,
@@ -394,109 +383,63 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    paddingHorizontal: 30,
-    paddingTop: 10,
+    paddingHorizontal: 24,
+    paddingTop: 30,
   },
   instructionText: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    fontWeight: '500',
-    marginBottom: 10,
+    fontSize: 20,
+    color: '#FFF7F5',
+    fontWeight: '700',
+    marginBottom: 24,
     letterSpacing: 0.3,
-  },
-  descriptionText: {
-    fontSize: 15,
-    color: 'rgba(255, 255, 255, 0.6)',
     textAlign: 'center',
-    fontWeight: '400',
-    marginBottom: 30,
-    lineHeight: 22,
-    paddingHorizontal: 10,
   },
   inputContainer: {
-    marginBottom: 32,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
+    borderRadius: 30,
+    paddingHorizontal: 18,
+    height: 60,
+    marginBottom: 28,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 247, 245, 0.15)',
+  },
+  inputIcon: {
+    marginRight: 12,
   },
   nameInput: {
-    height: 65,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderRadius: 16,
-    paddingHorizontal: 20,
-    fontSize: 18,
-    color: '#FFFFFF',
-    textAlign: 'center',
+    flex: 1,
+    fontSize: 17,
+    color: '#FFF7F5',
     fontWeight: '500',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-  },
-  profilePhotoContainer: {
-    alignItems: 'center',
-    marginBottom: 30,
-  },
-  profilePhotoButton: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    overflow: 'hidden',
-  },
-  profileImage: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-  },
-  profilePlaceholder: {
-    width: 96,
-    height: 96,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  profilePlaceholderText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
-    marginTop: 4,
-    fontWeight: '500',
-  },
-  nameInstructionText: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    fontWeight: '500',
-    marginBottom: 20,
-    letterSpacing: 0.3,
   },
   previewContainer: {
-    alignItems: 'center',
+    marginTop: 8,
   },
   previewBox: {
-    backgroundColor: 'rgba(201, 169, 110, 0.08)',
+    backgroundColor: 'rgba(51, 150, 211, 0.08)',
     borderRadius: 16,
-    padding: 20,
-    width: '100%',
+    padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(201, 169, 110, 0.15)',
+    borderColor: 'rgba(51, 150, 211, 0.2)',
   },
   previewHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 15,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    marginBottom: 12,
   },
   previewImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     marginRight: 12,
   },
   previewImagePlaceholder: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(51, 150, 211, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -505,60 +448,55 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   previewName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#FFF7F5',
     marginBottom: 2,
   },
   previewPersonality: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
-  },
-  previewLabel: {
-    fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
-    marginBottom: 10,
-    textAlign: 'center',
-    fontWeight: '500',
+    fontSize: 13,
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   previewText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontSize: 15,
+    color: 'rgba(255, 247, 245, 0.85)',
     fontStyle: 'italic',
-    lineHeight: 22,
-    fontWeight: '400',
+    lineHeight: 21,
   },
   footer: {
-    paddingHorizontal: 30,
-    paddingBottom: 25,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 32,
   },
   continueButton: {
-    height: 65,
+    height: 56,
     backgroundColor: '#3396D3',
-    borderRadius: 32,
+    borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 12,
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
+    opacity: 0.5,
   },
   continueButtonText: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    color: '#FFF7F5',
+    letterSpacing: 0.4,
   },
   disabledButtonText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: 'rgba(255, 247, 245, 0.4)',
   },
-  finalText: {
-    fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
-    textAlign: 'center',
-    lineHeight: 18,
-    fontWeight: '400',
+  skipButton: {
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  skipButtonText: {
+    fontSize: 15,
+    fontWeight: '500',
+    color: 'rgba(255, 247, 245, 0.5)',
   },
 });
 

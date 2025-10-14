@@ -11,15 +11,16 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RootStackParamList } from '../types';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import ApiService from '../services/api';
-import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import ProgressBar from '../components/ProgressBar';
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,8 +32,6 @@ interface VoiceOption {
   description: string;
   gender: 'male' | 'female';
   sampleText: string;
-  pitch: number;
-  rate: number;
 }
 
 const voiceOptions: VoiceOption[] = [
@@ -43,36 +42,28 @@ const voiceOptions: VoiceOption[] = [
     description: 'Warm and friendly',
     gender: 'female',
     sampleText: "Hello Boss!",
-    pitch: 1.1,
-    rate: 0.9,
   },
   {
     id: 'shimmer',
     name: 'Shimmer',
     description: 'Professional and clear',
     gender: 'female',
-    sampleText: "Good morning Boss!",
-    pitch: 1.0,
-    rate: 0.85,
+    sampleText: "Hello Boss!",
   },
   // Male voices
   {
     id: 'echo',
     name: 'Echo',
-    description: 'Confident and reliable',
+    description: 'Sharp and authoritative',
     gender: 'male',
     sampleText: "Hello Boss!",
-    pitch: 0.8,
-    rate: 0.9,
   },
   {
     id: 'onyx',
     name: 'Onyx',
-    description: 'Deep and calming',
+    description: 'Deep and powerful',
     gender: 'male',
-    sampleText: "Good day Boss!",
-    pitch: 0.7,
-    rate: 0.8,
+    sampleText: "Hello Boss!",
   },
 ];
 
@@ -85,11 +76,18 @@ const AssistantGenderScreen: React.FC = () => {
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
-  const [demoText, setDemoText] = useState<string | null>(null);
 
   const slideAnim = useRef(new Animated.Value(height)).current;
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   useEffect(() => {
+    // Configure audio mode
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: true,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: true,
+    });
+
     // Slide up animation
     Animated.spring(slideAnim, {
       toValue: 0,
@@ -97,6 +95,13 @@ const AssistantGenderScreen: React.FC = () => {
       tension: 50,
       friction: 8,
     }).start();
+
+    // Cleanup audio on unmount
+    return () => {
+      if (soundRef.current) {
+        soundRef.current.unloadAsync();
+      }
+    };
   }, []);
 
   const handleGenderSelect = (gender: 'male' | 'female') => {
@@ -106,57 +111,66 @@ const AssistantGenderScreen: React.FC = () => {
   };
 
   const playVoiceSample = async (voice: VoiceOption) => {
-    console.log('🎵 Demo: Playing voice sample for:', voice.name, voice.sampleText);
+    console.log('🎵 Playing OpenAI TTS sample for:', voice.name, voice.sampleText);
 
+    // If already playing this voice, stop it
     if (isPlaying === voice.id) {
       console.log('🛑 Stopping currently playing voice');
       stopVoiceSample();
       return;
     }
 
-    stopVoiceSample();
+    // Stop any currently playing audio
+    await stopVoiceSample();
     setIsPlaying(voice.id);
 
     try {
-      // Try real speech first (works in development builds)
-      await Speech.speak(voice.sampleText, {
-        language: 'en-US',
-        pitch: voice.pitch,
-        rate: voice.rate,
-        onDone: () => {
-          console.log('✅ Speech completed for:', voice.name);
-          setIsPlaying(null);
-        },
-        onStopped: () => {
-          console.log('🛑 Speech stopped for:', voice.name);
-          setIsPlaying(null);
-        },
-        onError: (error: any) => {
-          console.error('❌ Speech error for:', voice.name, error);
-          setIsPlaying(null);
-        },
-      });
-    } catch (error) {
-      console.log('📱 Expo Go detected - using demo mode for voice preview');
+      // Call OpenAI TTS API through backend
+      console.log('📡 Calling OpenAI TTS API...');
+      const audioBase64 = await ApiService.synthesizeSpeech(voice.sampleText, voice.id);
 
-      // Expo Go fallback: simulate voice playback with visual feedback
-      setDemoText(`"${voice.sampleText}" - ${voice.description}`);
-      setTimeout(() => {
-        console.log(`🎭 Demo: "${voice.sampleText}" - ${voice.description}`);
-        setIsPlaying(null);
-        setDemoText(null);
-      }, 2000); // 2 second demo
+      console.log('✅ Audio received, loading...');
+
+      // Create and load sound from base64
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: audioBase64 },
+        { shouldPlay: true },
+        (status) => {
+          if (status.isLoaded) {
+            if (status.didJustFinish) {
+              console.log('✅ Playback finished for:', voice.name);
+              setIsPlaying(null);
+              soundRef.current?.unloadAsync();
+              soundRef.current = null;
+            }
+          }
+        }
+      );
+
+      soundRef.current = sound;
+      console.log('🔊 Playing audio...');
+
+    } catch (error: any) {
+      console.error('❌ TTS playback error:', error);
+      Alert.alert(
+        'Playback Error',
+        'Unable to play voice sample. Please check your connection and try again.'
+      );
+      setIsPlaying(null);
     }
   };
 
-  const stopVoiceSample = () => {
+  const stopVoiceSample = async () => {
     try {
-      Speech.stop();
+      if (soundRef.current) {
+        await soundRef.current.stopAsync();
+        await soundRef.current.unloadAsync();
+        soundRef.current = null;
+      }
     } catch (error) {
-      // Ignore speech stop errors in Expo Go
+      console.error('Error stopping audio:', error);
     }
     setIsPlaying(null);
-    setDemoText(null);
   };
 
   const handleVoiceSelect = (voiceId: string) => {
@@ -226,20 +240,20 @@ const AssistantGenderScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Background gradient */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
+
 
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Choose Assistant Gender</Text>
-          <Text style={styles.subtitle}>
-            Select your assistant's gender and voice
-          </Text>
+        {/* Top Bar - Fixed on black background */}
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#FFF7F5" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Choose Voice</Text>
+          <View style={styles.placeholder} />
         </View>
+
+        {/* Progress Bar */}
+        <ProgressBar currentStep={3} totalSteps={4} />
 
         <Animated.View
           style={[
@@ -247,12 +261,6 @@ const AssistantGenderScreen: React.FC = () => {
             { transform: [{ translateY: slideAnim }] }
           ]}
         >
-          <View style={styles.topBar}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <Text style={styles.backButtonText}>←</Text>
-            </TouchableOpacity>
-            <Text style={styles.step}>Gender Selection</Text>
-          </View>
 
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
             <View style={styles.content}>
@@ -269,7 +277,7 @@ const AssistantGenderScreen: React.FC = () => {
                 <Ionicons
                   name={showGenderDropdown ? "chevron-up" : "chevron-down"}
                   size={20}
-                  color="rgba(255, 255, 255, 0.7)"
+                  color="rgba(255, 247, 245, 0.7)"
                 />
               </TouchableOpacity>
 
@@ -361,7 +369,7 @@ const AssistantGenderScreen: React.FC = () => {
               activeOpacity={0.9}
             >
               {loading ? (
-                <ActivityIndicator color="#FFFFFF" size="large" />
+                <ActivityIndicator color="#FFF7F5" size="large" />
               ) : (
                 <Text style={[
                   styles.continueButtonText,
@@ -393,63 +401,44 @@ const styles = StyleSheet.create({
   },
   safeArea: {
     flex: 1,
-    zIndex: 2,
-  },
-  header: {
-    paddingHorizontal: 30,
-    paddingTop: 20,
-    paddingBottom: 15,
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 12,
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    fontWeight: '400',
-    lineHeight: 24,
-  },
-  slidingContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingTop: 15,
-    paddingBottom: 10,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: '#000000',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
   },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '600',
-  },
-  step: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: '500',
+  title: {
+    fontSize: 24,
+    color: '#FFF7F5',
+    fontWeight: '800',
     letterSpacing: 0.5,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 10,
+  },
+  placeholder: {
+    width: 40,
+  },
+  slidingContainer: {
+    flex: 1,
+    backgroundColor: '#1A1A1A',
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 247, 245, 0.1)',
   },
   scrollView: {
     flex: 1,
@@ -465,17 +454,17 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '600',
     marginBottom: 15,
     letterSpacing: 0.3,
   },
   dropdownButton: {
     height: 60,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: 'rgba(255, 247, 245, 0.15)',
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -484,11 +473,11 @@ const styles = StyleSheet.create({
   },
   dropdownButtonText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
   },
   dropdown: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderRadius: 12,
     marginBottom: 30,
     overflow: 'hidden',
@@ -501,13 +490,13 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
     marginLeft: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginHorizontal: 20,
   },
   demoTextContainer: {
@@ -528,7 +517,7 @@ const styles = StyleSheet.create({
     marginTop: 20,
   },
   voiceList: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#1A1A1A',
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -546,13 +535,13 @@ const styles = StyleSheet.create({
   },
   voiceName: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '600',
     marginBottom: 4,
   },
   voiceDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   playButton: {
     width: 40,
@@ -568,12 +557,13 @@ const styles = StyleSheet.create({
   },
   voiceDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginHorizontal: 20,
   },
   footer: {
-    paddingHorizontal: 30,
-    paddingBottom: 25,
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 32,
   },
   continueButton: {
     height: 65,
@@ -583,16 +573,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
   },
   continueButtonText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     letterSpacing: 0.5,
   },
   disabledButtonText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: 'rgba(255, 247, 245, 0.4)',
   },
 });
 

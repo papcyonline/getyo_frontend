@@ -1,5 +1,5 @@
 import Voice from '@react-native-voice/voice';
-import { Platform, Alert, AppState, AppStateStatus } from 'react-native';
+import { Platform, Alert, AppState, AppStateStatus, PermissionsAndroid } from 'react-native';
 import { voiceService } from './voiceService';
 import ApiService from './api';
 
@@ -21,14 +21,21 @@ class WakeWordService {
   private recognizedText: string = '';
 
   constructor() {
-    // Setup voice event listeners
-    Voice.onSpeechStart = this.onSpeechStart;
-    Voice.onSpeechEnd = this.onSpeechEnd;
-    Voice.onSpeechResults = this.onSpeechResults;
-    Voice.onSpeechError = this.onSpeechError;
+    // Check if Voice module is available (not in Expo Go)
+    try {
+      if (Voice && typeof Voice.isAvailable === 'function') {
+        // Setup voice event listeners
+        Voice.onSpeechStart = this.onSpeechStart;
+        Voice.onSpeechEnd = this.onSpeechEnd;
+        Voice.onSpeechResults = this.onSpeechResults;
+        Voice.onSpeechError = this.onSpeechError;
 
-    // Monitor app state to restart listening when app comes to foreground
-    AppState.addEventListener('change', this.handleAppStateChange);
+        // Monitor app state to restart listening when app comes to foreground
+        AppState.addEventListener('change', this.handleAppStateChange);
+      }
+    } catch (error) {
+      console.log('ℹ️ Wake word detection requires a development build (not available in Expo Go)');
+    }
   }
 
   /**
@@ -45,6 +52,12 @@ class WakeWordService {
    */
   async startListening(): Promise<boolean> {
     try {
+      // Check if Voice module is available (not available in Expo Go)
+      if (!Voice || typeof Voice.isAvailable !== 'function') {
+        console.log('ℹ️ Wake word detection requires a development build (not available in Expo Go)');
+        return false;
+      }
+
       if (this.isListening) {
         console.log('🎤 Already listening for wake word');
         return true;
@@ -53,7 +66,7 @@ class WakeWordService {
       // Check if voice recognition is available
       const isAvailable = await Voice.isAvailable();
       if (!isAvailable) {
-        console.error('❌ Voice recognition not available on this device');
+        console.log('ℹ️ Voice recognition not available on this device');
         return false;
       }
 
@@ -63,7 +76,7 @@ class WakeWordService {
       console.log(`🎤 Listening for wake word: "Yo ${this.config.assistantName}"`);
       return true;
     } catch (error) {
-      console.error('❌ Failed to start wake word listening:', error);
+      console.log('ℹ️ Wake word detection unavailable - requires development build');
       this.isListening = false;
       return false;
     }
@@ -78,11 +91,13 @@ class WakeWordService {
         return;
       }
 
-      await Voice.stop();
+      if (Voice && typeof Voice.stop === 'function') {
+        await Voice.stop();
+      }
       this.isListening = false;
       console.log('🛑 Stopped listening for wake word');
     } catch (error) {
-      console.error('❌ Failed to stop wake word listening:', error);
+      console.log('ℹ️ Wake word service not active');
     }
   }
 
@@ -203,8 +218,17 @@ class WakeWordService {
         return true;
       } else if (Platform.OS === 'android') {
         // Android requires RECORD_AUDIO permission
-        const hasPermission = await Voice.isRecognizing();
-        return hasPermission;
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.RECORD_AUDIO,
+          {
+            title: 'Microphone Permission',
+            message: 'This app needs access to your microphone for wake word detection.',
+            buttonNeutral: 'Ask Me Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        return granted === PermissionsAndroid.RESULTS.GRANTED;
       }
       return true;
     } catch (error) {
@@ -267,7 +291,13 @@ class WakeWordService {
    */
   async destroy() {
     await this.stopListening();
-    Voice.destroy();
+    try {
+      if (Voice && typeof Voice.destroy === 'function') {
+        Voice.destroy();
+      }
+    } catch (error) {
+      // Ignore cleanup errors
+    }
   }
 }
 

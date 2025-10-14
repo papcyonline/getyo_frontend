@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -309,7 +309,7 @@ const AgentTaskCategoriesScreen: React.FC = () => {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case 'high': return '#FF6B6B';
-      case 'medium': return '#FFFFFF';
+      case 'medium': return '#FFF7F5';
       case 'low': return '#95A5A6';
       default: return '#95A5A6';
     }
@@ -331,7 +331,7 @@ const AgentTaskCategoriesScreen: React.FC = () => {
               <MaterialIcons
                 name={category.icon as any}
                 size={24}
-                color={isSelected ? '#FFFFFF' : '#FFFFFF'}
+                color={isSelected ? '#FFF7F5' : '#FFF7F5'}
               />
             </View>
             <View style={styles.textContainer}>
@@ -358,7 +358,7 @@ const AgentTaskCategoriesScreen: React.FC = () => {
             </View>
             {isSelected && (
               <View style={styles.checkmarkContainer}>
-                <MaterialIcons name="check-circle" size={20} color="#FFFFFF" />
+                <MaterialIcons name="check-circle" size={20} color="#FFF7F5" />
               </View>
             )}
           </View>
@@ -391,7 +391,7 @@ const AgentTaskCategoriesScreen: React.FC = () => {
             </View>
             {isSelected && (
               <View style={styles.checkmarkContainer}>
-                <MaterialIcons name="check-circle" size={18} color="#FFFFFF" />
+                <MaterialIcons name="check-circle" size={18} color="#FFF7F5" />
               </View>
             )}
           </View>
@@ -403,14 +403,7 @@ const AgentTaskCategoriesScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-      />
-
+      
 
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
@@ -491,7 +484,7 @@ const AgentTaskCategoriesScreen: React.FC = () => {
               >
                 {saving ? (
                   <View style={styles.savingContainer}>
-                    <ActivityIndicator size="small" color="#FFFFFF" style={{ marginRight: 8 }} />
+                    <ActivityIndicator size="small" color="#FFF7F5" style={{ marginRight: 8 }} />
                     <Text style={styles.continueButtonText}>Saving...</Text>
                   </View>
                 ) : (
@@ -538,14 +531,14 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     textAlign: 'center',
     fontWeight: '400',
     lineHeight: 24,
@@ -555,7 +548,7 @@ const styles = StyleSheet.create({
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
@@ -571,20 +564,20 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   backButtonText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontSize: 22,
     fontWeight: '600',
   },
   step: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
     letterSpacing: 0.5,
   },
@@ -598,23 +591,23 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   selectionInfo: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 247, 245, 0.05)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 24,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 247, 245, 0.1)',
   },
   infoText: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     textAlign: 'center',
     fontWeight: '600',
     marginBottom: 4,
   },
   infoSubtext: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     textAlign: 'center',
     fontWeight: '400',
   },
@@ -624,13 +617,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 8,
     letterSpacing: 0.3,
   },
   sectionDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     marginBottom: 20,
     lineHeight: 20,
   },
@@ -651,14 +644,14 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginHorizontal: 4,
   },
   iconContainer: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
@@ -678,11 +671,11 @@ const styles = StyleSheet.create({
   categoryName: {
     fontSize: 16,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 247, 245, 0.9)',
     flex: 1,
   },
   selectedText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   priorityBadge: {
     borderRadius: 8,
@@ -692,28 +685,28 @@ const styles = StyleSheet.create({
   },
   priorityText: {
     fontSize: 10,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '600',
   },
   categoryDescription: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     lineHeight: 18,
     marginBottom: 8,
   },
   selectedDescription: {
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 247, 245, 0.9)',
   },
   examplesContainer: {
     marginTop: 4,
   },
   exampleText: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 247, 245, 0.5)',
     lineHeight: 16,
   },
   selectedExample: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 247, 245, 0.8)',
   },
   checkmarkContainer: {
     marginLeft: 12,
@@ -746,12 +739,12 @@ const styles = StyleSheet.create({
   priorityLabel: {
     fontSize: 14,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 247, 245, 0.9)',
     marginBottom: 2,
   },
   priorityDescription: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     lineHeight: 16,
   },
   footer: {
@@ -766,16 +759,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
   },
   continueButtonText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     letterSpacing: 0.5,
   },
   disabledButtonText: {
-    color: 'rgba(255, 255, 255, 0.4)',
+    color: 'rgba(255, 247, 245, 0.4)',
   },
   loadingContainer: {
     flex: 1,
@@ -785,7 +778,7 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     marginTop: 16,
     fontWeight: '500',
   },

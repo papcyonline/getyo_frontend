@@ -12,7 +12,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 
 const { width, height } = Dimensions.get('window');
 
@@ -55,7 +54,7 @@ const AnalyticsScreen: React.FC = () => {
       value: '9:00 AM - 11:00 AM',
       trend: '+15%',
       icon: 'time-outline',
-      color: '#FFFFFF'
+      color: '#FFF7F5'
     },
     {
       title: 'AI Efficiency Gain',
@@ -86,7 +85,7 @@ const AnalyticsScreen: React.FC = () => {
       current: 8,
       target: 10,
       progress: 0.8,
-      color: '#FFFFFF'
+      color: '#FFF7F5'
     },
     {
       title: 'Meeting Efficiency',
@@ -111,7 +110,7 @@ const AnalyticsScreen: React.FC = () => {
       time: '2 hours ago',
       type: 'calendar',
       icon: 'calendar-outline',
-      color: '#FFFFFF'
+      color: '#FFF7F5'
     },
     {
       task: 'Drafted follow-up email to client',
@@ -164,14 +163,6 @@ const AnalyticsScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       {/* Blue-Black Gradient Background */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.3)', 'rgba(0, 0, 0, 0.6)', 'transparent']}
-        style={styles.gradientBackground}
-        start={{ x: 0.5, y: 0.4 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-      />
-
       {/* Dot Pattern */}
       <View style={styles.dotContainer} pointerEvents="none">
         {renderDots()}
@@ -183,11 +174,11 @@ const AnalyticsScreen: React.FC = () => {
           style={styles.backButton}
           onPress={handleBackPress}
         >
-          <Ionicons name="chevron-back" size={28} color="#FFFFFF" />
+          <Ionicons name="chevron-back" size={28} color="#FFF7F5" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Analytics</Text>
         <TouchableOpacity style={styles.headerRight}>
-          <Ionicons name="download-outline" size={24} color="#FFFFFF" />
+          <Ionicons name="download-outline" size={24} color="#FFF7F5" />
         </TouchableOpacity>
       </View>
 
@@ -205,7 +196,7 @@ const AnalyticsScreen: React.FC = () => {
           >
             <Text style={[
               styles.periodButtonText,
-              { color: selectedPeriod === 'week' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)' }
+              { color: selectedPeriod === 'week' ? '#FFF7F5' : 'rgba(255, 247, 245, 0.7)' }
             ]}>
               This Week
             </Text>
@@ -219,7 +210,7 @@ const AnalyticsScreen: React.FC = () => {
           >
             <Text style={[
               styles.periodButtonText,
-              { color: selectedPeriod === 'month' ? '#FFFFFF' : 'rgba(255, 255, 255, 0.7)' }
+              { color: selectedPeriod === 'month' ? '#FFF7F5' : 'rgba(255, 247, 245, 0.7)' }
             ]}>
               This Month
             </Text>
@@ -228,12 +219,7 @@ const AnalyticsScreen: React.FC = () => {
 
         {/* Productivity Score Card */}
         <View style={styles.scoreCard}>
-          <LinearGradient
-            colors={['#3396D3', '#0EA5E9']}
-            style={styles.scoreGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-          >
+          
             <View style={styles.scoreContent}>
               <View>
                 <Text style={styles.scoreLabel}>Productivity Score</Text>
@@ -247,7 +233,6 @@ const AnalyticsScreen: React.FC = () => {
                 <Ionicons name="trending-up" size={32} color="white" />
               </View>
             </View>
-          </LinearGradient>
         </View>
 
         {/* Key Metrics */}
@@ -257,7 +242,7 @@ const AnalyticsScreen: React.FC = () => {
           <View style={styles.metricsGrid}>
             <View style={styles.metricCard}>
               <View style={[styles.metricIcon, { backgroundColor: 'rgba(21, 183, 232, 0.1)' }]}>
-                <Ionicons name="checkmark-circle-outline" size={24} color="#FFFFFF" />
+                <Ionicons name="checkmark-circle-outline" size={24} color="#FFF7F5" />
               </View>
               <Text style={styles.metricValue}>{currentStats.tasksCompleted}</Text>
               <Text style={styles.metricLabel}>Tasks Completed</Text>
@@ -401,14 +386,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginRight: 8,
   },
   headerTitle: {
     flex: 1,
     fontSize: 24,
     fontWeight: '700',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     textAlign: 'center',
   },
   headerRight: {
@@ -417,14 +402,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 22,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
   },
   periodSelector: {
     flexDirection: 'row',
     margin: 16,
     padding: 4,
     borderRadius: 12,
-    backgroundColor: 'rgba(51, 150, 211, 0.2)',
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 5,
   },
   periodButton: {
@@ -443,6 +430,10 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     overflow: 'hidden',
     zIndex: 5,
+    backgroundColor: '#000000',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+    padding: 24,
   },
   scoreGradient: {
     padding: 24,
@@ -453,7 +444,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   scoreLabel: {
-    color: 'rgba(255, 255, 255, 0.8)',
+    color: 'rgba(255, 247, 245, 0.8)',
     fontSize: 14,
     marginBottom: 4,
   },
@@ -464,7 +455,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   scoreSubtext: {
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 247, 245, 0.9)',
     fontSize: 14,
     fontWeight: '500',
   },
@@ -472,7 +463,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 247, 245, 0.2)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -480,7 +471,7 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 16,
     padding: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: '#000000',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
     zIndex: 5,
@@ -489,7 +480,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     marginBottom: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   metricsGrid: {
     flexDirection: 'row',
@@ -512,19 +503,19 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginBottom: 4,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   metricLabel: {
     fontSize: 12,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   insightCard: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(255, 247, 245, 0.1)',
   },
   insightIcon: {
     width: 40,
@@ -541,11 +532,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 2,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   insightValue: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   trendBadge: {
     paddingHorizontal: 8,
@@ -560,7 +551,7 @@ const styles = StyleSheet.create({
   goalCard: {
     paddingVertical: 16,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(255, 247, 245, 0.1)',
   },
   goalHeader: {
     flexDirection: 'row',
@@ -571,17 +562,17 @@ const styles = StyleSheet.create({
   goalTitle: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   goalValue: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   progressBar: {
     height: 6,
     borderRadius: 3,
     marginBottom: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backgroundColor: 'rgba(255, 247, 245, 0.2)',
   },
   progressFill: {
     height: '100%',
@@ -596,7 +587,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 16,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+    borderBottomColor: 'rgba(255, 247, 245, 0.1)',
   },
   activityIcon: {
     width: 40,
@@ -613,11 +604,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '500',
     marginBottom: 2,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   activityTime: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
   },
   footer: {
     padding: 20,
@@ -626,14 +617,14 @@ const styles = StyleSheet.create({
   footerText: {
     fontSize: 12,
     fontStyle: 'italic',
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
   },
   dot: {
     position: 'absolute',
     width: 2,
     height: 2,
     borderRadius: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
   },
 });
 

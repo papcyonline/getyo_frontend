@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { RootState } from '../store';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useSubscription } from '../contexts/SubscriptionContext';
 import Paywall from '../components/Paywall';
 
@@ -145,7 +145,7 @@ const FinancialDashboardScreen: React.FC = () => {
             style={[
               styles.periodButton,
               { backgroundColor: theme.surface },
-              selectedPeriod === period.key && { backgroundColor: '#FFFFFF' }
+              selectedPeriod === period.key && { backgroundColor: '#FFF7F5' }
             ]}
             onPress={() => setSelectedPeriod(period.key)}
           >
@@ -254,7 +254,7 @@ const FinancialDashboardScreen: React.FC = () => {
               Recent Transactions
             </Text>
             <TouchableOpacity>
-              <Text style={[styles.seeAllText, { color: '#FFFFFF' }]}>
+              <Text style={[styles.seeAllText, { color: '#FFF7F5' }]}>
                 See All
               </Text>
             </TouchableOpacity>
@@ -281,7 +281,7 @@ const FinancialDashboardScreen: React.FC = () => {
                   color={
                     transaction.type === 'income' ? '#10B981' :
                     transaction.type === 'expense' ? '#EF4444' :
-                    '#FFFFFF'
+                    '#FFF7F5'
                   }
                 />
               </View>
@@ -310,7 +310,7 @@ const FinancialDashboardScreen: React.FC = () => {
         {/* AI Insights */}
         <View style={[styles.section, { backgroundColor: theme.surface }]}>
           <View style={styles.aiHeader}>
-            <Ionicons name="sparkles" size={16} color="#FFFFFF" />
+            <Ionicons name="sparkles" size={16} color="#FFF7F5" />
             <Text style={[styles.sectionTitle, { color: theme.text, marginLeft: 8 }]}>
               AI Financial Insights
             </Text>
@@ -383,7 +383,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7F5',
   },
   header: {
     flexDirection: 'row',

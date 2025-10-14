@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import * as Localization from 'expo-localization';
@@ -230,13 +230,6 @@ const LanguageSelectionScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
 
       {/* Background dotted pattern */}
       <View style={styles.backgroundPattern}>
@@ -259,14 +252,6 @@ const LanguageSelectionScreen: React.FC = () => {
             { transform: [{ translateY: slideAnim }] }
           ]}
         >
-          {/* Gradient overlay for visual effect */}
-          <LinearGradient
-            colors={['rgba(40, 40, 40, 0.2)', 'rgba(30, 30, 30, 0.6)', 'rgba(20, 20, 20, 0.95)']}
-            style={styles.gradientOverlay}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            pointerEvents="none"
-          />
 
           <View style={styles.pickerContainer}>
             <ScrollView
@@ -302,14 +287,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  gradientFlare: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    height: height * 0.4,
-    zIndex: 1,
-  },
   backgroundPattern: {
     position: 'absolute',
     top: 0,
@@ -326,7 +303,7 @@ const styles = StyleSheet.create({
     width: 2,
     height: 2,
     borderRadius: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    backgroundColor: 'rgba(255, 247, 245, 0.8)',
     margin: 12,
   },
   safeArea: {
@@ -342,29 +319,20 @@ const styles = StyleSheet.create({
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.95)',
+    backgroundColor: '#1A1A1A',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 247, 245, 0.1)',
     marginTop: 20,
     overflow: 'hidden',
-  },
-  gradientOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
   },
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
@@ -380,9 +348,11 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingTop: 30,
     zIndex: 1,
+    backgroundColor: 'transparent',
   },
   scrollView: {
     flex: 1,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     paddingHorizontal: 20,
@@ -415,7 +385,7 @@ const styles = StyleSheet.create({
   languageName: {
     fontSize: 17,
     fontWeight: '600',
-    color: 'rgba(255, 255, 255, 0.9)',
+    color: 'rgba(255, 247, 245, 0.9)',
     marginBottom: 2,
   },
   selectedLanguageName: {
@@ -425,7 +395,7 @@ const styles = StyleSheet.create({
   },
   nativeName: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     fontWeight: '400',
   },
   selectedNativeName: {
@@ -443,18 +413,19 @@ const styles = StyleSheet.create({
   },
   checkmark: {
     fontSize: 16,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: 'bold',
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginHorizontal: 20,
   },
   footer: {
     paddingHorizontal: 30,
     paddingVertical: 30,
     zIndex: 1,
+    backgroundColor: 'transparent',
   },
   continueButton: {
     height: 56,
@@ -466,8 +437,8 @@ const styles = StyleSheet.create({
   continueButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFFFFF',
-    letterSpacing: 0.5,
+    color: '#FFF7F5',
+    letterSpacing: 0.4,
   },
   skipButton: {
     height: 44,
@@ -477,7 +448,7 @@ const styles = StyleSheet.create({
   skipButtonText: {
     fontSize: 16,
     fontWeight: '500',
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     letterSpacing: 0.3,
   },
   disabledButton: {

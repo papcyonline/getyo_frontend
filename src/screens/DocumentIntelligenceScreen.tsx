@@ -131,7 +131,7 @@ const DocumentIntelligenceScreen: React.FC = () => {
       name: 'Research Brief',
       description: 'Summarize findings and recommendations',
       icon: 'search',
-      color: '#FFFFFF'
+      color: '#FFF7F5'
     }
   ];
 
@@ -149,7 +149,7 @@ const DocumentIntelligenceScreen: React.FC = () => {
     switch (type) {
       case 'financial': return '#10B981';
       case 'legal': return '#EF4444';
-      case 'research': return '#FFFFFF';
+      case 'research': return '#FFF7F5';
       case 'hr': return '#8B5CF6';
       default: return theme.textSecondary;
     }
@@ -174,7 +174,7 @@ const DocumentIntelligenceScreen: React.FC = () => {
           <Text style={[styles.headerTitle, { color: theme.text }]}>Document Intelligence</Text>
         </View>
         <TouchableOpacity style={styles.uploadButton} onPress={handleUploadDocument}>
-          <Ionicons name="add" size={24} color="#FFFFFF" />
+          <Ionicons name="add" size={24} color="#FFF7F5" />
         </TouchableOpacity>
       </View>
 
@@ -183,13 +183,13 @@ const DocumentIntelligenceScreen: React.FC = () => {
         <TouchableOpacity
           style={[
             styles.tab,
-            selectedTab === 'recent' && { borderBottomColor: '#FFFFFF', borderBottomWidth: 2 }
+            selectedTab === 'recent' && { borderBottomColor: '#FFF7F5', borderBottomWidth: 2 }
           ]}
           onPress={() => setSelectedTab('recent')}
         >
           <Text style={[
             styles.tabText,
-            { color: selectedTab === 'recent' ? '#FFFFFF' : theme.textSecondary }
+            { color: selectedTab === 'recent' ? '#FFF7F5' : theme.textSecondary }
           ]}>
             Recent Documents
           </Text>
@@ -197,13 +197,13 @@ const DocumentIntelligenceScreen: React.FC = () => {
         <TouchableOpacity
           style={[
             styles.tab,
-            selectedTab === 'templates' && { borderBottomColor: '#FFFFFF', borderBottomWidth: 2 }
+            selectedTab === 'templates' && { borderBottomColor: '#FFF7F5', borderBottomWidth: 2 }
           ]}
           onPress={() => setSelectedTab('templates')}
         >
           <Text style={[
             styles.tabText,
-            { color: selectedTab === 'templates' ? '#FFFFFF' : theme.textSecondary }
+            { color: selectedTab === 'templates' ? '#FFF7F5' : theme.textSecondary }
           ]}>
             Analysis Templates
           </Text>
@@ -245,7 +245,7 @@ const DocumentIntelligenceScreen: React.FC = () => {
                     </View>
                   </View>
                   <View style={styles.confidenceScore}>
-                    <Text style={[styles.confidenceText, { color: '#FFFFFF' }]}>
+                    <Text style={[styles.confidenceText, { color: '#FFF7F5' }]}>
                       {doc.confidence}%
                     </Text>
                   </View>
@@ -253,8 +253,8 @@ const DocumentIntelligenceScreen: React.FC = () => {
 
                 <View style={styles.aiSummaryContainer}>
                   <View style={styles.aiSummaryHeader}>
-                    <Ionicons name="sparkles" size={14} color="#FFFFFF" />
-                    <Text style={[styles.aiSummaryLabel, { color: '#FFFFFF' }]}>
+                    <Ionicons name="sparkles" size={14} color="#FFF7F5" />
+                    <Text style={[styles.aiSummaryLabel, { color: '#FFF7F5' }]}>
                       AI Summary
                     </Text>
                   </View>
@@ -278,7 +278,7 @@ const DocumentIntelligenceScreen: React.FC = () => {
                 </View>
 
                 <View style={styles.documentActions}>
-                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FFFFFF' }]}>
+                  <TouchableOpacity style={[styles.actionButton, { backgroundColor: '#FFF7F5' }]}>
                     <Ionicons name="eye" size={16} color="white" />
                     <Text style={styles.actionButtonText}>View Full Analysis</Text>
                   </TouchableOpacity>
@@ -315,7 +315,7 @@ const DocumentIntelligenceScreen: React.FC = () => {
             {/* AI Assistant Card */}
             <View style={[styles.aiAssistantCard, { backgroundColor: theme.surface }]}>
               <View style={styles.aiAssistantHeader}>
-                <Ionicons name="sparkles" size={20} color="#FFFFFF" />
+                <Ionicons name="sparkles" size={20} color="#FFF7F5" />
                 <Text style={[styles.aiAssistantTitle, { color: theme.text }]}>
                   {user?.assistantName || 'Yo!'} Document Assistant
                 </Text>
@@ -560,7 +560,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   aiAssistantButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FFF7F5',
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',

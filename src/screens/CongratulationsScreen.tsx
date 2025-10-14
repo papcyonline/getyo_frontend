@@ -11,8 +11,11 @@ import {
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
+import { useSelector } from 'react-redux';
+
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootStackParamList } from '../types';
+import { RootState } from '../store';
 
 const { width, height } = Dimensions.get('window');
 
@@ -23,14 +26,19 @@ const CongratulationsScreen: React.FC = () => {
   const navigation = useNavigation<CongratulationsNavigationProp>();
   const route = useRoute<CongratulationsRouteProp>();
   const insets = useSafeAreaInsets();
+  const theme = useSelector((state: RootState) => state.theme.theme);
   const { phone, email, userDetails, user, token, passwordGenerated } = route.params || {};
 
   const slideAnim = useRef(new Animated.Value(height)).current;
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const circleScale = useRef(new Animated.Value(0)).current;
+  const checkScale = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
-  // Animation values for each feature item
-  const featureAnims = useRef([
+  // Sparkle animations
+  const sparkleAnims = useRef([
+    new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
     new Animated.Value(0),
@@ -47,177 +55,195 @@ const CongratulationsScreen: React.FC = () => {
       friction: 8,
     }).start();
 
-    // Scale and fade animations for checkmark
-    Animated.parallel([
-      Animated.spring(scaleAnim, {
+    // Sequence of animations for dramatic effect
+    Animated.sequence([
+      // 1. Fade in background
+      Animated.timing(fadeAnim, {
         toValue: 1,
-        friction: 4,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      // 2. Circle appears with elastic bounce
+      Animated.spring(circleScale, {
+        toValue: 1,
+        friction: 5,
         tension: 40,
         useNativeDriver: true,
       }),
-      Animated.timing(fadeAnim, {
+      // 3. Checkmark pops in with delay
+      Animated.spring(checkScale, {
         toValue: 1,
-        duration: 800,
+        friction: 4,
+        tension: 50,
+        delay: 100,
         useNativeDriver: true,
       }),
     ]).start(() => {
-      // After checkmark animation, start feature animations
-      animateFeatures();
+      // After main animation, start sparkles and pulse
+      animateSparkles();
+      startPulse();
     });
+
+    // Auto-advance to AssistantNaming after 5 seconds
+    const autoAdvanceTimer = setTimeout(() => {
+      handleContinue();
+    }, 5000);
+
+    return () => clearTimeout(autoAdvanceTimer);
   }, []);
 
-  const animateFeatures = () => {
-    // Animate each feature with a delay
-    featureAnims.forEach((anim, index) => {
-      Animated.timing(anim, {
-        toValue: 1,
-        duration: 400,
-        delay: index * 200, // 200ms delay between each item
-        useNativeDriver: true,
-      }).start();
+  const startPulse = () => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    ).start();
+  };
+
+  const animateSparkles = () => {
+    // Animate sparkles with staggered timing
+    sparkleAnims.forEach((anim, index) => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 800,
+            delay: index * 150,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
     });
   };
 
   const handleContinue = () => {
-    // If coming from onboarding flow, continue to assistant naming
-    if (phone || email) {
-      navigation.navigate('AssistantNaming', {
-        phone,
-        email,
-        userDetails,
-        user,
-        token,
-        passwordGenerated
-      });
-    } else {
-      // If coming from personalization, go to home
-      navigation.reset({
-        index: 0,
-        routes: [{ name: 'Home' }],
-      });
-    }
+    // Navigate to AssistantNaming (name your PA + photo)
+    navigation.navigate('AssistantNaming', {
+      phone,
+      email,
+      userDetails,
+      user,
+      token,
+      passwordGenerated
+    });
   };
 
+  const sparklePositions = [
+    { top: -20, left: -30, rotation: '0deg' },
+    { top: -30, right: -20, rotation: '45deg' },
+    { top: 60, right: -40, rotation: '90deg' },
+    { bottom: 60, right: -30, rotation: '135deg' },
+    { bottom: -20, left: -20, rotation: '180deg' },
+    { top: 60, left: -40, rotation: '225deg' },
+  ];
+
   return (
-    <View style={styles.container}>
-      {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
-
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.header}>
-          <Text style={styles.title}>Congratulations!</Text>
-          <Text style={styles.subtitle}>
-            Your account has been successfully verified
-          </Text>
-        </View>
-
-        <Animated.View
-          style={[
-            styles.slidingContainer,
-            { transform: [{ translateY: slideAnim }] }
-          ]}
-        >
-          {/* Checkmark at top of sliding container */}
-          <Animated.View
-            style={[
-              styles.checkmarkContainer,
-              {
-                transform: [{ scale: scaleAnim }],
-                opacity: fadeAnim,
-              },
-            ]}
-          >
-            <View style={styles.dottedBorder}>
-              <View style={styles.checkmarkCircle}>
-                <Text style={styles.checkmark}>✓</Text>
-              </View>
-            </View>
-          </Animated.View>
-
-          <View style={styles.content}>
-
+        <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
+          {/* Animated Checkmark Container */}
+          <View style={styles.checkmarkWrapper}>
+            {/* Pulsing Glow Effect */}
             <Animated.View
               style={[
-                styles.messageContainer,
-                { opacity: fadeAnim },
+                styles.glowCircle,
+                {
+                  opacity: pulseAnim.interpolate({
+                    inputRange: [1, 1.1],
+                    outputRange: [0.3, 0.6],
+                  }),
+                  transform: [{ scale: pulseAnim }],
+                },
+              ]}
+            />
+
+            {/* Main Circle Background */}
+            <Animated.View
+              style={[
+                styles.checkmarkCircle,
+                { backgroundColor: theme.success || '#4CAF50' },
+                {
+                  transform: [{ scale: circleScale }],
+                },
+              ]}
+            />
+
+            {/* Checkmark Icon */}
+            <Animated.View
+              style={[
+                styles.checkmarkIcon,
+                {
+                  transform: [{ scale: checkScale }],
+                },
               ]}
             >
-              <Text style={styles.mainMessage}>Let's finish setting up your PA</Text>
-              <Text style={styles.subMessage}>
-                Here's what your personal assistant will do for you:
-              </Text>
+              <MaterialCommunityIcons name="check" size={120} color={theme.background} />
             </Animated.View>
 
-            <View style={styles.featuresContainer}>
-              <View style={styles.featuresList}>
-                {[
-                  'Answer questions and provide information',
-                  'Help with daily tasks and reminders',
-                  'Learn your preferences over time',
-                  'Provide personalized recommendations',
-                  'Available 24/7 whenever you need help'
-                ].map((feature, index) => (
-                  <Animated.View key={index}>
-                    <Animated.View
-                      style={[
-                        styles.featureItem,
-                        {
-                          opacity: featureAnims[index],
-                          transform: [
-                            {
-                              translateX: featureAnims[index].interpolate({
-                                inputRange: [0, 1],
-                                outputRange: [-50, 0],
-                              }),
-                            },
-                          ],
-                        },
-                      ]}
-                    >
-                      <Animated.Text
-                        style={[
-                          styles.checkIcon,
-                          {
-                            opacity: featureAnims[index],
-                            transform: [
-                              {
-                                scale: featureAnims[index].interpolate({
-                                  inputRange: [0, 1],
-                                  outputRange: [0, 1],
-                                }),
-                              },
-                            ],
-                          },
-                        ]}
-                      >
-                        ✓
-                      </Animated.Text>
-                      <Text style={styles.featureText}>{feature}</Text>
-                    </Animated.View>
-                    {index < 4 && <View style={styles.divider} />}
-                  </Animated.View>
-                ))}
-              </View>
-            </View>
+            {/* Sparkles */}
+            {sparkleAnims.map((anim, index) => (
+              <Animated.View
+                key={index}
+                style={[
+                  styles.sparkle,
+                  sparklePositions[index],
+                  {
+                    opacity: anim,
+                    transform: [
+                      {
+                        scale: anim.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.5, 1.2],
+                        }),
+                      },
+                      { rotate: sparklePositions[index].rotation },
+                    ],
+                  },
+                ]}
+              >
+                <MaterialCommunityIcons name="star-four-points" size={24} color="#FFD700" />
+              </Animated.View>
+            ))}
           </View>
 
+          {/* Congratulations Text */}
           <Animated.View
             style={[
-              styles.footer,
+              styles.textContainer,
+              { opacity: fadeAnim },
+            ]}
+          >
+            <Text style={[styles.congratsText, { color: theme.text }]}>Congratulations!</Text>
+            <Text style={[styles.subText, { color: theme.textSecondary }]}>Your account has been created</Text>
+          </Animated.View>
+
+          {/* Continue Button */}
+          <Animated.View
+            style={[
+              styles.buttonContainer,
               { opacity: fadeAnim },
             ]}
           >
             <TouchableOpacity
-              style={styles.continueButton}
+              style={[styles.continueButton, { backgroundColor: theme.accent }]}
               onPress={handleContinue}
-              activeOpacity={0.9}
+              activeOpacity={0.8}
             >
-              <Text style={styles.continueButtonText}>Continue Setup</Text>
+              <Text style={[styles.continueButtonText, { color: theme.background }]}>Setup Personal Assistant</Text>
             </TouchableOpacity>
           </Animated.View>
         </Animated.View>
@@ -229,164 +255,82 @@ const CongratulationsScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
-  },
-  gradientFlare: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 1,
   },
   safeArea: {
     flex: 1,
-    zIndex: 2,
-  },
-  header: {
-    paddingHorizontal: 30,
-    paddingTop: 40,
-    paddingBottom: 30,
-    alignItems: 'center',
-    zIndex: 2,
-  },
-  title: {
-    fontSize: 32,
-    fontWeight: '800',
-    color: '#FFFFFF',
-    marginBottom: 12,
-    textAlign: 'center',
-    letterSpacing: 0.5,
-  },
-  subtitle: {
-    fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.7)',
-    textAlign: 'center',
-    fontWeight: '400',
-    lineHeight: 24,
-  },
-  slidingContainer: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    marginTop: 20,
-    zIndex: 10,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 30,
-    paddingTop: 20,
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  checkmarkContainer: {
-    alignItems: 'center',
-    marginBottom: 30,
-    marginTop: -50,
-    position: 'relative',
-    zIndex: 15,
-  },
-  dottedBorder: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 2,
-    borderColor: 'rgba(255, 255, 255, 0.6)',
-    borderStyle: 'dashed',
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 30,
+  },
+  checkmarkWrapper: {
     position: 'relative',
+    width: 220,
+    height: 220,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 60,
+  },
+  glowCircle: {
+    position: 'absolute',
+    width: 220,
+    height: 220,
+    borderRadius: 110,
+    backgroundColor: '#4CAF50',
   },
   checkmarkCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: '#3396D3',
+    position: 'absolute',
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#4CAF50',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 20,
+    elevation: 10,
+  },
+  checkmarkIcon: {
+    position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  checkmark: {
-    fontSize: 50,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
+  sparkle: {
+    position: 'absolute',
   },
-  messageContainer: {
+  textContainer: {
     alignItems: 'center',
-    marginBottom: 30,
-    width: '100%',
+    marginBottom: 80,
   },
-  mainMessage: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#FFFFFF',
+  congratsText: {
+    fontSize: 48,
+    fontWeight: '900',
     textAlign: 'center',
-    marginBottom: 12,
-    letterSpacing: 0.5,
+    marginBottom: 16,
+    letterSpacing: 1,
   },
-  subMessage: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
+  subText: {
+    fontSize: 18,
     textAlign: 'center',
-    lineHeight: 22,
-    fontWeight: '400',
-  },
-  featuresContainer: {
-    width: '100%',
-    flex: 1,
-    marginBottom: 30,
-  },
-  featuresList: {
-    paddingHorizontal: 10,
-  },
-  featureItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-  },
-  checkIcon: {
-    fontSize: 14,
-    color: '#FFFFFF',
-    fontWeight: 'bold',
-    marginRight: 12,
-    width: 22,
-    height: 22,
-    backgroundColor: '#3396D3',
-    borderRadius: 11,
-    textAlign: 'center',
-    textAlignVertical: 'center',
-    lineHeight: 22,
-  },
-  featureText: {
-    fontSize: 16,
-    color: '#FFFFFF',
     fontWeight: '500',
-    letterSpacing: 0.2,
-    lineHeight: 22,
-    flex: 1,
+    letterSpacing: 0.3,
   },
-  divider: {
-    height: 1,
-    backgroundColor: 'rgba(201, 169, 110, 0.2)',
-    marginHorizontal: 4,
-  },
-  footer: {
-    paddingHorizontal: 30,
-    paddingBottom: 40,
-    paddingTop: 20,
+  buttonContainer: {
+    width: '100%',
+    paddingHorizontal: 20,
   },
   continueButton: {
-    height: 65,
-    backgroundColor: '#3396D3',
-    borderRadius: 32,
+    height: 60,
+    borderRadius: 38,
     justifyContent: 'center',
     alignItems: 'center',
   },
   continueButtonText: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '700',
-    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
 });

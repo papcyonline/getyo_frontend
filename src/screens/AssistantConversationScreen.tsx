@@ -11,7 +11,7 @@ import {
   ActivityIndicator,
   Alert,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -348,7 +348,7 @@ const AssistantConversationScreen: React.FC = () => {
           <MaterialIcons
             name={isAI ? 'smart-toy' : 'person'}
             size={20}
-            color="#FFFFFF"
+            color="#FFF7F5"
           />
         </View>
         <View style={[styles.messageBubble, isAI ? styles.aiMessageBubble : styles.userMessageBubble]}>
@@ -369,13 +369,7 @@ const AssistantConversationScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        pointerEvents="none"
-      />
+      
 
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
@@ -443,7 +437,7 @@ const AssistantConversationScreen: React.FC = () => {
                     <MaterialIcons
                       name={state.isRecording ? 'stop' : 'mic'}
                       size={32}
-                      color="#FFFFFF"
+                      color="#FFF7F5"
                     />
                   </TouchableOpacity>
                 </Animated.View>
@@ -492,21 +486,21 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800',
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     marginBottom: 12,
     textAlign: 'center',
     letterSpacing: 0.5,
   },
   subtitle: {
     fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     textAlign: 'center',
     fontWeight: '400',
     lineHeight: 24,
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
@@ -522,18 +516,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    borderColor: 'rgba(255, 247, 245, 0.2)',
   },
   skipButtonText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontSize: 14,
     fontWeight: '500',
   },
   step: {
     fontSize: 14,
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontWeight: '500',
     letterSpacing: 0.5,
   },
@@ -589,14 +583,14 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   aiMessageText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   userMessageText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
   },
   messageTime: {
     fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
+    color: 'rgba(255, 247, 245, 0.5)',
   },
   processingContainer: {
     flexDirection: 'row',
@@ -605,7 +599,7 @@ const styles = StyleSheet.create({
     paddingVertical: 16,
   },
   processingText: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     fontSize: 14,
     marginLeft: 8,
     fontStyle: 'italic',
@@ -614,23 +608,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+    borderTopColor: 'rgba(255, 247, 245, 0.1)',
   },
   transcriptContainer: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: 'rgba(255, 247, 245, 0.05)',
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
   },
   transcriptText: {
-    color: '#FFFFFF',
+    color: '#FFF7F5',
     fontSize: 16,
     lineHeight: 22,
     marginBottom: 8,
     fontStyle: 'italic',
   },
   confidenceText: {
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     fontSize: 12,
   },
   recordingControls: {
@@ -653,10 +647,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF4757',
   },
   recordingDisabled: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(255, 247, 245, 0.1)',
   },
   recordingInstruction: {
-    color: 'rgba(255, 255, 255, 0.7)',
+    color: 'rgba(255, 247, 245, 0.7)',
     fontSize: 14,
     marginTop: 12,
     textAlign: 'center',

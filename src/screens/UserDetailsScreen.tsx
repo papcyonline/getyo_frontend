@@ -13,16 +13,19 @@ import {
   Platform,
   ScrollView,
   Keyboard,
+  ActivityIndicator,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialIcons } from '@expo/vector-icons';
-import { useSelector } from 'react-redux';
+
+import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { useSelector, useDispatch } from 'react-redux';
 import { RootStackParamList } from '../types';
 import { RootState } from '../store';
 import { getTranslations } from '../utils/translations';
+import ApiService from '../services/api';
+import { setUser, setToken } from '../store/slices/userSlice';
 
 const { width, height } = Dimensions.get('window');
 
@@ -30,11 +33,18 @@ type UserDetailsNavigationProp = StackNavigationProp<RootStackParamList, 'UserDe
 
 const UserDetailsScreen: React.FC = () => {
   const navigation = useNavigation<UserDetailsNavigationProp>();
+  const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const [fullName, setFullName] = useState('');
   const [preferredName, setPreferredName] = useState('');
   const [title, setTitle] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
@@ -76,7 +86,12 @@ const UserDetailsScreen: React.FC = () => {
     navigation.goBack();
   };
 
-  const handleContinue = () => {
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const handleContinue = async () => {
     if (!fullName.trim()) {
       Alert.alert(t.userDetails.requiredField, t.userDetails.enterFullName);
       return;
@@ -87,29 +102,84 @@ const UserDetailsScreen: React.FC = () => {
       return;
     }
 
-    // Navigate to PhoneInput with user details
-    navigation.navigate('PhoneInput', {
-      userDetails: {
-        fullName: fullName.trim(),
-        preferredName: preferredName.trim(),
-        title: title.trim(),
-      },
-    });
+    if (!email.trim() || !validateEmail(email.trim())) {
+      Alert.alert('Invalid Email', 'Please enter a valid email address');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      Alert.alert('Invalid Password', 'Password must be at least 6 characters');
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      Alert.alert('Password Mismatch', 'Passwords do not match');
+      return;
+    }
+
+    // Register user directly without OTP
+    setLoading(true);
+    try {
+      const registerResponse = await ApiService.registerEnhanced({
+        userDetails: {
+          fullName: fullName.trim(),
+          preferredName: preferredName.trim(),
+          title: title.trim() || undefined,
+        },
+        email: email.toLowerCase().trim(),
+        phone: '', // Empty phone for now - can be added later if needed
+        assistantName: '', // Will be set later in AssistantNaming screen
+        password: password,
+        preferences: {
+          language: currentLanguage,
+        },
+      });
+
+      // Save user and token to Redux store
+      dispatch(setUser(registerResponse.user));
+      dispatch(setToken(registerResponse.token));
+
+      // Navigate to Congratulations/Welcome screen
+      navigation.navigate('Congratulations', {
+        phone: '',
+        email: registerResponse.user.email,
+        userDetails: {
+          fullName: fullName.trim(),
+          preferredName: preferredName.trim(),
+          title: title.trim(),
+        },
+        user: registerResponse.user,
+        token: registerResponse.token,
+        passwordGenerated: registerResponse.passwordGenerated,
+      });
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      const errorMessage = error.response?.data?.error || error.message || 'Failed to create account. Please try again.';
+      Alert.alert('Registration Error', errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const isFormValid = fullName.trim().length > 0 && preferredName.trim().length > 0;
+  const isFormValid =
+    fullName.trim().length > 0 &&
+    preferredName.trim().length > 0 &&
+    validateEmail(email.trim()) &&
+    password.length >= 6 &&
+    password === confirmPassword;
 
   return (
     <View style={styles.container}>
-      {/* Background gradient flare */}
-      <LinearGradient
-        colors={['rgba(51, 150, 211, 0.4)', 'rgba(0, 0, 0, 0.8)', 'transparent']}
-        style={styles.gradientFlare}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-      />
-
       <SafeAreaView style={styles.safeArea}>
+        {/* Top Bar - Fixed on black background */}
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
+          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color="#FFF7F5" />
+          </TouchableOpacity>
+          <Text style={styles.step}>{t.userDetails.title}</Text>
+          <View style={styles.placeholder} />
+        </View>
+
         <KeyboardAvoidingView
           style={styles.keyboardContainer}
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -121,15 +191,6 @@ const UserDetailsScreen: React.FC = () => {
               { transform: [{ translateY: slideAnim }], opacity: fadeAnim }
             ]}
           >
-            {/* Top Bar - Fixed */}
-            <View style={styles.topBar}>
-              <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-                <Text style={styles.backButtonText}>←</Text>
-              </TouchableOpacity>
-              <Text style={styles.step}>{t.userDetails.title}</Text>
-              <View style={styles.placeholder} />
-            </View>
-
             {/* Scrollable Content */}
             <ScrollView
               style={styles.scrollContainer}
@@ -156,7 +217,7 @@ const UserDetailsScreen: React.FC = () => {
                     value={fullName}
                     onChangeText={setFullName}
                     placeholder={t.userDetails.fullNamePlaceholder}
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    placeholderTextColor="rgba(255, 247, 245, 0.5)"
                     autoCapitalize="words"
                     autoCorrect={false}
                     selectTextOnFocus={false}
@@ -176,7 +237,7 @@ const UserDetailsScreen: React.FC = () => {
                     value={preferredName}
                     onChangeText={setPreferredName}
                     placeholder={t.userDetails.preferredNamePlaceholder}
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    placeholderTextColor="rgba(255, 247, 245, 0.5)"
                     autoCapitalize="words"
                     autoCorrect={false}
                     selectTextOnFocus={false}
@@ -196,13 +257,100 @@ const UserDetailsScreen: React.FC = () => {
                     value={title}
                     onChangeText={setTitle}
                     placeholder={t.userDetails.titlePlaceholder}
-                    placeholderTextColor="rgba(255, 255, 255, 0.5)"
+                    placeholderTextColor="rgba(255, 247, 245, 0.5)"
                     autoCapitalize="words"
                     autoCorrect={false}
                     selectTextOnFocus={false}
                     blurOnSubmit={false}
-                    returnKeyType="done"
+                    returnKeyType="next"
                   />
+                </View>
+
+                {/* Email */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Email Address</Text>
+                  <Text style={styles.inputDescription}>
+                    We'll send a verification code to this email
+                  </Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="your.email@example.com"
+                    placeholderTextColor="rgba(255, 247, 245, 0.5)"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    selectTextOnFocus={false}
+                    blurOnSubmit={false}
+                    returnKeyType="next"
+                  />
+                </View>
+
+                {/* Password */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Create Password</Text>
+                  <Text style={styles.inputDescription}>
+                    Must be at least 6 characters
+                  </Text>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={password}
+                      onChangeText={setPassword}
+                      placeholder="Enter password"
+                      placeholderTextColor="rgba(255, 247, 245, 0.5)"
+                      secureTextEntry={!showPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      selectTextOnFocus={false}
+                      blurOnSubmit={false}
+                      returnKeyType="next"
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeIcon}
+                      onPress={() => setShowPassword(!showPassword)}
+                    >
+                      <MaterialIcons
+                        name={showPassword ? 'visibility' : 'visibility-off'}
+                        size={22}
+                        color="rgba(255, 247, 245, 0.6)"
+                      />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                {/* Confirm Password */}
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>Confirm Password</Text>
+                  <Text style={styles.inputDescription}>
+                    Re-enter your password
+                  </Text>
+                  <View style={styles.passwordContainer}>
+                    <TextInput
+                      style={styles.passwordInput}
+                      value={confirmPassword}
+                      onChangeText={setConfirmPassword}
+                      placeholder="Confirm password"
+                      placeholderTextColor="rgba(255, 247, 245, 0.5)"
+                      secureTextEntry={!showConfirmPassword}
+                      autoCapitalize="none"
+                      autoCorrect={false}
+                      selectTextOnFocus={false}
+                      blurOnSubmit={false}
+                      returnKeyType="done"
+                    />
+                    <TouchableOpacity
+                      style={styles.eyeIcon}
+                      onPress={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      <MaterialIcons
+                        name={showConfirmPassword ? 'visibility' : 'visibility-off'}
+                        size={22}
+                        color="rgba(255, 247, 245, 0.6)"
+                      />
+                    </TouchableOpacity>
+                  </View>
                 </View>
 
                 {/* Extra spacing when keyboard is visible */}
@@ -216,44 +364,50 @@ const UserDetailsScreen: React.FC = () => {
                 <TouchableOpacity
                   style={[
                     styles.continueButton,
-                    { backgroundColor: isFormValid ? '#3396D3' : 'rgba(255, 255, 255, 0.2)' }
+                    { backgroundColor: (isFormValid && !loading) ? '#3396D3' : 'rgba(255, 247, 245, 0.2)' }
                   ]}
                   onPress={handleContinue}
-                  disabled={!isFormValid}
+                  disabled={!isFormValid || loading}
                 >
-                  <Text style={[
-                    styles.continueButtonText,
-                    { color: isFormValid ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)' }
-                  ]}>
-                    {t.continue}
-                  </Text>
-                  <MaterialIcons
-                    name="keyboard-arrow-right"
-                    size={24}
-                    color={isFormValid ? '#FFFFFF' : 'rgba(255, 255, 255, 0.5)'}
-                  />
+                  {loading ? (
+                    <ActivityIndicator color="#FFF7F5" size="large" />
+                  ) : (
+                    <>
+                      <Text style={[
+                        styles.continueButtonText,
+                        { color: isFormValid ? '#FFF7F5' : 'rgba(255, 247, 245, 0.5)' }
+                      ]}>
+                        Create Account
+                      </Text>
+                      <MaterialIcons
+                        name="keyboard-arrow-right"
+                        size={24}
+                        color={isFormValid ? '#FFF7F5' : 'rgba(255, 247, 245, 0.5)'}
+                      />
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
             )}
           </Animated.View>
-        </KeyboardAvoidingView>
 
-        {/* Continue Button - Floating when keyboard is visible */}
-        {keyboardVisible && isFormValid && (
-          <View style={styles.floatingButtonContainer}>
-            <TouchableOpacity
-              style={styles.floatingContinueButton}
-              onPress={handleContinue}
-            >
-              <Text style={styles.floatingContinueButtonText}>{t.continue}</Text>
-              <MaterialIcons
-                name="keyboard-arrow-right"
-                size={20}
-                color="#FFFFFF"
-              />
-            </TouchableOpacity>
-          </View>
-        )}
+          {/* Continue Button - Floating when keyboard is visible */}
+          {keyboardVisible && isFormValid && !loading && (
+            <View style={styles.floatingButtonContainer}>
+              <TouchableOpacity
+                style={styles.floatingContinueButton}
+                onPress={handleContinue}
+              >
+                <Text style={styles.floatingContinueButtonText}>Create Account</Text>
+                <MaterialIcons
+                  name="arrow-forward"
+                  size={18}
+                  color="#FFF7F5"
+                />
+              </TouchableOpacity>
+            </View>
+          )}
+        </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   );
@@ -264,81 +418,72 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  gradientFlare: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-  },
   safeArea: {
     flex: 1,
+  },
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+    backgroundColor: '#000000',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 247, 245, 0.05)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  step: {
+    fontSize: 24,
+    color: '#FFF7F5',
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    flex: 1,
+    textAlign: 'center',
+    marginHorizontal: 10,
+  },
+  placeholder: {
+    width: 40,
   },
   keyboardContainer: {
     flex: 1,
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: '#1A1A1A',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 30,
-    paddingTop: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-  },
-  backButtonText: {
-    color: '#FFFFFF',
-    fontSize: 22,
-    fontWeight: '600',
-  },
-  step: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '500',
-    letterSpacing: 0.5,
-  },
-  placeholder: {
-    width: 40, // Same width as back button for centering
+    borderTopWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: 'rgba(255, 247, 245, 0.1)',
   },
   scrollContainer: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingHorizontal: 30,
-    paddingTop: 20,
+    paddingHorizontal: 24,
+    paddingTop: 24,
     paddingBottom: 30,
   },
   headerSection: {
-    marginBottom: 30,
+    marginBottom: 28,
   },
   title: {
     fontSize: 28,
-    fontWeight: '700',
-    color: '#FFFFFF',
+    fontWeight: '800',
+    color: '#FFF7F5',
     marginBottom: 12,
-    letterSpacing: 0.3,
+    letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.7)',
+    fontSize: 15,
+    color: 'rgba(255, 247, 245, 0.7)',
     lineHeight: 22,
     fontWeight: '400',
   },
@@ -346,65 +491,82 @@ const styles = StyleSheet.create({
     paddingBottom: 20,
   },
   inputGroup: {
-    marginBottom: 24,
+    marginBottom: 20,
   },
   label: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    color: '#FFF7F5',
+    marginBottom: 6,
+    letterSpacing: 0.2,
   },
   inputDescription: {
     fontSize: 13,
-    color: 'rgba(255, 255, 255, 0.6)',
+    color: 'rgba(255, 247, 245, 0.6)',
     marginBottom: 8,
     lineHeight: 18,
   },
   textInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 247, 245, 0.15)',
+    paddingHorizontal: 18,
+    height: 56,
     fontSize: 16,
-    color: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-    textAlignVertical: 'center',
-    includeFontPadding: false,
+    color: '#FFF7F5',
+    fontWeight: '500',
+  },
+  passwordContainer: {
+    position: 'relative',
+  },
+  passwordInput: {
+    backgroundColor: 'rgba(255, 247, 245, 0.08)',
+    borderRadius: 30,
+    borderWidth: 2,
+    borderColor: 'rgba(255, 247, 245, 0.15)',
+    paddingHorizontal: 18,
+    paddingRight: 50,
+    height: 56,
+    fontSize: 16,
+    color: '#FFF7F5',
+    fontWeight: '500',
+  },
+  eyeIcon: {
+    position: 'absolute',
+    right: 16,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: 40,
   },
   keyboardSpacer: {
     height: 100, // Extra space when keyboard is visible
   },
   buttonContainer: {
-    paddingHorizontal: 30,
-    paddingVertical: 20,
-    paddingBottom: 30,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    paddingHorizontal: 24,
+    paddingTop: 20,
+    paddingBottom: 32,
   },
   continueButton: {
+    height: 56,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 12,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
+    alignItems: 'center',
+    borderRadius: 28,
+    gap: 8,
   },
   continueButtonText: {
-    fontSize: 18,
-    fontWeight: '600',
-    marginRight: 8,
+    fontSize: 17,
+    fontWeight: '700',
+    letterSpacing: 0.4,
   },
-  // Floating button when keyboard is visible
   floatingButtonContainer: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 30,
     right: 30,
     zIndex: 1000,
   },
@@ -413,19 +575,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#3396D3',
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingVertical: 14,
     borderRadius: 25,
+    gap: 8,
     elevation: 8,
-    shadowColor: '#000',
+    shadowColor: '#3396D3',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 8,
   },
   floatingContinueButtonText: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-    marginRight: 6,
+    fontWeight: '700',
+    color: '#FFF7F5',
   },
 });
 

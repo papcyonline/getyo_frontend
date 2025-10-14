@@ -161,7 +161,7 @@ const TasksScreen: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return '#10B981';
-      case 'in_progress': return '#FFFFFF';
+      case 'in_progress': return '#FFF7F5';
       case 'pending': return '#F59E0B';
       default: return theme.textSecondary;
     }
@@ -250,7 +250,7 @@ const TasksScreen: React.FC = () => {
                   styles.progressFill,
                   {
                     width: `${item.progress}%`,
-                    backgroundColor: item.status === 'in_progress' ? '#FFFFFF' : getPriorityColor(item.priority)
+                    backgroundColor: item.status === 'in_progress' ? '#FFF7F5' : getPriorityColor(item.priority)
                   }
                 ]} />
               </View>
@@ -262,8 +262,8 @@ const TasksScreen: React.FC = () => {
 
           {item.createdBy === 'ai_suggestion' && (
             <View style={styles.aiTag}>
-              <Ionicons name="sparkles" size={12} color="#FFFFFF" />
-              <Text style={[styles.aiTagText, { color: '#FFFFFF' }]}>
+              <Ionicons name="sparkles" size={12} color="#FFF7F5" />
+              <Text style={[styles.aiTagText, { color: '#FFF7F5' }]}>
                 AI Suggested
               </Text>
             </View>
@@ -295,7 +295,7 @@ const TasksScreen: React.FC = () => {
           <Text style={[styles.headerTitle, { color: theme.text }]}>Tasks</Text>
         </View>
         <TouchableOpacity style={styles.addButton}>
-          <Ionicons name="add" size={24} color="#FFFFFF" />
+          <Ionicons name="add" size={24} color="#FFF7F5" />
         </TouchableOpacity>
       </View>
 
@@ -306,7 +306,7 @@ const TasksScreen: React.FC = () => {
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Pending</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={[styles.statNumber, { color: '#FFFFFF' }]}>{inProgressCount}</Text>
+          <Text style={[styles.statNumber, { color: '#FFF7F5' }]}>{inProgressCount}</Text>
           <Text style={[styles.statLabel, { color: theme.textSecondary }]}>In Progress</Text>
         </View>
         <View style={styles.statCard}>
@@ -323,7 +323,7 @@ const TasksScreen: React.FC = () => {
             style={[
               styles.filterTab,
               { backgroundColor: theme.surface },
-              selectedFilter === filter.key && { backgroundColor: '#FFFFFF', borderColor: '#FFFFFF' }
+              selectedFilter === filter.key && { backgroundColor: '#FFF7F5', borderColor: '#FFF7F5' }
             ]}
             onPress={() => setSelectedFilter(filter.key)}
           >
@@ -336,7 +336,7 @@ const TasksScreen: React.FC = () => {
             {filter.count > 0 && (
               <View style={[
                 styles.filterBadge,
-                { backgroundColor: selectedFilter === filter.key ? 'rgba(255, 255, 255, 0.3)' : '#FFFFFF' }
+                { backgroundColor: selectedFilter === filter.key ? 'rgba(255, 247, 245, 0.3)' : '#FFF7F5' }
               ]}>
                 <Text style={[
                   styles.filterBadgeText,
@@ -354,7 +354,7 @@ const TasksScreen: React.FC = () => {
       <ScrollView
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFFFFF" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FFF7F5" />
         }
         style={styles.tasksList}
         contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
@@ -398,7 +398,7 @@ const TasksScreen: React.FC = () => {
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.insightItem}>
-            <Ionicons name="time-outline" size={20} color="#FFFFFF" />
+            <Ionicons name="time-outline" size={20} color="#FFF7F5" />
             <Text style={[styles.insightText, { color: theme.textSecondary }]}>
               Your most productive time is 9-11 AM. Schedule complex tasks during this window.
             </Text>
