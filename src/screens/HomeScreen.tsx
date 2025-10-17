@@ -18,16 +18,25 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import * as Speech from 'expo-speech';
+import LottieView from 'lottie-react-native';
 
 import { RootState } from '../store';
 import { RootStackParamList } from '../types';
 import ApiService from '../services/api';
 import AuthService from '../services/auth';
 import { setUser } from '../store/slices/userSlice';
+import ReadyPlayerMeAvatar from '../components/ReadyPlayerMeAvatar';
 
 const { width, height } = Dimensions.get('window');
 
 type HomeScreenNavigationProp = StackNavigationProp<RootStackParamList>;
+
+// Ready Player Me Configuration
+// IMPORTANT: Replace this with your actual Ready Player Me avatar URL
+// Get it from: https://readyplayer.me/ after creating your avatar
+const AVATAR_URL = 'https://models.readyplayer.me/68f15c51e831796787f31bf5.glb';
+const USE_READY_PLAYER_ME = true; // Set to true when you have your avatar URL
 
 const HomeScreen: React.FC = () => {
   const navigation = useNavigation<HomeScreenNavigationProp>();
@@ -59,10 +68,10 @@ const HomeScreen: React.FC = () => {
     new Animated.Value(0),
   ]).current;
 
-  // Background dots grid animation
-  const backgroundDots = useRef(
+  // Background dots grid animation - Disabled for cleaner look and better performance
+  /* const backgroundDots = useRef(
     Array(600).fill(0).map(() => new Animated.Value(Math.random()))
-  ).current;
+  ).current; */
 
   const quickActionsSlide = useRef(new Animated.Value(height)).current;
   const quickActionsOverlay = useRef(new Animated.Value(0)).current;
@@ -75,8 +84,61 @@ const HomeScreen: React.FC = () => {
   const [rightPanelVisible, setRightPanelVisible] = useState(false);
   const [quickActionsVisible, setQuickActionsVisible] = useState(false);
 
+  // Robot animation states
+  type RobotState = 'idle' | 'listening' | 'talking' | 'thinking';
+  const [robotState, setRobotState] = useState<RobotState>('idle');
+
   // Panel overlay animation
   const panelOverlayOpacity = useRef(new Animated.Value(0)).current;
+
+  // Lottie animation ref
+  const lottieRef = useRef<LottieView>(null);
+
+  // Get animation source based on robot state - Full character animations
+  const getRobotAnimation = () => {
+    switch (robotState) {
+      case 'idle':
+        // Character with blinking eyes, subtle breathing, head movements
+        return { uri: 'https://lottie.host/c8b0e8d0-7f8e-4f5c-9e3d-8b5e5e5e5e5e/idle.json' };
+      case 'listening':
+        // Character listening attentively
+        return { uri: 'https://lottie.host/d8f8e8e8-8e8e-4f5c-9e3d-8b5e5e5e5e5e/listening.json' };
+      case 'talking':
+        // Character talking with lip sync
+        return { uri: 'https://lottie.host/e8f8e8e8-8e8e-4f5c-9e3d-8b5e5e5e5e5e/talking.json' };
+      case 'thinking':
+        // Character thinking
+        return { uri: 'https://lottie.host/f8f8e8e8-8e8e-4f5c-9e3d-8b5e5e5e5e5e/thinking.json' };
+      default:
+        return { uri: 'https://lottie.host/c8b0e8d0-7f8e-4f5c-9e3d-8b5e5e5e5e5e/idle.json' };
+    }
+  };
+
+  // Voice greeting on mount
+  useEffect(() => {
+    // Trigger greeting animation and voice
+    const greetingTimeout = setTimeout(() => {
+      setRobotTalking();
+
+      // Voice greeting with speech
+      const greeting = `Hey! I'm ${user?.assistantName || 'Yo!'}`;
+      console.log(`🗣️ ${greeting}`);
+
+      // Speak the greeting
+      Speech.speak(greeting, {
+        language: 'en-US',
+        pitch: 1.0,
+        rate: 0.85,
+      });
+
+      // Reset to idle after greeting
+      setTimeout(() => {
+        setRobotIdle();
+      }, 4000);
+    }, 1500);
+
+    return () => clearTimeout(greetingTimeout);
+  }, [user?.assistantName]);
 
   // Generate greeting based on time of day
   const getGreeting = () => {
@@ -124,8 +186,8 @@ const HomeScreen: React.FC = () => {
 
     Animated.parallel(animations).start();
 
-    // Animate background dots with random timing
-    const backgroundAnimations = backgroundDots.map((anim) => {
+    // Animate background dots with random timing - Disabled for performance
+    /* const backgroundAnimations = backgroundDots.map((anim) => {
       const randomDelay = Math.random() * 2000;
       const randomFadeInDuration = 600 + Math.random() * 800;
       const randomFadeOutDuration = 600 + Math.random() * 800;
@@ -147,7 +209,7 @@ const HomeScreen: React.FC = () => {
       );
     });
 
-    Animated.parallel(backgroundAnimations).start();
+    Animated.parallel(backgroundAnimations).start(); */
   }, []);
 
   // Pan responder for swipe gestures
@@ -177,6 +239,37 @@ const HomeScreen: React.FC = () => {
         } else {
           // Reset
           hideAllPanels();
+        }
+      },
+    })
+  ).current;
+
+  // Pan responder for Quick Actions modal - swipe down to close
+  const quickActionsPanResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (evt, gestureState) => {
+        // Only respond to vertical swipes
+        return Math.abs(gestureState.dy) > 10;
+      },
+      onPanResponderMove: (evt, gestureState) => {
+        // Only allow downward swipes
+        if (gestureState.dy > 0) {
+          quickActionsSlide.setValue(gestureState.dy);
+        }
+      },
+      onPanResponderRelease: (evt, gestureState) => {
+        // If swiped down more than 100px or velocity is high, close the modal
+        if (gestureState.dy > 100 || gestureState.vy > 0.5) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          hideQuickActions();
+        } else {
+          // Otherwise, spring back to the original position
+          Animated.spring(quickActionsSlide, {
+            toValue: 0,
+            tension: 50,
+            friction: 8,
+            useNativeDriver: true,
+          }).start();
         }
       },
     })
@@ -293,29 +386,57 @@ const HomeScreen: React.FC = () => {
     });
   };
 
+  // Robot state handlers
+  const setRobotListening = () => {
+    setRobotState('listening');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  };
+
+  const setRobotTalking = () => {
+    setRobotState('talking');
+  };
+
+  const setRobotThinking = () => {
+    setRobotState('thinking');
+  };
+
+  const setRobotIdle = () => {
+    setRobotState('idle');
+  };
+
+  // Auto-reset to idle after certain duration
+  useEffect(() => {
+    if (robotState !== 'idle') {
+      const timeout = setTimeout(() => {
+        setRobotIdle();
+      }, robotState === 'listening' ? 30000 : 5000); // 30s for listening, 5s for others
+
+      return () => clearTimeout(timeout);
+    }
+  }, [robotState]);
+
   const quickActions = [
-    { id: 'task', icon: 'add-circle-outline', label: 'Add Task', screen: 'AddTask', color: '#C9A96E' },
-    { id: 'reminder', icon: 'alarm-outline', label: 'Reminder', screen: 'AddReminder', color: '#C9A96E' },
-    { id: 'note', icon: 'mic-circle-outline', label: 'Record', screen: 'QuickNote', color: '#C9A96E' },
-    { id: 'research', icon: 'search-circle-outline', label: 'Research', screen: 'SmartSearch', color: '#C9A96E' },
-    { id: 'updates', icon: 'notifications-circle-outline', label: 'Updates', screen: 'NotificationFeed', color: '#C9A96E' },
+    { id: 'chat', icon: 'chatbubble-ellipses-outline', label: `Chat with ${user?.assistantName || 'Assistant'}`, screen: 'ChatScreen', color: '#C9A96E' },
+    { id: 'note', icon: 'create-outline', label: 'Quick Note', screen: 'QuickNote', color: '#C9A96E' },
+    { id: 'task', icon: 'add-circle-outline', label: 'Add Task', screen: 'Tasks', color: '#C9A96E' },
+    { id: 'reminder', icon: 'alarm-outline', label: 'Set Reminder', screen: 'Reminders', color: '#C9A96E' },
+    { id: 'updates', icon: 'newspaper-outline', label: 'Latest Updates', screen: 'NotificationFeed', color: '#C9A96E' },
   ];
 
   const settingsItems = [
-    { icon: 'person-outline', label: 'Profile', screen: 'EditProfile', badge: null },
     { icon: 'sparkles', label: 'AI Assistant', screen: 'AIAssistant', badge: null },
-    { icon: 'notifications-outline', label: 'Notifications', screen: 'Notifications', badge: 3 },
+    { icon: 'notifications-outline', label: 'Notifications', screen: 'Notifications', badge: null },
     { icon: 'shield-checkmark-outline', label: 'Privacy', screen: 'PrivacySecurity', badge: null },
-    { icon: 'help-circle-outline', label: 'Help', screen: 'HelpSupport', badge: null },
   ];
 
   const dashboardItems = [
-    { icon: 'stats-chart-outline', label: 'Analytics', screen: 'Analytics', gradient: ['#C9A96E', '#E5C794'] },
-    { icon: 'briefcase-outline', label: 'Team', screen: 'TeamManagement', gradient: ['#C9A96E', '#E5C794'] },
-    { icon: 'document-text-outline', label: 'Documents', screen: 'DocumentIntelligence', gradient: ['#C9A96E', '#E5C794'] },
-    { icon: 'card-outline', label: 'Finance', screen: 'FinancialDashboard', gradient: ['#C9A96E', '#E5C794'] },
-    { icon: 'sunny-outline', label: 'Briefing', screen: 'DailyBriefing', gradient: ['#C9A96E', '#E5C794'] },
-    { icon: 'search-outline', label: 'Search', screen: 'SmartSearch', gradient: ['#C9A96E', '#E5C794'] },
+    { icon: 'today-outline', label: 'Today\'s Overview', screen: 'Tasks', gradient: ['#C9A96E', '#E5C794'] },
+    { icon: 'list-outline', label: 'Tasks & Reminders', screen: 'Tasks', gradient: ['#C9A96E', '#E5C794'] },
+    { icon: 'calendar-outline', label: 'Schedule', screen: 'Calendar', gradient: ['#C9A96E', '#E5C794'] },
+    { icon: 'mic-outline', label: 'Voice Notes', screen: 'QuickNote', gradient: ['#C9A96E', '#E5C794'] },
+    { icon: 'search-outline', label: 'Smart Search', screen: 'SmartSearch', gradient: ['#C9A96E', '#E5C794'] },
+    { icon: 'trending-up-outline', label: 'Insights', screen: 'Analytics', gradient: ['#C9A96E', '#E5C794'] },
+    { icon: 'phone-portrait-outline', label: 'Active Sessions', screen: 'ActiveSessions', gradient: ['#C9A96E', '#E5C794'] },
   ];
 
   return (
@@ -324,13 +445,14 @@ const HomeScreen: React.FC = () => {
 
       {/* Background Gradient */}
       <LinearGradient
-        colors={['#000000', '#000000', '#000000']}
+        colors={['#0A0A0A', '#1A1510', '#000000']}  // Subtle gradient: dark gray-brown to black
+        locations={[0, 0.5, 1]}  // Top, middle, bottom
         style={styles.backgroundGradient}
         pointerEvents="none"
       />
 
-      {/* Animated Background Dots */}
-      <View style={styles.backgroundDotsContainer} pointerEvents="none">
+      {/* Animated Background Dots - Disabled for cleaner look */}
+      {/* <View style={styles.backgroundDotsContainer} pointerEvents="none">
         {backgroundDots.map((anim, index) => {
           const dotSpacing = 35; // Equal spacing in all directions
           const columns = Math.ceil(width / dotSpacing);
@@ -357,10 +479,10 @@ const HomeScreen: React.FC = () => {
             />
           );
         })}
-      </View>
+      </View> */}
 
-      {/* Radial Glow Effect Around Avatar */}
-      <View style={styles.radialGlow} pointerEvents="none" />
+      {/* Radial Glow Effect Around Avatar - Disabled, using gradient instead */}
+      {/* <View style={styles.radialGlow} pointerEvents="none" /> */}
 
       {/* Main Content Area */}
       <View style={styles.mainContent} {...panResponder.panHandlers}>
@@ -393,9 +515,6 @@ const HomeScreen: React.FC = () => {
               end={{ x: 1, y: 1 }}
             >
               <Ionicons name="notifications" size={24} color="#C9A96E" />
-              <View style={styles.notificationBadge}>
-                <Text style={styles.badgeText}>3</Text>
-              </View>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -408,38 +527,78 @@ const HomeScreen: React.FC = () => {
 
         {/* Center Content - Avatar and Dots */}
         <View style={styles.centerContent}>
-          {/* Avatar */}
+          {/* Avatar - 3D AI Robot (Always Show) */}
           <TouchableOpacity
             style={styles.avatarContainer}
-            onPress={() => navigation.navigate('AIAssistant')}
+            onPress={() => {
+              // Cycle through states for demo/testing
+              if (robotState === 'idle') {
+                setRobotThinking();
+              } else if (robotState === 'thinking') {
+                setRobotListening();
+              } else if (robotState === 'listening') {
+                setRobotTalking();
+              } else {
+                setRobotIdle();
+              }
+            }}
+            onLongPress={() => {
+              navigation.navigate('AIAssistant');
+            }}
             activeOpacity={0.8}
           >
-            {user?.assistantProfileImage ? (
-              <Image
-                source={{ uri: user.assistantProfileImage }}
-                style={styles.avatar}
-              />
-            ) : (
-              <View style={styles.defaultAvatar}>
-                <View style={styles.faceIdContainer}>
-                  <View style={styles.faceIdOutline}>
-                    <Ionicons name="scan-outline" size={60} color="#C9A96E" />
-                  </View>
-                </View>
-              </View>
-            )}
+            <View style={styles.characterContainer}>
+              {USE_READY_PLAYER_ME ? (
+                /* Ready Player Me 3D Avatar */
+                <>
+                  <ReadyPlayerMeAvatar
+                    avatarUrl={AVATAR_URL}
+                    animationState={robotState}
+                  />
+                  {/* Greeting text bubble */}
+                  {robotState === 'talking' && (
+                    <View style={styles.greetingBubble}>
+                      <Text style={styles.greetingText}>
+                        Hey! I'm {user?.assistantName || 'Yo!'}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              ) : (
+                /* Fallback: Lottie Animation */
+                <>
+                  <LottieView
+                    key={robotState}
+                    ref={lottieRef}
+                    source={getRobotAnimation()}
+                    autoPlay
+                    loop
+                    style={styles.characterAnimation}
+                    speed={1}
+                    resizeMode="contain"
+                  />
+
+                  {/* Greeting text bubble */}
+                  {robotState === 'talking' && (
+                    <View style={styles.greetingBubble}>
+                      <Text style={styles.greetingText}>
+                        Hey! I'm {user?.assistantName || 'Yo!'}
+                      </Text>
+                    </View>
+                  )}
+                </>
+              )}
+            </View>
           </TouchableOpacity>
 
-          <Text style={styles.assistantName}>
-            {user?.assistantName || 'Yo!'}
-          </Text>
-
-          <Text style={styles.wakeWordPrompt}>
-            To activate voice assistant, say
-          </Text>
-          <Text style={styles.wakeWordText}>
-            "Hey {user?.assistantName || 'Yo!'}"
-          </Text>
+          {/* Wake Word Prompt */}
+          <View style={styles.wakeWordContainer}>
+            <Text style={styles.wakeWordPrompt}>Say</Text>
+            <Text style={styles.wakeWordText}>
+              "Yo {user?.assistantName || 'PA'}"
+            </Text>
+            <Text style={styles.wakeWordPrompt}>to activate</Text>
+          </View>
 
           {/* Animated Dots */}
           <View style={styles.dotsContainer}>
@@ -538,6 +697,7 @@ const HomeScreen: React.FC = () => {
               styles.quickActionsModal,
               { transform: [{ translateY: quickActionsSlide }] },
             ]}
+            {...quickActionsPanResponder.panHandlers}
           >
             <View style={styles.quickActionsHandle} />
             <Text style={styles.quickActionsTitle}>Quick Actions</Text>
@@ -548,6 +708,15 @@ const HomeScreen: React.FC = () => {
                   <TouchableOpacity
                     style={styles.quickActionListItem}
                     onPress={() => {
+                      // Trigger appropriate robot state based on action
+                      if (action.id === 'chat') {
+                        setRobotTalking();
+                      } else if (action.id === 'note' || action.id === 'reminder') {
+                        setRobotListening();
+                      } else {
+                        setRobotThinking();
+                      }
+
                       hideQuickActions();
                       setTimeout(() => navigation.navigate(action.screen as any), 300);
                     }}
@@ -605,11 +774,18 @@ const HomeScreen: React.FC = () => {
           showsVerticalScrollIndicator={false}
         >
           {/* User Profile Section */}
-          <View style={styles.userProfileSection}>
+          <TouchableOpacity
+            style={styles.userProfileSection}
+            onPress={() => {
+              hideAllPanels();
+              setTimeout(() => navigation.navigate('EditProfile'), 300);
+            }}
+            activeOpacity={0.7}
+          >
             <View style={styles.userAvatar}>
-              {user?.assistantProfileImage ? (
+              {user?.profileImage ? (
                 <Image
-                  source={{ uri: user.assistantProfileImage }}
+                  source={{ uri: user.profileImage }}
                   style={styles.userAvatarImage}
                 />
               ) : (
@@ -617,10 +793,11 @@ const HomeScreen: React.FC = () => {
               )}
             </View>
             <View style={styles.userInfo}>
-              <Text style={styles.userName}>{user?.name || 'User'}</Text>
+              <Text style={styles.userName}>{user?.preferredName || user?.name || 'User'}</Text>
               <Text style={styles.userEmail}>{user?.email || 'user@example.com'}</Text>
             </View>
-          </View>
+            <Ionicons name="chevron-forward" size={20} color="#999999" />
+          </TouchableOpacity>
 
           <View style={styles.panelDivider} />
 
@@ -637,9 +814,22 @@ const HomeScreen: React.FC = () => {
                   activeOpacity={0.7}
                 >
                   <View style={styles.panelIconContainer}>
-                    <Ionicons name={item.icon as any} size={24} color="#C9A96E" />
+                    {item.screen === 'AIAssistant' ? (
+                      user?.assistantProfileImage ? (
+                        <Image
+                          source={{ uri: user.assistantProfileImage }}
+                          style={styles.panelAvatarImage}
+                        />
+                      ) : (
+                        <Ionicons name="scan-outline" size={24} color="#C9A96E" />
+                      )
+                    ) : (
+                      <Ionicons name={item.icon as any} size={24} color="#C9A96E" />
+                    )}
                   </View>
-                  <Text style={styles.panelItemLabel}>{item.label}</Text>
+                  <Text style={styles.panelItemLabel}>
+                    {item.screen === 'AIAssistant' ? (user?.assistantName || 'Yo!') : item.label}
+                  </Text>
                   {item.badge && (
                     <View style={styles.panelBadge}>
                       <Text style={styles.panelBadgeText}>{item.badge}</Text>
@@ -751,11 +941,11 @@ const styles = StyleSheet.create({
   radialGlow: {
     position: 'absolute',
     top: height * 0.2,
-    left: width * 0.5 - 150,
-    width: 300,
-    height: 300,
-    borderRadius: 150,
-    backgroundColor: 'rgba(201, 169, 110, 0.08)',
+    left: width * 0.5 - 175,
+    width: 350,           // Increased from 300
+    height: 350,          // Increased from 300
+    borderRadius: 175,    // Adjusted for new size
+    backgroundColor: 'rgba(201, 169, 110, 0.12)',  // Slightly more visible (was 0.08)
     zIndex: 1,
   },
   mainContent: {
@@ -807,12 +997,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 200,
+    paddingBottom: 140,  // Increased more to shift content upward for bigger text
+    paddingTop: 20,      // Add top padding for better balance
   },
   greetingContainer: {
     alignItems: 'center',
-    paddingTop: 20,
-    paddingBottom: 30,
+    paddingTop: 10,
+    paddingBottom: 15,
   },
   greetingTime: {
     fontSize: 16,
@@ -827,8 +1018,9 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     letterSpacing: 0.5,
   },
+
   avatarContainer: {
-    marginBottom: 16,
+    marginBottom: 4,  // Further reduced for bigger wake word text
   },
   avatar: {
     width: 120,
@@ -845,6 +1037,67 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  lottieContainer: {
+    width: 200,
+    height: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  lottieAnimation: {
+    width: 200,
+    height: 200,
+  },
+  avatarImageContainer: {
+    width: 150,
+    height: 150,
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  avatarImage: {
+    width: 150,
+    height: 150,
+    borderRadius: 75,
+    backgroundColor: '#000000',
+  },
+  stateRing: {
+    position: 'absolute',
+    width: 160,
+    height: 160,
+    borderRadius: 80,
+    borderWidth: 3,
+    borderColor: '#C9A96E',
+  },
+  characterContainer: {
+    width: width * 0.75,  // Match ReadyPlayerMeAvatar width
+    height: 380,          // Match ReadyPlayerMeAvatar height
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'relative',
+  },
+  characterAnimation: {
+    width: width * 0.75,
+    height: 380,
+  },
+  greetingBubble: {
+    position: 'absolute',
+    top: 10,
+    backgroundColor: 'rgba(201, 169, 110, 0.95)',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 20,
+    shadowColor: '#C9A96E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  greetingText: {
+    color: '#000000',
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
   faceIdContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -857,31 +1110,42 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   assistantName: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
     color: '#FFFFFF',
-    marginBottom: 12,
+    marginBottom: 6,  // Reduced spacing
+    marginTop: 2,     // Reduced spacing
   },
-  wakeWordPrompt: {
-    fontSize: 14,
-    fontWeight: '400',
-    color: '#AAAAAA',
-    textAlign: 'center',
+  wakeWordContainer: {
+    alignItems: 'center',
+    marginTop: 12,
     marginBottom: 8,
   },
+  wakeWordPrompt: {
+    fontSize: 16,          // Increased from 13
+    fontWeight: '500',     // Increased weight
+    color: '#CCCCCC',      // Lighter color for better visibility
+    textAlign: 'center',
+    marginBottom: 8,       // More spacing
+  },
   wakeWordText: {
-    fontSize: 18,
-    fontWeight: '700',
+    fontSize: 28,          // Increased from 16
+    fontWeight: '800',     // Bold
     color: '#C9A96E',
     textAlign: 'center',
-    marginBottom: 30,
+    marginBottom: 8,       // Adjusted spacing
+    letterSpacing: 0.5,    // Better letter spacing
+    textShadowColor: 'rgba(201, 169, 110, 0.3)',  // Add glow effect
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 10,
   },
   dotsContainer: {
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
-    height: 100,
-    marginBottom: 40,
+    height: 50,      // Reduced height
+    marginBottom: 15, // Reduced margin
+    marginTop: 8,     // Add small top margin
   },
   dot: {
     width: 10,
@@ -956,9 +1220,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#000000',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
+    backgroundColor: '#2A2A2A',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: 40,
     zIndex: 101,
     shadowColor: '#C9A96E',
@@ -1104,6 +1368,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    overflow: 'hidden',
+  },
+  panelAvatarImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
   },
   panelItemLabel: {
     flex: 1,
