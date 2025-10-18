@@ -95,7 +95,10 @@ const AIAssistantScreen: React.FC = () => {
       // Update Redux store with fresh profile data
       dispatch(setUser(profile));
     } catch (error: any) {
-      console.error('Failed to load user profile:', error);
+      // Don't log 401 errors - user will be redirected to login automatically
+      if (error.status !== 401) {
+        console.error('Failed to load user profile:', error);
+      }
     }
   };
 

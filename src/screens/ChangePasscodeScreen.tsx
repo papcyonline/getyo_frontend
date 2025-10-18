@@ -13,6 +13,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
+import ApiService from '../services/api';
+import AuthService from '../services/auth';
 
 const ChangePasscodeScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -55,21 +57,40 @@ const ChangePasscodeScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      // TODO: Implement password change API call
-      // await ApiService.changePassword(currentPassword, newPassword);
+
+      // Call API to change password
+      await ApiService.changePassword(currentPassword, newPassword);
+
+      // Clear form fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
 
       Alert.alert(
         'Success',
-        'Your password has been updated successfully',
+        'Your password has been updated successfully. Please log in with your new password.',
         [
           {
             text: 'OK',
-            onPress: () => navigation.goBack()
+            onPress: async () => {
+              // Log out user since password change invalidates current session
+              await AuthService.logout();
+            }
           }
         ]
       );
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to change password');
+      // Handle expired session by logging out (don't log - it's expected)
+      if (error.code === 'AUTH_EXPIRED' || error.status === 401) {
+        // Session already cleared by API error handler
+        // User will be automatically redirected to login
+        return;
+      }
+
+      // Log and show other errors
+      console.error('Change password error:', error);
+      const errorMessage = error.message || error.error || 'Failed to change password';
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }

@@ -10,6 +10,7 @@ import {
   Image,
   PanResponder,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigation } from '@react-navigation/native';
@@ -19,14 +20,19 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import * as Speech from 'expo-speech';
+import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import LottieView from 'lottie-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { RootState } from '../store';
 import { RootStackParamList } from '../types';
 import ApiService from '../services/api';
 import AuthService from '../services/auth';
 import { setUser } from '../store/slices/userSlice';
-import ReadyPlayerMeAvatar from '../components/ReadyPlayerMeAvatar';
+import HomeHeader from '../components/HomeHeader';
+import AvatarSection from '../components/AvatarSection';
+import BottomNav from '../components/BottomNav';
 
 const { width, height } = Dimensions.get('window');
 
@@ -48,6 +54,9 @@ const HomeScreen: React.FC = () => {
   // Load user profile
   useEffect(() => {
     loadUserProfile();
+    loadPendingCount();
+    loadUnreadNotifications();
+    loadActionUsage();
   }, []);
 
   const loadUserProfile = async () => {
@@ -59,13 +68,76 @@ const HomeScreen: React.FC = () => {
     }
   };
 
-  // Animation states
-  const dotAnimations = useRef([
-    new Animated.Value(0),
-    new Animated.Value(0),
-    new Animated.Value(0),
-    new Animated.Value(0),
-    new Animated.Value(0),
+  const loadPendingCount = async () => {
+    try {
+      // Fetch tasks and reminders in parallel
+      const [tasksResponse, remindersResponse] = await Promise.all([
+        ApiService.getTasks().catch(() => ({ data: [] })),
+        ApiService.getReminders().catch(() => ({ data: [] })),
+      ]);
+
+      // Count pending/incomplete items
+      const pendingTasks = tasksResponse.data?.filter((task: any) => !task.completed).length || 0;
+      const pendingReminders = remindersResponse.data?.filter((reminder: any) => !reminder.completed).length || 0;
+
+      setPendingCount(pendingTasks + pendingReminders);
+    } catch (error: any) {
+      console.error('Failed to load pending count:', error);
+    }
+  };
+
+  const loadUnreadNotifications = async () => {
+    try {
+      // Fetch notifications and count unread ones
+      const response = await ApiService.getNotifications().catch(() => ({ data: [] }));
+      const unreadCount = response.data?.filter((notification: any) => !notification.read).length || 0;
+      setUnreadNotifications(unreadCount);
+    } catch (error: any) {
+      console.error('Failed to load unread notifications:', error);
+    }
+  };
+
+  // Load action usage counts from storage
+  const loadActionUsage = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('action_usage_count');
+      if (stored) {
+        setActionUsageCount(JSON.parse(stored));
+      }
+    } catch (error) {
+      console.error('Failed to load action usage:', error);
+    }
+  };
+
+  // Save action usage counts to storage
+  const saveActionUsage = async (counts: Record<string, number>) => {
+    try {
+      await AsyncStorage.setItem('action_usage_count', JSON.stringify(counts));
+    } catch (error) {
+      console.error('Failed to save action usage:', error);
+    }
+  };
+
+  // Track action usage
+  const trackActionUsage = async (actionId: string) => {
+    const newCounts = {
+      ...actionUsageCount,
+      [actionId]: (actionUsageCount[actionId] || 0) + 1,
+    };
+    setActionUsageCount(newCounts);
+    await saveActionUsage(newCounts);
+  };
+
+  // Animation states removed - dots animation removed
+
+  // Audio waveform animations for listening state
+  const waveformBars = useRef([
+    new Animated.Value(0.3),
+    new Animated.Value(0.5),
+    new Animated.Value(0.4),
+    new Animated.Value(0.6),
+    new Animated.Value(0.35),
+    new Animated.Value(0.55),
   ]).current;
 
   // Background dots grid animation - Disabled for cleaner look and better performance
@@ -77,7 +149,10 @@ const HomeScreen: React.FC = () => {
   const quickActionsOverlay = useRef(new Animated.Value(0)).current;
   const leftPanelSlide = useRef(new Animated.Value(-width)).current;
   const rightPanelSlide = useRef(new Animated.Value(width)).current;
-  const arrowOpacity = useRef(new Animated.Value(1)).current;
+  const arrowOpacity = useRef(new Animated.Value(0)).current; // Start hidden, will slide up
+
+  // Pulse animation for wake word detection
+  const avatarPulse = useRef(new Animated.Value(1)).current;
 
   // Panel states
   const [leftPanelVisible, setLeftPanelVisible] = useState(false);
@@ -88,11 +163,51 @@ const HomeScreen: React.FC = () => {
   type RobotState = 'idle' | 'listening' | 'talking' | 'thinking';
   const [robotState, setRobotState] = useState<RobotState>('idle');
 
+  // Pending items count for badge
+  const [pendingCount, setPendingCount] = useState(0);
+
+  // Unread notifications count
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+
+  // Avatar loading state
+  const [avatarLoadFailed, setAvatarLoadFailed] = useState(false);
+
+  // Notification badge pulse animation
+  const notificationPulse = useRef(new Animated.Value(1)).current;
+
+  // Double-tap detection
+  const lastTap = useRef<number | null>(null);
+  const DOUBLE_TAP_DELAY = 300; // milliseconds
+
+  // Recently used actions tracking
+  const [actionUsageCount, setActionUsageCount] = useState<Record<string, number>>({});
+
   // Panel overlay animation
   const panelOverlayOpacity = useRef(new Animated.Value(0)).current;
 
   // Lottie animation ref
   const lottieRef = useRef<LottieView>(null);
+
+  // Voice conversation state
+  interface VoiceState {
+    isRecording: boolean;
+    isTranscribing: boolean;
+    isPlaying: boolean;
+    recording: Audio.Recording | null;
+    conversationActive: boolean;
+  }
+
+  const [voiceState, setVoiceState] = useState<VoiceState>({
+    isRecording: false,
+    isTranscribing: false,
+    isPlaying: false,
+    recording: null,
+    conversationActive: false,
+  });
+
+  // Conversation overlay animation
+  const conversationOverlayOpacity = useRef(new Animated.Value(0)).current;
+  const conversationBackgroundPulse = useRef(new Animated.Value(1)).current;
 
   // Get animation source based on robot state - Full character animations
   const getRobotAnimation = () => {
@@ -113,6 +228,65 @@ const HomeScreen: React.FC = () => {
         return { uri: 'https://lottie.host/c8b0e8d0-7f8e-4f5c-9e3d-8b5e5e5e5e5e/idle.json' };
     }
   };
+
+  // Initialize audio permissions
+  useEffect(() => {
+    const initializeAudio = async () => {
+      try {
+        const { status } = await Audio.requestPermissionsAsync();
+        if (status !== 'granted') {
+          console.warn('Audio permission not granted');
+        }
+
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: true,
+          playsInSilentModeIOS: true,
+        });
+      } catch (error) {
+        console.error('Audio initialization error:', error);
+      }
+    };
+
+    initializeAudio();
+  }, []);
+
+  // Animate conversation overlay when active
+  useEffect(() => {
+    if (voiceState.conversationActive) {
+      // Show overlay
+      Animated.timing(conversationOverlayOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+
+      // Start pulsing background animation
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(conversationBackgroundPulse, {
+            toValue: 1.1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+          Animated.timing(conversationBackgroundPulse, {
+            toValue: 1,
+            duration: 1500,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      // Hide overlay
+      Animated.timing(conversationOverlayOpacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }).start();
+
+      conversationBackgroundPulse.stopAnimation();
+      conversationBackgroundPulse.setValue(1);
+    }
+  }, [voiceState.conversationActive]);
 
   // Voice greeting on mount
   useEffect(() => {
@@ -140,51 +314,74 @@ const HomeScreen: React.FC = () => {
     return () => clearTimeout(greetingTimeout);
   }, [user?.assistantName]);
 
-  // Generate greeting based on time of day
+  // Auto-open quick actions when navigated from tasks/reminders screens
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      const params = navigation.getState().routes[navigation.getState().index].params as any;
+      if (params?.openQuickActions) {
+        // Delay to allow screen to settle
+        setTimeout(() => {
+          showQuickActions();
+          // Clear the param after opening
+          navigation.setParams({ openQuickActions: undefined } as any);
+        }, 300);
+      }
+    });
+
+    return unsubscribe;
+  }, [navigation]);
+
+  // Generate contextual greeting based on time of day and pending tasks
   const getGreeting = () => {
     const hour = new Date().getHours();
     const userName = user?.preferredName || user?.name || 'Boss';
 
     let timeGreeting = '';
+    let contextMessage = '';
+
     if (hour >= 0 && hour < 5) {
       timeGreeting = 'Good Night';
+      contextMessage = 'Time to rest';
     } else if (hour >= 5 && hour < 12) {
       timeGreeting = 'Good Morning';
+      if (pendingCount > 0) {
+        contextMessage = `You have ${pendingCount} task${pendingCount > 1 ? 's' : ''} today`;
+      } else {
+        contextMessage = 'Ready for a productive day?';
+      }
     } else if (hour >= 12 && hour < 17) {
       timeGreeting = 'Good Afternoon';
+      if (pendingCount > 0) {
+        contextMessage = `${pendingCount} pending item${pendingCount > 1 ? 's' : ''}`;
+      } else {
+        contextMessage = 'All caught up!';
+      }
     } else if (hour >= 17 && hour < 21) {
       timeGreeting = 'Good Evening';
+      if (pendingCount > 0) {
+        contextMessage = `${pendingCount} item${pendingCount > 1 ? 's' : ''} to review`;
+      } else {
+        contextMessage = 'Great work today!';
+      }
     } else {
       timeGreeting = 'Good Night';
+      contextMessage = 'Time to rest';
     }
 
-    return { timeGreeting, userName };
+    return { timeGreeting, userName, contextMessage };
   };
 
   const greeting = getGreeting();
 
-  // Animate dots on mount
+  // Animate bottom nav on mount
   useEffect(() => {
-    // Stagger the dot animations
-    const animations = dotAnimations.map((anim, index) => {
-      return Animated.loop(
-        Animated.sequence([
-          Animated.delay(index * 100),
-          Animated.timing(anim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim, {
-            toValue: 0,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-    });
-
-    Animated.parallel(animations).start();
+    // Animate bottom nav container sliding up quickly
+    Animated.spring(arrowOpacity, {
+      toValue: 1,
+      tension: 80,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
 
     // Animate background dots with random timing - Disabled for performance
     /* const backgroundAnimations = backgroundDots.map((anim) => {
@@ -323,8 +520,6 @@ const HomeScreen: React.FC = () => {
 
   const hideAllPanels = () => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    setLeftPanelVisible(false);
-    setRightPanelVisible(false);
     Animated.parallel([
       Animated.spring(leftPanelSlide, {
         toValue: -width,
@@ -348,7 +543,11 @@ const HomeScreen: React.FC = () => {
         duration: 200,
         useNativeDriver: true,
       }),
-    ]).start();
+    ]).start(() => {
+      // Update state AFTER animation completes
+      setLeftPanelVisible(false);
+      setRightPanelVisible(false);
+    });
   };
 
   const showQuickActions = () => {
@@ -404,6 +603,187 @@ const HomeScreen: React.FC = () => {
     setRobotState('idle');
   };
 
+  // Start voice conversation (in-place, no navigation)
+  const startQuickVoiceInput = async () => {
+    console.log('🎤 Voice conversation activated');
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+
+    try {
+      // Request microphone permission
+      const { status } = await Audio.requestPermissionsAsync();
+      if (status !== 'granted') {
+        console.warn('Microphone permission not granted');
+        return;
+      }
+
+      // Start conversation
+      setVoiceState(prev => ({ ...prev, conversationActive: true, isRecording: true }));
+      setRobotListening();
+
+      // Initialize recording
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      await recording.startAsync();
+      setVoiceState(prev => ({ ...prev, recording }));
+      console.log('🎤 Recording started');
+
+    } catch (error) {
+      console.error('Failed to start voice conversation:', error);
+      setVoiceState({
+        isRecording: false,
+        isTranscribing: false,
+        isPlaying: false,
+        recording: null,
+        conversationActive: false,
+      });
+      setRobotIdle();
+    }
+  };
+
+  // Stop recording and process voice input
+  const stopRecording = async () => {
+    try {
+      const { recording } = voiceState;
+      if (!recording) return;
+
+      console.log('🎤 Stopping recording...');
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+
+      setVoiceState(prev => ({ ...prev, isRecording: false, isTranscribing: true }));
+      setRobotThinking();
+
+      await recording.stopAndUnloadAsync();
+      const uri = recording.getURI();
+
+      if (!uri) {
+        throw new Error('No recording URI available');
+      }
+
+      console.log('🔄 Transcribing and getting AI response...');
+
+      // Send audio for transcription and AI response
+      const response = await ApiService.transcribeAndRespond(uri);
+
+      if (response.success) {
+        console.log('✅ Transcription:', response.data.transcript);
+        console.log('✅ AI Response:', response.data.aiResponse);
+
+        // Set thinking state briefly before talking
+        setVoiceState(prev => ({ ...prev, isTranscribing: false, isPlaying: true }));
+        setRobotTalking();
+
+        // Play voice response if available
+        const audioBuffer = (response.data as any).audioBuffer;
+        if (audioBuffer) {
+          try {
+            const audioBase64 = audioBuffer;
+            const dataUri = `data:audio/mp3;base64,${audioBase64}`;
+
+            const { sound } = await Audio.Sound.createAsync(
+              { uri: dataUri },
+              { shouldPlay: true },
+              async (status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                  await sound.unloadAsync();
+                  console.log('🔊 Voice playback finished');
+
+                  // Return to idle, keep conversation active for next turn
+                  setVoiceState(prev => ({
+                    ...prev,
+                    isPlaying: false,
+                    recording: null
+                  }));
+                  setRobotIdle();
+                }
+              }
+            );
+          } catch (audioError) {
+            console.error('Failed to play voice response:', audioError);
+            // Still keep conversation active even if audio fails
+            setVoiceState(prev => ({ ...prev, isPlaying: false, recording: null }));
+            setRobotIdle();
+          }
+        } else {
+          // No audio, return to idle
+          setVoiceState(prev => ({ ...prev, isPlaying: false, recording: null }));
+          setRobotIdle();
+        }
+      } else {
+        throw new Error(response.error || 'Voice processing failed');
+      }
+
+      // Clean up recording file
+      try {
+        await FileSystem.deleteAsync(uri);
+      } catch (cleanupError) {
+        console.warn('Failed to cleanup recording file:', cleanupError);
+      }
+
+    } catch (error) {
+      console.error('Error processing voice:', error);
+      setVoiceState({
+        isRecording: false,
+        isTranscribing: false,
+        isPlaying: false,
+        recording: null,
+        conversationActive: false,
+      });
+      setRobotIdle();
+    }
+  };
+
+  // End conversation
+  const endConversation = async () => {
+    console.log('🛑 Ending conversation');
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Stop any ongoing recording
+    if (voiceState.recording) {
+      try {
+        await voiceState.recording.stopAndUnloadAsync();
+      } catch (error) {
+        console.warn('Failed to stop recording:', error);
+      }
+    }
+
+    setVoiceState({
+      isRecording: false,
+      isTranscribing: false,
+      isPlaying: false,
+      recording: null,
+      conversationActive: false,
+    });
+    setRobotIdle();
+  };
+
+  // Handle avatar tap with double-tap detection
+  const handleAvatarTap = () => {
+    const now = Date.now();
+
+    if (lastTap.current && (now - lastTap.current) < DOUBLE_TAP_DELAY) {
+      // Double tap detected
+      lastTap.current = null;
+      startQuickVoiceInput();
+    } else {
+      // Single tap - cycle through states for demo/testing
+      lastTap.current = now;
+
+      // Still allow state cycling on single tap
+      if (robotState === 'idle') {
+        setRobotThinking();
+      } else if (robotState === 'thinking') {
+        setRobotListening();
+      } else if (robotState === 'listening') {
+        setRobotTalking();
+      } else {
+        setRobotIdle();
+      }
+    }
+  };
+
   // Auto-reset to idle after certain duration
   useEffect(() => {
     if (robotState !== 'idle') {
@@ -415,7 +795,91 @@ const HomeScreen: React.FC = () => {
     }
   }, [robotState]);
 
-  const quickActions = [
+  // Animate waveform bars when listening
+  useEffect(() => {
+    if (robotState === 'listening') {
+      const animations = waveformBars.map((bar, index) => {
+        const duration = 300 + (index * 50); // Stagger timings
+        return Animated.loop(
+          Animated.sequence([
+            Animated.timing(bar, {
+              toValue: 0.8 + (Math.random() * 0.2),
+              duration: duration,
+              useNativeDriver: true,
+            }),
+            Animated.timing(bar, {
+              toValue: 0.2 + (Math.random() * 0.2),
+              duration: duration,
+              useNativeDriver: true,
+            }),
+          ])
+        );
+      });
+
+      Animated.parallel(animations).start();
+    } else {
+      // Reset all bars to default when not listening
+      waveformBars.forEach(bar => bar.setValue(0.3));
+    }
+  }, [robotState]);
+
+  // Pulse animation when wake word detected (entering listening state)
+  useEffect(() => {
+    if (robotState === 'listening') {
+      // Trigger pulse animation
+      Animated.sequence([
+        Animated.timing(avatarPulse, {
+          toValue: 1.15,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(avatarPulse, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(avatarPulse, {
+          toValue: 1.08,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+        Animated.timing(avatarPulse, {
+          toValue: 1,
+          duration: 150,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      // Reset to normal size
+      avatarPulse.setValue(1);
+    }
+  }, [robotState]);
+
+  // Animate notification indicator when there are unread notifications
+  useEffect(() => {
+    if (unreadNotifications > 0) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(notificationPulse, {
+            toValue: 1.3,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+          Animated.timing(notificationPulse, {
+            toValue: 1,
+            duration: 800,
+            useNativeDriver: true,
+          }),
+        ])
+      ).start();
+    } else {
+      notificationPulse.stopAnimation();
+      notificationPulse.setValue(1);
+    }
+  }, [unreadNotifications]);
+
+  // Define all available quick actions
+  const allQuickActions = [
     { id: 'chat', icon: 'chatbubble-ellipses-outline', label: `Chat with ${user?.assistantName || 'Assistant'}`, screen: 'ChatScreen', color: '#C9A96E' },
     { id: 'note', icon: 'create-outline', label: 'Quick Note', screen: 'QuickNote', color: '#C9A96E' },
     { id: 'task', icon: 'add-circle-outline', label: 'Add Task', screen: 'Tasks', color: '#C9A96E' },
@@ -423,8 +887,16 @@ const HomeScreen: React.FC = () => {
     { id: 'updates', icon: 'newspaper-outline', label: 'Latest Updates', screen: 'NotificationFeed', color: '#C9A96E' },
   ];
 
+  // Sort quick actions by usage count (most used first)
+  const quickActions = [...allQuickActions].sort((a, b) => {
+    const countA = actionUsageCount[a.id] || 0;
+    const countB = actionUsageCount[b.id] || 0;
+    return countB - countA; // Descending order
+  });
+
   const settingsItems = [
     { icon: 'sparkles', label: 'AI Assistant', screen: 'AIAssistant', badge: null },
+    { icon: 'link-outline', label: 'Integrations', screen: 'Integration', badge: null },
     { icon: 'notifications-outline', label: 'Notifications', screen: 'Notifications', badge: null },
     { icon: 'shield-checkmark-outline', label: 'Privacy', screen: 'PrivacySecurity', badge: null },
   ];
@@ -445,8 +917,8 @@ const HomeScreen: React.FC = () => {
 
       {/* Background Gradient */}
       <LinearGradient
-        colors={['#0A0A0A', '#1A1510', '#000000']}  // Subtle gradient: dark gray-brown to black
-        locations={[0, 0.5, 1]}  // Top, middle, bottom
+        colors={['rgba(201, 169, 110, 0.3)', '#000000']}  // Gold to black gradient with reduced opacity
+        locations={[0, 0.5]}  // Top to middle
         style={styles.backgroundGradient}
         pointerEvents="none"
       />
@@ -487,183 +959,53 @@ const HomeScreen: React.FC = () => {
       {/* Main Content Area */}
       <View style={styles.mainContent} {...panResponder.panHandlers}>
         {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => showLeftPanel()}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={['rgba(201, 169, 110, 0.2)', 'rgba(201, 169, 110, 0.05)']}
-              style={styles.headerIconGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="menu" size={24} color="#C9A96E" />
-            </LinearGradient>
-          </TouchableOpacity>
+        <HomeHeader
+          unreadNotifications={unreadNotifications}
+          notificationPulse={notificationPulse}
+          onMenuPress={showLeftPanel}
+          onNotificationsPress={() => navigation.navigate('NotificationFeed')}
+        />
 
-          <TouchableOpacity
-            style={styles.headerButton}
-            onPress={() => navigation.navigate('NotificationFeed')}
-            activeOpacity={0.7}
-          >
-            <LinearGradient
-              colors={['rgba(201, 169, 110, 0.2)', 'rgba(201, 169, 110, 0.05)']}
-              style={styles.headerIconGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-            >
-              <Ionicons name="notifications" size={24} color="#C9A96E" />
-            </LinearGradient>
-          </TouchableOpacity>
-        </View>
+        {/* Avatar Section */}
+        <AvatarSection
+          user={user}
+          robotState={robotState}
+          avatarPulse={avatarPulse}
+          waveformBars={waveformBars}
+          avatarLoadFailed={avatarLoadFailed}
+          greeting={greeting}
+          useReadyPlayerMe={USE_READY_PLAYER_ME}
+          avatarUrl={AVATAR_URL}
+          lottieRef={lottieRef}
+          onAvatarPress={handleAvatarTap}
+          onAvatarLongPress={() => navigation.navigate('AIAssistant')}
+          onAvatarError={() => setAvatarLoadFailed(true)}
+          getRobotAnimation={getRobotAnimation}
+        />
 
-        {/* Greeting Message */}
-        <View style={styles.greetingContainer}>
-          <Text style={styles.greetingTime}>{greeting.timeGreeting}</Text>
-          <Text style={styles.greetingName}>{greeting.userName}</Text>
-        </View>
-
-        {/* Center Content - Avatar and Dots */}
-        <View style={styles.centerContent}>
-          {/* Avatar - 3D AI Robot (Always Show) */}
-          <TouchableOpacity
-            style={styles.avatarContainer}
-            onPress={() => {
-              // Cycle through states for demo/testing
-              if (robotState === 'idle') {
-                setRobotThinking();
-              } else if (robotState === 'thinking') {
-                setRobotListening();
-              } else if (robotState === 'listening') {
-                setRobotTalking();
-              } else {
-                setRobotIdle();
-              }
-            }}
-            onLongPress={() => {
-              navigation.navigate('AIAssistant');
-            }}
-            activeOpacity={0.8}
-          >
-            <View style={styles.characterContainer}>
-              {USE_READY_PLAYER_ME ? (
-                /* Ready Player Me 3D Avatar */
-                <>
-                  <ReadyPlayerMeAvatar
-                    avatarUrl={AVATAR_URL}
-                    animationState={robotState}
-                  />
-                  {/* Greeting text bubble */}
-                  {robotState === 'talking' && (
-                    <View style={styles.greetingBubble}>
-                      <Text style={styles.greetingText}>
-                        Hey! I'm {user?.assistantName || 'Yo!'}
-                      </Text>
-                    </View>
-                  )}
-                </>
-              ) : (
-                /* Fallback: Lottie Animation */
-                <>
-                  <LottieView
-                    key={robotState}
-                    ref={lottieRef}
-                    source={getRobotAnimation()}
-                    autoPlay
-                    loop
-                    style={styles.characterAnimation}
-                    speed={1}
-                    resizeMode="contain"
-                  />
-
-                  {/* Greeting text bubble */}
-                  {robotState === 'talking' && (
-                    <View style={styles.greetingBubble}>
-                      <Text style={styles.greetingText}>
-                        Hey! I'm {user?.assistantName || 'Yo!'}
-                      </Text>
-                    </View>
-                  )}
-                </>
-              )}
-            </View>
-          </TouchableOpacity>
-
-          {/* Wake Word Prompt */}
-          <View style={styles.wakeWordContainer}>
-            <Text style={styles.wakeWordPrompt}>Say</Text>
-            <Text style={styles.wakeWordText}>
-              "Yo {user?.assistantName || 'PA'}"
-            </Text>
-            <Text style={styles.wakeWordPrompt}>to activate</Text>
-          </View>
-
-          {/* Animated Dots */}
-          <View style={styles.dotsContainer}>
-            {dotAnimations.map((anim, index) => (
-              <Animated.View
-                key={index}
-                style={[
-                  styles.dot,
-                  {
-                    opacity: anim,
-                    transform: [
-                      {
-                        scale: anim.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [0.5, 1],
-                        }),
-                      },
-                    ],
-                  },
-                ]}
-              />
-            ))}
-          </View>
-
-          {/* Swipe Arrows Indicator */}
-          <Animated.View style={[styles.swipeIndicator, { opacity: arrowOpacity }]}>
-            <TouchableOpacity
-              style={styles.swipeButton}
-              onPress={showLeftPanel}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['rgba(201, 169, 110, 0.15)', 'rgba(201, 169, 110, 0.05)']}
-                style={styles.swipeButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Ionicons name="chevron-back" size={20} color="#C9A96E" />
-                <Text style={styles.swipeText}>Settings</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.swipeButton}
-              onPress={showRightPanel}
-              activeOpacity={0.7}
-            >
-              <LinearGradient
-                colors={['rgba(201, 169, 110, 0.05)', 'rgba(201, 169, 110, 0.15)']}
-                style={styles.swipeButtonGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-              >
-                <Text style={styles.swipeText}>Dashboard</Text>
-                <Ionicons name="chevron-forward" size={20} color="#C9A96E" />
-              </LinearGradient>
-            </TouchableOpacity>
-          </Animated.View>
-        </View>
+        {/* Bottom Navigation */}
+        <BottomNav
+          user={user}
+          pendingCount={pendingCount}
+          arrowOpacity={arrowOpacity}
+          onSettingsPress={showLeftPanel}
+          onSettingsLongPress={() => navigation.navigate('PrivacySecurity')}
+          onDashboardPress={showRightPanel}
+          onDashboardLongPress={() => navigation.navigate('Tasks')}
+          onMicPress={startQuickVoiceInput}
+        />
 
         {/* Floating Widget Button */}
         <TouchableOpacity
           style={styles.floatingWidget}
-          onPress={showQuickActions}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+            showQuickActions();
+          }}
           activeOpacity={0.8}
+          accessibilityLabel="Quick actions"
+          accessibilityHint="Open quick actions menu for shortcuts"
+          accessibilityRole="button"
         >
           <LinearGradient
             colors={['#C9A96E', '#E5C794']}
@@ -708,6 +1050,9 @@ const HomeScreen: React.FC = () => {
                   <TouchableOpacity
                     style={styles.quickActionListItem}
                     onPress={() => {
+                      // Track action usage
+                      trackActionUsage(action.id);
+
                       // Trigger appropriate robot state based on action
                       if (action.id === 'chat') {
                         setRobotTalking();
@@ -726,6 +1071,12 @@ const HomeScreen: React.FC = () => {
                       <Ionicons name={action.icon as any} size={24} color="#C9A96E" />
                     </View>
                     <Text style={styles.quickActionListText}>{action.label}</Text>
+                    {/* Most used indicator for top action */}
+                    {index === 0 && actionUsageCount[action.id] && actionUsageCount[action.id] > 0 && (
+                      <View style={styles.mostUsedBadge}>
+                        <Text style={styles.mostUsedText}>Most Used</Text>
+                      </View>
+                    )}
                     <Ionicons name="chevron-forward" size={20} color="#666666" />
                   </TouchableOpacity>
                   {index < quickActions.length - 1 && (
@@ -906,6 +1257,106 @@ const HomeScreen: React.FC = () => {
           ))}
         </ScrollView>
       </Animated.View>
+
+      {/* Voice Conversation Overlay */}
+      {voiceState.conversationActive && (
+        <Animated.View
+          style={[
+            styles.conversationOverlay,
+            { opacity: conversationOverlayOpacity }
+          ]}
+        >
+          {/* Animated pulsing background */}
+          <Animated.View
+            style={[
+              styles.conversationBackground,
+              { transform: [{ scale: conversationBackgroundPulse }] }
+            ]}
+          >
+            <LinearGradient
+              colors={['rgba(201, 169, 110, 0.15)', 'rgba(201, 169, 110, 0.05)', 'rgba(0, 0, 0, 0.8)']}
+              locations={[0, 0.5, 1]}
+              style={styles.conversationGradient}
+            />
+          </Animated.View>
+
+          {/* Conversation status indicator */}
+          <View style={styles.conversationStatusContainer}>
+            <View style={styles.conversationStatus}>
+              {voiceState.isRecording && (
+                <>
+                  <View style={styles.recordingPulse} />
+                  <Ionicons name="mic" size={24} color="#C9A96E" />
+                  <Text style={styles.conversationStatusText}>Listening...</Text>
+                </>
+              )}
+              {voiceState.isTranscribing && (
+                <>
+                  <ActivityIndicator color="#C9A96E" size="small" />
+                  <Text style={styles.conversationStatusText}>Processing...</Text>
+                </>
+              )}
+              {voiceState.isPlaying && (
+                <>
+                  <Ionicons name="volume-high" size={24} color="#C9A96E" />
+                  <Text style={styles.conversationStatusText}>Speaking...</Text>
+                </>
+              )}
+            </View>
+
+            {/* Control buttons */}
+            <View style={styles.conversationControls}>
+              {voiceState.isRecording && (
+                <TouchableOpacity
+                  style={styles.stopRecordingButton}
+                  onPress={stopRecording}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#C9A96E', '#E5C794']}
+                    style={styles.stopRecordingGradient}
+                  >
+                    <Ionicons name="stop" size={28} color="#FFFFFF" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              {(voiceState.isPlaying || (!voiceState.isRecording && !voiceState.isTranscribing)) && (
+                <TouchableOpacity
+                  style={styles.nextTurnButton}
+                  onPress={() => {
+                    if (!voiceState.isRecording && !voiceState.isTranscribing) {
+                      startQuickVoiceInput();
+                    }
+                  }}
+                  disabled={voiceState.isTranscribing}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={['#34C759', '#28A745']}
+                    style={styles.nextTurnGradient}
+                  >
+                    <Ionicons name="mic" size={28} color="#FFFFFF" />
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+
+              <TouchableOpacity
+                style={styles.endConversationButton}
+                onPress={endConversation}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['#FF4757', '#FF6B7A']}
+                  style={styles.endConversationGradient}
+                >
+                  <Ionicons name="close" size={28} color="#FFFFFF" />
+                </LinearGradient>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -975,6 +1426,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  notificationIndicator: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF4757',
+    shadowColor: '#FF4757',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 5,
+  },
   notificationBadge: {
     position: 'absolute',
     top: 4,
@@ -995,10 +1460,9 @@ const styles = StyleSheet.create({
   // Center Content
   centerContent: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingBottom: 140,  // Increased more to shift content upward for bigger text
-    paddingTop: 20,      // Add top padding for better balance
+    paddingTop: 40,      // Shift avatar upward
   },
   greetingContainer: {
     alignItems: 'center',
@@ -1008,15 +1472,32 @@ const styles = StyleSheet.create({
   greetingTime: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#C9A96E',
+    color: '#FFFFFF',
     letterSpacing: 1,
     marginBottom: 8,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   greetingName: {
     fontSize: 32,
     fontWeight: '800',
     color: '#FFFFFF',
     letterSpacing: 0.5,
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  greetingContext: {
+    fontSize: 14,
+    fontWeight: '500',
+    color: '#C9A96E',
+    textAlign: 'center',
+    marginTop: 8,
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
   avatarContainer: {
@@ -1069,15 +1550,60 @@ const styles = StyleSheet.create({
     borderColor: '#C9A96E',
   },
   characterContainer: {
-    width: width * 0.75,  // Match ReadyPlayerMeAvatar width
-    height: 380,          // Match ReadyPlayerMeAvatar height
+    width: width * 0.95,  // Increased from 0.75 - bigger avatar
+    height: 480,          // Increased from 380 - taller avatar
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
   },
   characterAnimation: {
-    width: width * 0.75,
-    height: 380,
+    width: width * 0.95,
+    height: 480,
+  },
+  avatarFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarFallbackGradient: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#C9A96E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  avatarFallbackText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#C9A96E',
+    marginTop: 16,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  waveformContainer: {
+    position: 'absolute',
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  waveformBar: {
+    position: 'absolute',
+    width: 4,
+    height: 60,
+    backgroundColor: '#C9A96E',
+    borderRadius: 2,
+    shadowColor: '#C9A96E',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 5,
   },
   greetingBubble: {
     position: 'absolute',
@@ -1121,12 +1647,20 @@ const styles = StyleSheet.create({
     marginTop: 12,
     marginBottom: 8,
   },
+  wakeWordContainerBottom: {
+    alignItems: 'center',
+    paddingTop: 20,
+    paddingBottom: 15,
+  },
   wakeWordPrompt: {
     fontSize: 16,          // Increased from 13
     fontWeight: '500',     // Increased weight
-    color: '#CCCCCC',      // Lighter color for better visibility
+    color: '#FFFFFF',      // White for better visibility
     textAlign: 'center',
     marginBottom: 8,       // More spacing
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   wakeWordText: {
     fontSize: 28,          // Increased from 16
@@ -1139,51 +1673,92 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 10,
   },
-  dotsContainer: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 50,      // Reduced height
-    marginBottom: 15, // Reduced margin
-    marginTop: 8,     // Add small top margin
-  },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#C9A96E',
-    marginVertical: 6,
-  },
 
-  // Swipe Indicator
-  swipeIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 12,
+  // Bottom Navigation Container
+  bottomNavContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: height * 0.3,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  swipeButton: {
-    borderRadius: 25,
+  bottomNavGradient: {
+    flex: 1,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    borderBottomLeftRadius: 0,
+    borderBottomRightRadius: 0,
+    paddingVertical: 16,
+    paddingHorizontal: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 110, 0.2)',
+  },
+  // Navigation Buttons
+  navButtonLeft: {
+    position: 'absolute',
+    left: -28,  // 40% cut off (button width is 70px)
+    bottom: 80,
+    width: 70,
+    height: 50,
+    borderRadius: 14,
     overflow: 'hidden',
   },
-  swipeButtonGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    gap: 8,
+  navButtonRight: {
+    position: 'absolute',
+    right: -28,  // 40% cut off (button width is 70px)
+    bottom: 80,
+    width: 70,
+    height: 50,
+    borderRadius: 14,
+    overflow: 'hidden',
   },
-  swipeText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#C9A96E',
-    letterSpacing: 0.5,
+  navButtonGradient: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  navButtonGradientLeft: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+    paddingRight: 10,
+  },
+  navButtonGradientRight: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    paddingLeft: 10,
+  },
+  dashboardBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FF4757',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 6,
+    borderWidth: 2,
+    borderColor: '#2A2A2A',
+  },
+  dashboardBadgeText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
   },
 
   // Floating Widget Button
   floatingWidget: {
     position: 'absolute',
-    bottom: 60,
+    bottom: height * 0.3 + 20, // Above the 30% bottom nav container
     right: 20,
     width: 56,
     height: 56,
@@ -1263,12 +1838,44 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
+    position: 'relative',
   },
   quickActionListText: {
     flex: 1,
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  usageCountBadge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#C9A96E',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#2A2A2A',
+  },
+  usageCountText: {
+    color: '#000000',
+    fontSize: 10,
+    fontWeight: '700',
+  },
+  mostUsedBadge: {
+    backgroundColor: 'rgba(201, 169, 110, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginRight: 8,
+  },
+  mostUsedText: {
+    color: '#C9A96E',
+    fontSize: 11,
+    fontWeight: '600',
   },
   quickActionDivider: {
     height: 1,
@@ -1461,6 +2068,122 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 255, 255, 0.1)',
     marginHorizontal: 20,
     marginBottom: 16,
+  },
+
+  // Voice Conversation Overlay Styles
+  conversationOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 200,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  conversationBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+  },
+  conversationGradient: {
+    flex: 1,
+  },
+  conversationStatusContainer: {
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  conversationStatus: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 110, 0.3)',
+    marginBottom: 30,
+    shadowColor: '#C9A96E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  conversationStatusText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#C9A96E',
+    letterSpacing: 0.5,
+  },
+  recordingPulse: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: '#FF4757',
+    shadowColor: '#FF4757',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  conversationControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+  },
+  stopRecordingButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    shadowColor: '#C9A96E',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  stopRecordingGradient: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  nextTurnButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    shadowColor: '#34C759',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  nextTurnGradient: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  endConversationButton: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    shadowColor: '#FF4757',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  endConversationGradient: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

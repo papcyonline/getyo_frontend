@@ -50,6 +50,7 @@ import UserDetailsScreen from '../screens/UserDetailsScreen';
 import HomeScreen from '../screens/HomeScreen';
 import ConversationScreen from '../screens/ConversationScreen';
 import TasksScreen from '../screens/TasksScreen';
+import RemindersScreen from '../screens/RemindersScreen';
 import CalendarScreen from '../screens/CalendarScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 
@@ -63,7 +64,7 @@ import AIAssistantScreen from '../screens/AIAssistantScreen';
 import ChangePasscodeScreen from '../screens/ChangePasscodeScreen';
 import TwoFactorAuthScreen from '../screens/TwoFactorAuthScreen';
 import ActiveSessionsScreen from '../screens/ActiveSessionsScreen';
-import IntegrationScreen from '../screens/IntegrationScreen';
+import IntegrationScreen from '../screens/IntegrationsScreen';
 import AnalyticsScreen from '../screens/AnalyticsScreen';
 import NotificationFeedScreen from '../screens/NotificationFeedScreen';
 import EmailManagementScreen from '../screens/EmailManagementScreen';
@@ -78,6 +79,16 @@ import AddTaskScreen from '../screens/AddTaskScreen';
 import AddReminderScreen from '../screens/AddReminderScreen';
 import AddEventScreen from '../screens/AddEventScreen';
 import QuickNoteScreen from '../screens/QuickNoteScreen';
+
+// Email Screens
+import EmailIntegrationScreen from '../screens/EmailIntegrationScreen';
+import EmailListScreen from '../screens/EmailListScreen';
+import EmailDetailScreen from '../screens/EmailDetailScreen';
+import EmailComposeScreen from '../screens/EmailComposeScreen';
+import EmailAccountsScreen from '../screens/EmailAccountsScreen';
+
+// PA Voice Interaction
+import PAVoiceInteractionScreen from '../screens/PAVoiceInteractionScreen';
 
 // Detail Screens
 import TaskDetailScreen from '../screens/TaskDetailScreen';
@@ -956,6 +967,7 @@ const MainAppNavigator = () => {
       {/* Individual Screens (for direct navigation) */}
       <Stack.Screen name="Home" component={HomeScreen} />
       <Stack.Screen name="Tasks" component={TasksScreen} />
+      <Stack.Screen name="Reminders" component={RemindersScreen} />
       <Stack.Screen name="Calendar" component={CalendarScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="Settings" component={ProfileScreen} />
@@ -969,6 +981,7 @@ const MainAppNavigator = () => {
       <Stack.Screen name="ActiveSessions" component={ActiveSessionsScreen} />
       <Stack.Screen name="AssistantProfileImage" component={AssistantProfileImageScreen} />
       <Stack.Screen name="AIAssistant" component={AIAssistantScreen} />
+      <Stack.Screen name="PAVoiceInteraction" component={PAVoiceInteractionScreen} />
       <Stack.Screen name="AgentCreativity" component={AgentCreativityScreen} />
       <Stack.Screen name="AgentCommunicationStyle" component={AgentCommunicationStyleScreen} />
       <Stack.Screen name="AgentProactivity" component={AgentProactivityScreen} />
@@ -988,6 +1001,14 @@ const MainAppNavigator = () => {
       <Stack.Screen name="AddReminder" component={AddReminderScreen} />
       <Stack.Screen name="AddEvent" component={AddEventScreen} />
       <Stack.Screen name="QuickNote" component={QuickNoteScreen} />
+      <Stack.Screen name="ChatScreen" component={ChatScreen} />
+
+      {/* Email Screens */}
+      <Stack.Screen name="EmailIntegration" component={EmailIntegrationScreen} />
+      <Stack.Screen name="EmailList" component={EmailListScreen} />
+      <Stack.Screen name="EmailDetail" component={EmailDetailScreen} />
+      <Stack.Screen name="EmailCompose" component={EmailComposeScreen} />
+      <Stack.Screen name="EmailAccounts" component={EmailAccountsScreen} />
 
       {/* Detail Screens */}
       <Stack.Screen name="TaskDetail" component={TaskDetailScreen} />

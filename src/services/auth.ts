@@ -41,22 +41,32 @@ class AuthService {
     }
   }
 
-  async login(email: string, password: string): Promise<User> {
+  async login(email: string, password: string): Promise<User | { requires2FA: true; email: string }> {
     try {
       store.dispatch(setUserLoading(true));
       store.dispatch(setUserError(null));
 
       // Login via backend API
-      const { user, token } = await ApiService.login(email, password);
+      const result = await ApiService.login(email, password);
 
-      // Store session token securely
-      await secureStorage.setItem('authToken', token);
+      // Check if 2FA is required
+      if (result.requires2FA) {
+        console.log('🔐 2FA required, returning special response');
+        store.dispatch(setUserLoading(false));
+        return { requires2FA: true, email: result.email! };
+      }
 
-      // Store user data
+      // Normal login flow
+      const { user, token } = result;
+
+      // Store session token securely (already done in ApiService, but keeping for consistency)
+      await secureStorage.setItem('authToken', token!);
+
+      // Store user data (already done in ApiService, but keeping for consistency)
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
       // Update Redux store
-      store.dispatch(setUser(user));
+      store.dispatch(setUser(user!));
 
       // Connect to socket with retry logic
       try {
@@ -69,7 +79,7 @@ class AuthService {
         // Socket will retry connection automatically
       }
 
-      return user;
+      return user!;
     } catch (error: any) {
       console.error('Login failed:', error);
       const errorMessage = error.message || 'Login failed';

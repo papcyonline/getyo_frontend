@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../services/api';
 
 interface Session {
   id: string;
@@ -39,35 +40,24 @@ const ActiveSessionsScreen: React.FC = () => {
   const loadSessions = async () => {
     try {
       setLoading(true);
-      // TODO: Implement API call to fetch active sessions
-      // const data = await ApiService.getActiveSessions();
+      const data = await api.getActiveSessions();
 
-      // Mock data for now
-      const mockSessions: Session[] = [
-        {
-          id: '1',
-          deviceName: 'iPhone 14 Pro',
-          deviceType: 'mobile',
-          location: 'Lagos, Nigeria',
-          ipAddress: '192.168.1.1',
-          lastActive: new Date(),
-          isCurrent: true,
-        },
-        {
-          id: '2',
-          deviceName: 'Chrome on MacBook Pro',
-          deviceType: 'desktop',
-          location: 'Lagos, Nigeria',
-          ipAddress: '192.168.1.2',
-          lastActive: new Date(Date.now() - 2 * 60 * 60 * 1000),
-          isCurrent: false,
-        },
-      ];
+      // Map backend response to frontend interface
+      const mappedSessions: Session[] = data.map((session: any) => ({
+        id: session._id,
+        deviceName: session.deviceName,
+        deviceType: session.deviceType,
+        location: session.location,
+        ipAddress: session.ipAddress,
+        lastActive: new Date(session.lastActive),
+        isCurrent: session.isCurrent,
+      }));
 
-      setSessions(mockSessions);
-    } catch (error) {
+      setSessions(mappedSessions);
+    } catch (error: any) {
       console.error('Failed to load sessions:', error);
-      Alert.alert('Error', 'Failed to load active sessions');
+      const errorMessage = error?.response?.data?.error || 'Failed to load active sessions';
+      Alert.alert('Error', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -88,12 +78,14 @@ const ActiveSessionsScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // TODO: Implement API call to terminate session
-              // await ApiService.terminateSession(sessionId);
+              await api.terminateSession(sessionId);
+              // Remove the terminated session from local state
               setSessions(sessions.filter(s => s.id !== sessionId));
               Alert.alert('Success', 'Session terminated successfully');
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to terminate session');
+              console.error('Failed to terminate session:', error);
+              const errorMessage = error?.response?.data?.error || 'Failed to terminate session';
+              Alert.alert('Error', errorMessage);
             }
           }
         }
@@ -118,12 +110,14 @@ const ActiveSessionsScreen: React.FC = () => {
           style: 'destructive',
           onPress: async () => {
             try {
-              // TODO: Implement API call to terminate all other sessions
-              // await ApiService.terminateAllOtherSessions();
+              const result = await api.terminateAllOtherSessions();
+              // Keep only the current session
               setSessions(sessions.filter(s => s.isCurrent));
-              Alert.alert('Success', 'All other sessions terminated successfully');
+              Alert.alert('Success', `${result.terminatedCount} session(s) terminated successfully`);
             } catch (error: any) {
-              Alert.alert('Error', error.message || 'Failed to terminate sessions');
+              console.error('Failed to terminate all sessions:', error);
+              const errorMessage = error?.response?.data?.error || 'Failed to terminate sessions';
+              Alert.alert('Error', errorMessage);
             }
           }
         }

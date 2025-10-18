@@ -17,7 +17,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { Ionicons, MaterialIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as FileSystem from 'expo-file-system';
@@ -25,6 +25,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { RootStackParamList } from '../types';
 import { setUser } from '../store/slices/userSlice';
+import { RootState } from '../store';
 import ApiService from '../services/api';
 import ProgressBar from '../components/ProgressBar';
 
@@ -43,7 +44,14 @@ const AssistantNamingScreen: React.FC = () => {
   const route = useRoute<AssistantNamingRouteProp>();
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
-  const { phone, email, userDetails, user, token, passwordGenerated } = route.params;
+  const { phone, email, userDetails, user: userFromParams, token, passwordGenerated } = route.params || {};
+
+  // Get user from Redux store (fallback to params for backward compatibility)
+  const userFromRedux = useSelector((state: RootState) => state.user?.user);
+  const user = userFromRedux || userFromParams;
+
+  // Get theme from Redux store
+  const theme = useSelector((state: RootState) => state.theme.theme);
 
   const [assistantName, setAssistantName] = useState('');
   const [userName, setUserName] = useState(userDetails?.preferredName || '');
@@ -111,6 +119,11 @@ const AssistantNamingScreen: React.FC = () => {
 
     setLoading(true);
     try {
+      console.log('🚀 [AssistantNaming] Starting assistant setup...');
+      console.log('🚀 [AssistantNaming] User from Redux:', !!userFromRedux);
+      console.log('🚀 [AssistantNaming] User from Params:', !!userFromParams);
+      console.log('🚀 [AssistantNaming] Final user:', !!user);
+
       let imageToUpload: string | undefined = undefined;
 
       // Use image URI directly for efficient multipart upload
@@ -121,12 +134,20 @@ const AssistantNamingScreen: React.FC = () => {
       }
 
       // Save assistant configuration to backend
+      console.log('📡 [AssistantNaming] Calling setupAssistant API...');
       const response = await ApiService.setupAssistant(
         assistantName.trim(),
         imageToUpload
       );
 
+      console.log('📡 [AssistantNaming] API Response:', {
+        success: response.success,
+        hasData: !!response.data,
+        error: response.error
+      });
+
       if (response.success && user) {
+        console.log('✅ [AssistantNaming] Setup successful, updating user...');
         // Use the real user account created during registration
         const updatedUser = {
           ...user,
@@ -137,16 +158,22 @@ const AssistantNamingScreen: React.FC = () => {
         dispatch(setUser(updatedUser));
 
         // Navigate to UserProfileSetup where PA asks "What should I call you?"
+        console.log('✅ [AssistantNaming] Navigating to UserProfileSetup...');
         navigation.navigate('UserProfileSetup', {
           assistantName: response.data.assistantName,
           assistantProfileImage: response.data.assistantProfileImage,
           showAsConversation: true,
         } as any);
       } else {
+        console.error('❌ [AssistantNaming] Setup failed:', {
+          responseSuccess: response.success,
+          hasUser: !!user,
+          error: response.error
+        });
         Alert.alert('Error', response.error || 'Failed to setup assistant. Please try again.');
       }
     } catch (error: any) {
-      console.error('Failed to complete setup:', error);
+      console.error('❌ [AssistantNaming] Exception during setup:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Failed to setup assistant. Please try again.';
       Alert.alert('Error', errorMessage);
     } finally {
@@ -167,19 +194,19 @@ const AssistantNamingScreen: React.FC = () => {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Background gradient flare */}
 
 
       <SafeAreaView style={styles.safeArea}>
         {/* Top Bar - Fixed on black background */}
-        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="chevron-back" size={24} color="#FFF7F5" />
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 15) + 10, backgroundColor: theme.background }]}>
+          <TouchableOpacity style={[styles.backButton, { backgroundColor: theme.surfaceSecondary }]} onPress={handleBack}>
+            <Ionicons name="chevron-back" size={24} color={theme.text} />
           </TouchableOpacity>
-          <Text style={styles.step}>Setup Your Assistant</Text>
+          <Text style={[styles.step, { color: theme.text }]}>Setup Your Assistant</Text>
           <TouchableOpacity
-            style={styles.photoButton}
+            style={[styles.photoButton, { backgroundColor: `${theme.accent}10`, borderColor: `${theme.accent}30` }]}
             onPress={pickImage}
             activeOpacity={0.8}
           >
@@ -187,7 +214,7 @@ const AssistantNamingScreen: React.FC = () => {
               <Image source={{ uri: profileImage }} style={styles.topPhotoImage} />
             ) : (
               <View style={styles.photoButtonPlaceholder}>
-                <Ionicons name="camera" size={20} color="#3396D3" />
+                <Ionicons name="camera" size={20} color={theme.accent} />
               </View>
             )}
           </TouchableOpacity>
@@ -199,7 +226,7 @@ const AssistantNamingScreen: React.FC = () => {
         <Animated.View
           style={[
             styles.slidingContainer,
-            { transform: [{ translateY: slideAnim }] }
+            { backgroundColor: theme.surface, transform: [{ translateY: slideAnim }] }
           ]}
         >
           <KeyboardAvoidingView
@@ -219,46 +246,46 @@ const AssistantNamingScreen: React.FC = () => {
                   { opacity: fadeAnim },
                 ]}
               >
-                <Text style={styles.instructionText}>Name your AI assistant</Text>
+                <Text style={[styles.instructionText, { color: theme.text }]}>Name your AI assistant</Text>
 
-                <View style={styles.inputContainer}>
-                  <MaterialIcons name="assistant" size={24} color="rgba(255, 247, 245, 0.5)" style={styles.inputIcon} />
+                <View style={[styles.inputContainer, { backgroundColor: `${theme.text}08`, borderColor: theme.border }]}>
+                  <MaterialIcons name="assistant" size={24} color={theme.textSecondary} style={styles.inputIcon} />
                   <TextInput
                     ref={nameInputRef}
-                    style={styles.nameInput}
+                    style={[styles.nameInput, { color: theme.text }]}
                     placeholder="e.g., Alex, Sam, Jordan"
-                    placeholderTextColor="rgba(255, 247, 245, 0.5)"
+                    placeholderTextColor={theme.textTertiary}
                     value={assistantName}
                     onChangeText={setAssistantName}
                     autoCapitalize="words"
                     returnKeyType="done"
                     onSubmitEditing={handleComplete}
                     maxLength={15}
-                    selectionColor="#3396D3"
+                    selectionColor={theme.accent}
                   />
                 </View>
 
                 {assistantName.length > 0 && (
                   <View style={styles.previewContainer}>
-                    <View style={styles.previewBox}>
+                    <View style={[styles.previewBox, { backgroundColor: `${theme.accent}08`, borderColor: `${theme.accent}30` }]}>
                       <View style={styles.previewHeader}>
                         {profileImage ? (
                           <Image source={{ uri: profileImage }} style={styles.previewImage} />
                         ) : (
-                          <View style={styles.previewImagePlaceholder}>
-                            <Ionicons name="sparkles" size={20} color="#3396D3" />
+                          <View style={[styles.previewImagePlaceholder, { backgroundColor: `${theme.accent}15` }]}>
+                            <Ionicons name="sparkles" size={20} color={theme.accent} />
                           </View>
                         )}
                         <View style={styles.previewInfo}>
-                          <Text style={styles.previewName}>
+                          <Text style={[styles.previewName, { color: theme.text }]}>
                             {assistantName}
                           </Text>
-                          <Text style={styles.previewPersonality}>
+                          <Text style={[styles.previewPersonality, { color: theme.textSecondary }]}>
                             Your AI Assistant
                           </Text>
                         </View>
                       </View>
-                      <Text style={styles.previewText}>
+                      <Text style={[styles.previewText, { color: theme.textSecondary }]}>
                         "Hey {assistantName}, what's on my schedule?"
                       </Text>
                     </View>
@@ -276,6 +303,7 @@ const AssistantNamingScreen: React.FC = () => {
               <TouchableOpacity
                 style={[
                   styles.continueButton,
+                  { backgroundColor: theme.accent },
                   !isValidSetup() && styles.disabledButton,
                 ]}
                 onPress={handleComplete}
@@ -283,11 +311,12 @@ const AssistantNamingScreen: React.FC = () => {
                 activeOpacity={0.9}
               >
                 {loading ? (
-                  <ActivityIndicator color="#FFF7F5" size="large" />
+                  <ActivityIndicator color={theme.background} size="large" />
                 ) : (
                   <Text style={[
                     styles.continueButtonText,
-                    !isValidSetup() && styles.disabledButtonText,
+                    { color: theme.background },
+                    !isValidSetup() && [styles.disabledButtonText, { color: theme.textTertiary }],
                   ]}>
                     Continue
                   </Text>
@@ -304,7 +333,6 @@ const AssistantNamingScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   gradientFlare: {
     position: 'absolute',
@@ -320,7 +348,6 @@ const styles = StyleSheet.create({
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
   },
@@ -333,19 +360,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 20,
-    backgroundColor: '#000000',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
   },
   step: {
     fontSize: 24,
-    color: '#FFF7F5',
     fontWeight: '800',
     letterSpacing: 0.5,
     flex: 1,
@@ -357,9 +381,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     overflow: 'hidden',
-    backgroundColor: 'rgba(51, 150, 211, 0.1)',
     borderWidth: 2,
-    borderColor: 'rgba(51, 150, 211, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -388,7 +410,6 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     fontSize: 20,
-    color: '#FFF7F5',
     fontWeight: '700',
     marginBottom: 24,
     letterSpacing: 0.3,
@@ -397,13 +418,11 @@ const styles = StyleSheet.create({
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     borderRadius: 30,
     paddingHorizontal: 18,
     height: 60,
     marginBottom: 28,
     borderWidth: 2,
-    borderColor: 'rgba(255, 247, 245, 0.15)',
   },
   inputIcon: {
     marginRight: 12,
@@ -411,18 +430,15 @@ const styles = StyleSheet.create({
   nameInput: {
     flex: 1,
     fontSize: 17,
-    color: '#FFF7F5',
     fontWeight: '500',
   },
   previewContainer: {
     marginTop: 8,
   },
   previewBox: {
-    backgroundColor: 'rgba(51, 150, 211, 0.08)',
     borderRadius: 16,
     padding: 18,
     borderWidth: 1,
-    borderColor: 'rgba(51, 150, 211, 0.2)',
   },
   previewHeader: {
     flexDirection: 'row',
@@ -439,7 +455,6 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(51, 150, 211, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 12,
@@ -450,16 +465,13 @@ const styles = StyleSheet.create({
   previewName: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFF7F5',
     marginBottom: 2,
   },
   previewPersonality: {
     fontSize: 13,
-    color: 'rgba(255, 247, 245, 0.7)',
   },
   previewText: {
     fontSize: 15,
-    color: 'rgba(255, 247, 245, 0.85)',
     fontStyle: 'italic',
     lineHeight: 21,
   },
@@ -470,25 +482,20 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     height: 56,
-    backgroundColor: '#3396D3',
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 12,
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     opacity: 0.5,
   },
   continueButtonText: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#FFF7F5',
     letterSpacing: 0.4,
   },
-  disabledButtonText: {
-    color: 'rgba(255, 247, 245, 0.4)',
-  },
+  disabledButtonText: {},
   skipButton: {
     paddingVertical: 14,
     alignItems: 'center',

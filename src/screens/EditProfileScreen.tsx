@@ -27,7 +27,7 @@ const EditProfileScreen: React.FC = () => {
   const theme = useSelector((state: RootState) => state.theme.theme);
   const user = useSelector((state: RootState) => state.user.user);
 
-  const [name, setName] = useState(user?.name || '');
+  const [name, setName] = useState(user?.preferredName || user?.name || '');
   const [email, setEmail] = useState(user?.email || '');
   const [phone, setPhone] = useState(user?.phone || '');
   const [profileImage, setProfileImage] = useState<string | null>(user?.profileImage || null);
@@ -35,7 +35,7 @@ const EditProfileScreen: React.FC = () => {
   const [hasChanges, setHasChanges] = useState(false);
 
   useEffect(() => {
-    const hasNameChange = name !== (user?.name || '');
+    const hasNameChange = name !== (user?.preferredName || user?.name || '');
     const hasEmailChange = email !== (user?.email || '');
     const hasPhoneChange = phone !== (user?.phone || '');
     const hasImageChange = profileImage !== (user?.profileImage || null);
@@ -156,7 +156,7 @@ const EditProfileScreen: React.FC = () => {
         dispatch(setUser(updatedUser));
 
         // Sync local state with updated values to prevent hasChanges false positive
-        setName(updatedUser.name || '');
+        setName(updatedUser.preferredName || updatedUser.name || '');
         setEmail(updatedUser.email || '');
         setPhone(updatedUser.phone || '');
         setProfileImage(updatedUser.profileImage || null);
@@ -277,7 +277,11 @@ const EditProfileScreen: React.FC = () => {
         <View style={[styles.section, { backgroundColor: theme.surface }]}>
           <Text style={[styles.sectionTitle, { color: theme.textSecondary }]}>ACCOUNT SETTINGS</Text>
 
-          <TouchableOpacity style={[styles.settingItem, { borderBottomColor: theme.border }]}>
+          <TouchableOpacity
+            style={[styles.settingItem, { borderBottomColor: theme.border }]}
+            onPress={() => navigation.navigate('ChangePasscode' as any)}
+            activeOpacity={0.7}
+          >
             <View style={styles.settingLeft}>
               <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
                 <Ionicons name="key-outline" size={20} color="#C9A96E" />
@@ -294,7 +298,11 @@ const EditProfileScreen: React.FC = () => {
             <Ionicons name="chevron-forward" size={20} color={theme.textSecondary} />
           </TouchableOpacity>
 
-          <TouchableOpacity style={[styles.settingItem, styles.lastItem]}>
+          <TouchableOpacity
+            style={[styles.settingItem, styles.lastItem]}
+            onPress={() => navigation.navigate('TwoFactorAuth' as any)}
+            activeOpacity={0.7}
+          >
             <View style={styles.settingLeft}>
               <View style={[styles.iconContainer, { backgroundColor: 'rgba(201, 169, 110, 0.1)' }]}>
                 <Ionicons name="shield-checkmark-outline" size={20} color="#C9A96E" />

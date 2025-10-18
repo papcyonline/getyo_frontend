@@ -55,13 +55,19 @@ class ApiService {
       },
     });
 
-    // Request interceptor to add auth token
+    // Request interceptor to add auth token and handle FormData
     this.api.interceptors.request.use(
       async (config) => {
         const token = await secureStorage.getItem('authToken');
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
         }
+
+        // Remove Content-Type header for FormData to let axios set it with boundary
+        if (config.data instanceof FormData) {
+          delete config.headers['Content-Type'];
+        }
+
         return config;
       },
       (error) => {
@@ -547,12 +553,28 @@ class ApiService {
   }
 
   // Task management
-  async getTasks(): Promise<Task[]> {
+  async getTasks(params?: {
+    status?: string;
+    priority?: string;
+    category?: string;
+    sortBy?: string;
+    limit?: number;
+  }): Promise<Task[]> {
     try {
-      const response = await this.api.get('/api/tasks');
+      const response = await this.api.get('/api/tasks', { params });
       return response.data.data;
     } catch (error) {
       console.error('Get tasks failed:', error);
+      throw error;
+    }
+  }
+
+  async getTask(taskId: string): Promise<Task> {
+    try {
+      const response = await this.api.get(`/api/tasks/${taskId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Get task failed:', error);
       throw error;
     }
   }
@@ -582,6 +604,119 @@ class ApiService {
       await this.api.delete(`/api/tasks/${taskId}`);
     } catch (error) {
       console.error('Delete task failed:', error);
+      throw error;
+    }
+  }
+
+  async searchTasks(query: string): Promise<Task[]> {
+    try {
+      const response = await this.api.get('/api/tasks/search', { params: { query } });
+      return response.data.data;
+    } catch (error) {
+      console.error('Search tasks failed:', error);
+      throw error;
+    }
+  }
+
+  async getOverdueTasks(): Promise<Task[]> {
+    try {
+      const response = await this.api.get('/api/tasks/overdue');
+      return response.data.data;
+    } catch (error) {
+      console.error('Get overdue tasks failed:', error);
+      throw error;
+    }
+  }
+
+  async getUpcomingTasks(days: number = 7): Promise<Task[]> {
+    try {
+      const response = await this.api.get('/api/tasks/upcoming', { params: { days } });
+      return response.data.data;
+    } catch (error) {
+      console.error('Get upcoming tasks failed:', error);
+      throw error;
+    }
+  }
+
+  async getTaskStats(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/tasks/stats');
+      return response.data.data;
+    } catch (error) {
+      console.error('Get task stats failed:', error);
+      throw error;
+    }
+  }
+
+  async markTaskCompleted(taskId: string): Promise<Task> {
+    try {
+      const response = await this.api.patch(`/api/tasks/${taskId}/complete`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Mark task completed failed:', error);
+      throw error;
+    }
+  }
+
+  async addSubtask(taskId: string, text: string): Promise<Task> {
+    try {
+      const response = await this.api.post(`/api/tasks/${taskId}/subtasks`, { text });
+      return response.data.data;
+    } catch (error) {
+      console.error('Add subtask failed:', error);
+      throw error;
+    }
+  }
+
+  async toggleSubtask(taskId: string, subtaskId: string): Promise<Task> {
+    try {
+      const response = await this.api.patch(`/api/tasks/${taskId}/subtasks/${subtaskId}/toggle`);
+      return response.data.data;
+    } catch (error) {
+      console.error('Toggle subtask failed:', error);
+      throw error;
+    }
+  }
+
+  async bulkUpdateTasks(taskIds: string[], updates: Partial<Task>): Promise<{ matched: number; modified: number }> {
+    try {
+      const response = await this.api.patch('/api/tasks/bulk', { taskIds, updates });
+      return response.data.data;
+    } catch (error) {
+      console.error('Bulk update tasks failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract structured task data from voice transcript using AI
+   * Understands natural language, relative dates, priorities, people, locations, etc.
+   */
+  async extractTaskFromVoice(transcript: string, recordedAt?: Date): Promise<{
+    title: string;
+    description?: string;
+    dueDate?: Date;
+    priority?: 'low' | 'medium' | 'high' | 'urgent';
+    category?: string;
+    tags?: string[];
+    people?: string[];
+    location?: string;
+  }> {
+    try {
+      console.log('🤖 Extracting task data from transcript using AI...');
+      const response = await this.api.post('/api/tasks/extract-from-voice', {
+        transcript,
+        recordedAt: recordedAt?.toISOString() || new Date().toISOString()
+      });
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ AI extraction successful:', response.data.data);
+        return response.data.data;
+      }
+
+      throw new Error('AI extraction failed');
+    } catch (error) {
+      console.error('Extract task from voice failed:', error);
       throw error;
     }
   }
@@ -1176,30 +1311,92 @@ class ApiService {
     service: string;
   } | null> {
     try {
+      console.log('🎤 Transcribing audio:', audioUri);
+
+      // First, check if the endpoint is reachable
+      try {
+        console.log('🔍 Testing transcription endpoint health...');
+        const healthResponse = await this.api.get('/api/transcription/health');
+        console.log('✅ Transcription endpoint is reachable:', healthResponse.data);
+      } catch (healthError: any) {
+        console.error('❌ Transcription endpoint unreachable:', healthError.message);
+      }
+
       const formData = new FormData();
-      formData.append('audio', {
+
+      // React Native FormData requires specific format
+      const file = {
         uri: audioUri,
         type: 'audio/m4a',
         name: 'recording.m4a',
-      } as any);
+      };
 
-      const response = await this.api.post('/transcription/whisper', formData, {
+      console.log('📦 File object:', file);
+      formData.append('audio', file as any);
+
+      console.log('📤 Sending transcription request...');
+      console.log('FormData created:', formData);
+
+      // Use fetch instead of axios for file uploads in React Native
+      const token = await secureStorage.getItem('authToken');
+
+      const fetchResponse = await fetch(`${this.baseURL}/api/transcription/whisper`, {
+        method: 'POST',
         headers: {
-          'Content-Type': 'multipart/form-data',
+          'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type - let fetch handle it
         },
+        body: formData,
       });
 
-      if (response.data.success && response.data.data) {
+      console.log('📥 Response status:', fetchResponse.status);
+      const responseText = await fetchResponse.text();
+      console.log('📥 Response text:', responseText);
+
+      const responseData = JSON.parse(responseText);
+      console.log('✅ Transcription response:', responseData);
+
+      if (responseData.success && responseData.data) {
         return {
-          text: response.data.data.text,
-          confidence: response.data.data.confidence,
-          service: response.data.data.service
+          text: responseData.data.text,
+          confidence: responseData.data.confidence,
+          service: responseData.data.service
         };
       }
 
       return null;
-    } catch (error) {
-      console.error('Transcription API error:', error);
+    } catch (error: any) {
+      console.error('❌ Transcription API error:', error);
+      console.error('Error details:', {
+        message: error.message,
+        code: error.code,
+        status: error.response?.status,
+        data: error.response?.data,
+        stack: error.stack,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Generate a smart title from transcript using AI
+   */
+  async generateTitle(transcript: string): Promise<string | null> {
+    try {
+      console.log('🤖 Generating smart title from transcript...');
+
+      const response = await this.api.post('/api/transcription/generate-title', {
+        transcript
+      });
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ Title generated:', response.data.data.title);
+        return response.data.data.title;
+      }
+
+      return null;
+    } catch (error: any) {
+      console.error('❌ Title generation error:', error);
       return null;
     }
   }
@@ -1415,6 +1612,37 @@ class ApiService {
       return response.data.data;
     } catch (error) {
       console.error('Toggle reminder status failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extract structured reminder data from voice transcript using AI
+   * Understands natural language, relative dates, urgency, repeat patterns, etc.
+   */
+  async extractReminderFromVoice(transcript: string, recordedAt?: Date): Promise<{
+    title: string;
+    notes?: string;
+    reminderTime: string;
+    isUrgent: boolean;
+    repeatType: 'none' | 'daily' | 'weekly' | 'monthly';
+    location?: string;
+  }> {
+    try {
+      console.log('🤖 Extracting reminder data from transcript using AI...');
+      const response = await this.api.post('/api/reminders/extract-from-voice', {
+        transcript,
+        recordedAt: recordedAt?.toISOString() || new Date().toISOString()
+      });
+
+      if (response.data.success && response.data.data) {
+        console.log('✅ AI extraction successful:', response.data.data);
+        return response.data.data;
+      }
+
+      throw new Error('AI extraction failed');
+    } catch (error) {
+      console.error('Extract reminder from voice failed:', error);
       throw error;
     }
   }
@@ -1680,6 +1908,413 @@ class ApiService {
       return { user, token };
     } catch (error: any) {
       console.error('Verify login 2FA failed:', error);
+      throw error;
+    }
+  }
+
+  // ================================
+  // Session Management APIs
+  // ================================
+
+  /**
+   * Get all active sessions for current user
+   */
+  async getActiveSessions(): Promise<any[]> {
+    try {
+      console.log('📡 Fetching active sessions...');
+      const response = await this.api.get('/api/auth/sessions');
+      console.log('✅ Active sessions fetched:', response.data.count);
+      return response.data.data || [];
+    } catch (error: any) {
+      console.error('Get active sessions failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Terminate a specific session
+   */
+  async terminateSession(sessionId: string): Promise<void> {
+    try {
+      console.log('🔌 Terminating session:', sessionId);
+      await this.api.delete(`/api/auth/sessions/${sessionId}`);
+      console.log('✅ Session terminated successfully');
+    } catch (error: any) {
+      console.error('Terminate session failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Terminate all other sessions (keep current)
+   */
+  async terminateAllOtherSessions(): Promise<{ terminatedCount: number }> {
+    try {
+      console.log('🔌 Terminating all other sessions...');
+      const response = await this.api.delete('/api/auth/sessions/others');
+      console.log('✅ All other sessions terminated:', response.data.data.terminatedCount);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Terminate all other sessions failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get session statistics
+   */
+  async getSessionStats(): Promise<any> {
+    try {
+      console.log('📊 Fetching session statistics...');
+      const response = await this.api.get('/api/auth/sessions/stats');
+      console.log('✅ Session stats fetched');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Get session stats failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Extend current session expiry
+   */
+  async extendSession(hours: number = 24): Promise<{ expiresAt: string }> {
+    try {
+      console.log(`⏰ Extending session by ${hours} hours...`);
+      const response = await this.api.post('/api/auth/sessions/extend', { hours });
+      console.log('✅ Session extended successfully');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Extend session failed:', error);
+      throw error;
+    }
+  }
+
+  // ================================
+  // Data Management APIs
+  // ================================
+
+  /**
+   * Export all user data (JSON or ZIP format)
+   */
+  async exportUserData(format: 'json' | 'zip' = 'json'): Promise<any> {
+    try {
+      console.log(`📦 Exporting user data in ${format} format...`);
+      const response = await this.api.post('/api/data-management/export', { format }, {
+        responseType: format === 'zip' ? 'blob' : 'json',
+      });
+      console.log('✅ User data exported successfully');
+      return response.data;
+    } catch (error: any) {
+      console.error('Export user data failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get cache statistics
+   */
+  async getCacheStats(): Promise<any> {
+    try {
+      console.log('📊 Fetching cache statistics...');
+      const response = await this.api.get('/api/data-management/cache/stats');
+      console.log('✅ Cache stats fetched');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Get cache stats failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear app cache (sessions and temporary data)
+   */
+  async clearCache(): Promise<{ sessionsCleared: number }> {
+    try {
+      console.log('🧹 Clearing app cache...');
+      const response = await this.api.post('/api/data-management/cache/clear');
+      console.log('✅ Cache cleared successfully');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Clear cache failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete user account and all associated data
+   */
+  async deleteAccount(password: string, confirmDelete: string): Promise<void> {
+    try {
+      console.log('🗑️ Deleting user account...');
+      await this.api.delete('/api/data-management/account', {
+        data: { password, confirmDelete }
+      });
+      console.log('✅ Account deleted successfully');
+
+      // Clear local storage after account deletion
+      await secureStorage.deleteItem('authToken');
+      await AsyncStorage.removeItem('user');
+    } catch (error: any) {
+      console.error('Delete account failed:', error);
+      throw error;
+    }
+  }
+
+  // ================================
+  // Search & Research APIs
+  // ================================
+
+  /**
+   * Search across all user data (tasks, events, notes, conversations, transcripts)
+   */
+  async search(query: string, filter: string = 'all'): Promise<{
+    results: any[];
+    totalResults: number;
+    query: string;
+    filter: string;
+  }> {
+    try {
+      console.log(`🔍 Searching for: "${query}" with filter: ${filter}`);
+      const response = await this.api.post('/api/search', { query, filter });
+      console.log(`✅ Search completed: ${response.data.data.totalResults} results found`);
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Search failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get AI-generated summary for search results
+   */
+  async getAiSummary(query: string, results: any[]): Promise<{
+    summary: string;
+    suggestions: string[];
+  }> {
+    try {
+      console.log(`🤖 Generating AI summary for: "${query}"`);
+      const response = await this.api.post('/api/search/ai-summary', { query, results });
+      console.log('✅ AI summary generated');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Get AI summary failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get recent searches
+   */
+  async getRecentSearches(): Promise<string[]> {
+    try {
+      console.log('📜 Fetching recent searches...');
+      const response = await this.api.get('/api/search/recent');
+      console.log(`✅ Recent searches fetched: ${response.data.data.searches.length} searches`);
+      return response.data.data.searches;
+    } catch (error: any) {
+      console.error('Get recent searches failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get AI-powered search suggestions
+   */
+  async getSuggestions(): Promise<string[]> {
+    try {
+      console.log('💡 Fetching search suggestions...');
+      const response = await this.api.get('/api/search/suggestions');
+      console.log(`✅ Suggestions fetched: ${response.data.data.suggestions.length} suggestions`);
+      return response.data.data.suggestions;
+    } catch (error: any) {
+      console.error('Get suggestions failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Clear recent searches
+   */
+  async clearRecentSearches(): Promise<void> {
+    try {
+      console.log('🧹 Clearing recent searches...');
+      await this.api.delete('/api/search/recent');
+      console.log('✅ Recent searches cleared');
+    } catch (error: any) {
+      console.error('Clear recent searches failed:', error);
+      throw error;
+    }
+  }
+
+  // ================================
+  // Google OAuth APIs
+  // ================================
+
+  async getGoogleOAuthStatus(): Promise<any> {
+    try {
+      const response = await this.api.get('/api/oauth/google/status');
+      return response.data.data;
+    } catch (error) {
+      console.error('Get Google OAuth status failed:', error);
+      return { connected: false };
+    }
+  }
+
+  async disconnectGoogleOAuth(): Promise<void> {
+    try {
+      await this.api.post('/api/oauth/google/disconnect');
+      console.log('✅ Google OAuth disconnected');
+    } catch (error) {
+      console.error('Disconnect Google OAuth failed:', error);
+      throw error;
+    }
+  }
+
+  async refreshGoogleToken(): Promise<void> {
+    try {
+      await this.api.post('/api/oauth/google/refresh');
+      console.log('✅ Google token refreshed');
+    } catch (error) {
+      console.error('Refresh Google token failed:', error);
+      throw error;
+    }
+  }
+
+  // ================================
+  // Voice Notes/Recordings APIs
+  // ================================
+
+  /**
+   * Save a voice note/recording with transcription
+   */
+  async saveVoiceNote(noteData: {
+    title: string;
+    transcript: string;
+    audioUri?: string;
+    duration: number;
+    tags?: string[];
+    location?: string;
+  }): Promise<any> {
+    try {
+      console.log('💾 Saving voice note:', noteData.title);
+
+      const formData = new FormData();
+      formData.append('title', noteData.title);
+      formData.append('transcript', noteData.transcript);
+      formData.append('duration', noteData.duration.toString());
+
+      if (noteData.tags && noteData.tags.length > 0) {
+        formData.append('tags', JSON.stringify(noteData.tags));
+      }
+
+      if (noteData.location) {
+        formData.append('location', noteData.location);
+      }
+
+      // Attach audio file if available
+      if (noteData.audioUri) {
+        const audioFile = {
+          uri: noteData.audioUri,
+          type: 'audio/m4a',
+          name: 'recording.m4a',
+        };
+        console.log('📦 Audio file:', audioFile);
+        formData.append('audio', audioFile as any);
+      }
+
+      console.log('📤 Sending voice note save request...');
+
+      // Use fetch instead of axios for file uploads in React Native
+      const token = await secureStorage.getItem('authToken');
+
+      const fetchResponse = await fetch(`${this.baseURL}/api/notes/voice`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          // Don't set Content-Type - let fetch handle it
+        },
+        body: formData,
+      });
+
+      console.log('📥 Response status:', fetchResponse.status);
+      const responseText = await fetchResponse.text();
+      console.log('📥 Response text:', responseText);
+
+      const responseData = JSON.parse(responseText);
+      console.log('✅ Voice note saved successfully:', responseData);
+
+      return responseData.data;
+    } catch (error: any) {
+      console.error('❌ Save voice note failed:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get all voice notes/recordings for the user
+   */
+  async getVoiceNotes(limit?: number): Promise<any[]> {
+    try {
+      console.log('📡 Fetching voice notes...');
+      const params = limit ? { limit } : {};
+      const response = await this.api.get('/api/notes/voice', { params });
+      console.log(`✅ Voice notes fetched: ${response.data.data?.length || 0} notes`);
+      return response.data.data || [];
+    } catch (error: any) {
+      console.error('Get voice notes failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get a specific voice note by ID
+   */
+  async getVoiceNote(noteId: string): Promise<any> {
+    try {
+      console.log('📡 Fetching voice note:', noteId);
+      const response = await this.api.get(`/api/notes/voice/${noteId}`);
+      console.log('✅ Voice note fetched');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Get voice note failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a voice note
+   */
+  async updateVoiceNote(noteId: string, updates: {
+    title?: string;
+    transcript?: string;
+    tags?: string[];
+  }): Promise<any> {
+    try {
+      console.log('📝 Updating voice note:', noteId);
+      const response = await this.api.put(`/api/notes/voice/${noteId}`, updates);
+      console.log('✅ Voice note updated');
+      return response.data.data;
+    } catch (error: any) {
+      console.error('Update voice note failed:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Delete a voice note
+   */
+  async deleteVoiceNote(noteId: string): Promise<void> {
+    try {
+      console.log('🗑️ Deleting voice note:', noteId);
+      await this.api.delete(`/api/notes/voice/${noteId}`);
+      console.log('✅ Voice note deleted');
+    } catch (error: any) {
+      console.error('Delete voice note failed:', error);
       throw error;
     }
   }

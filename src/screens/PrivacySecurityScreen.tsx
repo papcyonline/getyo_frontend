@@ -17,6 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
 import ApiService from '../services/api';
+import { useBiometric } from '../hooks/useBiometric';
 
 const { height } = Dimensions.get('window');
 
@@ -24,8 +25,8 @@ const PrivacySecurityScreen: React.FC = () => {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const theme = useSelector((state: RootState) => state.theme.theme);
+  const { isEnabled: isBiometricEnabled, isAvailable: isBiometricAvailable, enable: enableBiometric, disable: disableBiometric, biometricType } = useBiometric();
 
-  const [biometricLock, setBiometricLock] = useState(true);
   const [dataEncryption, setDataEncryption] = useState(true);
   const [analyticsSharing, setAnalyticsSharing] = useState(false);
   const [crashReporting, setCrashReporting] = useState(true);
@@ -37,7 +38,6 @@ const PrivacySecurityScreen: React.FC = () => {
     const loadPrivacySettings = async () => {
       try {
         const settings = await ApiService.getPrivacySettings();
-        setBiometricLock(settings.biometricLock ?? true);
         setDataEncryption(settings.dataEncryption ?? true);
         setAnalyticsSharing(settings.analyticsSharing ?? false);
         setCrashReporting(settings.crashReporting ?? true);
@@ -57,9 +57,45 @@ const PrivacySecurityScreen: React.FC = () => {
     navigation.goBack();
   };
 
+  // Handle biometric toggle
+  const handleBiometricToggle = async (value: boolean) => {
+    if (!isBiometricAvailable) {
+      Alert.alert(
+        'Not Available',
+        `${biometricType} is not available on this device or not set up. Please enable it in your device settings.`
+      );
+      return;
+    }
+
+    try {
+      if (value) {
+        // Enable biometric - this will prompt for authentication
+        const success = await enableBiometric();
+        if (!success) {
+          Alert.alert('Failed', 'Could not enable biometric authentication');
+        } else {
+          // Also save to backend
+          await ApiService.updatePrivacySettings({ biometricLock: true });
+          Alert.alert('Enabled', `${biometricType} has been enabled successfully`);
+        }
+      } else {
+        // Disable biometric
+        const success = await disableBiometric();
+        if (success) {
+          // Also save to backend
+          await ApiService.updatePrivacySettings({ biometricLock: false });
+          Alert.alert('Disabled', `${biometricType} has been disabled`);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to toggle biometric:', error);
+      Alert.alert('Error', 'Failed to update biometric setting');
+    }
+  };
+
   // Update handlers to save changes to API
   const handleToggle = async (
-    setting: 'biometricLock' | 'dataEncryption' | 'analyticsSharing' | 'crashReporting' | 'locationAccess',
+    setting: 'dataEncryption' | 'analyticsSharing' | 'crashReporting' | 'locationAccess',
     value: boolean
   ) => {
     try {
@@ -72,14 +108,12 @@ const PrivacySecurityScreen: React.FC = () => {
 
   const privacySettings = [
     {
-      title: 'Biometric Lock',
-      subtitle: 'Use Face ID or Touch ID to secure app',
-      value: biometricLock,
-      onValueChange: (value: boolean) => {
-        setBiometricLock(value);
-        handleToggle('biometricLock', value);
-      },
-      icon: 'finger-print-outline'
+      title: `${biometricType} Lock`,
+      subtitle: `Use ${biometricType} to secure app`,
+      value: isBiometricEnabled,
+      onValueChange: handleBiometricToggle,
+      icon: 'finger-print-outline',
+      disabled: !isBiometricAvailable
     },
     {
       title: 'Data Encryption',
@@ -144,24 +178,149 @@ const PrivacySecurityScreen: React.FC = () => {
     },
   ];
 
+  const handleDataExport = () => {
+    Alert.alert(
+      'Export Your Data',
+      'Your data will be exported in JSON format. This includes all your tasks, events, reminders, notes, and conversations.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Export',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              await ApiService.exportUserData('json');
+              Alert.alert(
+                'Success',
+                'Your data has been exported successfully. Check your downloads folder.',
+                [{ text: 'OK' }]
+              );
+            } catch (error: any) {
+              console.error('Export data failed:', error);
+              const errorMessage = error?.response?.data?.error || 'Failed to export data';
+              Alert.alert('Error', errorMessage);
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleClearCache = () => {
+    Alert.alert(
+      'Clear Cache',
+      'This will remove temporary data and sign you out from other devices. Your account data will remain safe.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              setLoading(true);
+              const result = await ApiService.clearCache();
+              Alert.alert(
+                'Success',
+                `Cache cleared successfully. ${result.sessionsCleared} session(s) removed.`,
+                [{ text: 'OK' }]
+              );
+            } catch (error: any) {
+              console.error('Clear cache failed:', error);
+              const errorMessage = error?.response?.data?.error || 'Failed to clear cache';
+              Alert.alert('Error', errorMessage);
+            } finally {
+              setLoading(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleDeleteAccount = () => {
+    Alert.prompt(
+      'Delete Account',
+      'This action cannot be undone. All your data will be permanently deleted.\n\nPlease type "DELETE MY ACCOUNT" to confirm:',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: (confirmText) => {
+            if (confirmText !== 'DELETE MY ACCOUNT') {
+              Alert.alert('Error', 'Please type "DELETE MY ACCOUNT" exactly to confirm');
+              return;
+            }
+
+            // Ask for password
+            Alert.prompt(
+              'Confirm Password',
+              'Enter your password to confirm account deletion:',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete Account',
+                  style: 'destructive',
+                  onPress: async (password) => {
+                    if (!password) {
+                      Alert.alert('Error', 'Password is required');
+                      return;
+                    }
+
+                    try {
+                      setLoading(true);
+                      await ApiService.deleteAccount(password, 'DELETE MY ACCOUNT');
+                      Alert.alert(
+                        'Account Deleted',
+                        'Your account has been permanently deleted.',
+                        [
+                          {
+                            text: 'OK',
+                            onPress: () => {
+                              // Navigation will be handled automatically by the auth interceptor
+                              // when the token is cleared
+                            }
+                          }
+                        ]
+                      );
+                    } catch (error: any) {
+                      console.error('Delete account failed:', error);
+                      const errorMessage = error?.response?.data?.error || 'Failed to delete account';
+                      Alert.alert('Error', errorMessage);
+                      setLoading(false);
+                    }
+                  }
+                }
+              ],
+              'secure-text'
+            );
+          }
+        }
+      ],
+      'plain-text'
+    );
+  };
+
   const dataOptions = [
     {
       title: 'Data Export',
       subtitle: 'Download your data',
       icon: 'download-outline',
-      action: () => {}
+      action: handleDataExport
     },
     {
       title: 'Clear Cache',
       subtitle: 'Free up storage space',
       icon: 'trash-outline',
-      action: () => {}
+      action: handleClearCache
     },
     {
       title: 'Delete Account',
       subtitle: 'Permanently delete your account and data',
       icon: 'warning-outline',
-      action: () => {},
+      action: handleDeleteAccount,
       isDanger: true
     },
   ];
@@ -221,6 +380,7 @@ const PrivacySecurityScreen: React.FC = () => {
               <Switch
                 value={setting.value}
                 onValueChange={setting.onValueChange}
+                disabled={setting.disabled}
                 trackColor={{ false: 'rgba(201, 169, 110, 0.3)', true: '#C9A96E' }}
                 thumbColor="#C9A96E"
                 ios_backgroundColor="rgba(201, 169, 110, 0.3)"

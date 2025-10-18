@@ -3,6 +3,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Provider, useSelector } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { View, Text, ActivityIndicator } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { store, persistor } from './src/store';
 import { RootState } from './src/store';
 import AppNavigator from './src/navigation/AppNavigator';
@@ -179,28 +180,30 @@ const AppContent: React.FC = () => {
 
 export default function App() {
   return (
-    <ErrorBoundary
-      onError={(error, errorInfo) => {
-        // Send error to Sentry
-        sentryService.captureException(error, {
-          errorInfo: errorInfo.componentStack,
-        });
-        console.error('App Error:', error, errorInfo);
-      }}
-    >
-      <Provider store={store}>
-        <PersistGate
-          loading={
-            <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0A' }}>
-              <ActivityIndicator size="large" color="#3B82F6" />
-              <Text style={{ color: '#FFF', marginTop: 16 }}>Loading...</Text>
-            </View>
-          }
-          persistor={persistor}
-        >
-          <AppContent />
-        </PersistGate>
-      </Provider>
-    </ErrorBoundary>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ErrorBoundary
+        onError={(error, errorInfo) => {
+          // Send error to Sentry
+          sentryService.captureException(error, {
+            errorInfo: errorInfo.componentStack,
+          });
+          console.error('App Error:', error, errorInfo);
+        }}
+      >
+        <Provider store={store}>
+          <PersistGate
+            loading={
+              <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#0A0A0A' }}>
+                <ActivityIndicator size="large" color="#3B82F6" />
+                <Text style={{ color: '#FFF', marginTop: 16 }}>Loading...</Text>
+              </View>
+            }
+            persistor={persistor}
+          >
+            <AppContent />
+          </PersistGate>
+        </Provider>
+      </ErrorBoundary>
+    </GestureHandlerRootView>
   );
 }

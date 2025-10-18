@@ -97,27 +97,17 @@ const SignInScreen: React.FC = () => {
       });
 
       // Check if user has completed onboarding
-      // Use the hasCompletedOnboarding flag from backend
+      // Trust the backend's hasCompletedOnboarding flag
       if (user && user.hasCompletedOnboarding) {
         console.log('✅ [DEBUG] User has completed onboarding, dispatching completeOnboarding()');
-        // Mark onboarding as complete
+        // Mark onboarding as complete in Redux
         dispatch(completeOnboarding());
         console.log('✅ [DEBUG] completeOnboarding() dispatched successfully');
       } else {
         console.log('🔄 [DEBUG] User has NOT completed onboarding');
-        // Determine where to resume onboarding based on what's missing
-        if (!user.assistantName) {
-          console.log('🔄 [DEBUG] Missing assistantName, navigating to AssistantNaming');
-          navigation.navigate('AssistantNaming' as any);
-        } else if (!user.agentConfiguration?.setupCompleted) {
-          console.log('🔄 [DEBUG] Missing agent setup, navigating to AgentPersonality');
-          navigation.navigate('AgentPersonality' as any);
-        } else {
-          // Fallback to assistant naming if we're not sure
-          console.log('🔄 [DEBUG] Uncertain state, navigating to AssistantNaming');
-          navigation.navigate('AssistantNaming' as any);
-        }
-        console.log('🔄 [DEBUG] Navigation triggered');
+        // User needs to complete onboarding - navigate to assistant naming
+        console.log('🔄 [DEBUG] Navigating to AssistantNaming to start onboarding');
+        navigation.navigate('AssistantNaming' as any);
       }
 
       console.log('✅ [DEBUG] Login process completed successfully');

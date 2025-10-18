@@ -1,5 +1,7 @@
 import React from 'react';
 import { View, StyleSheet } from 'react-native';
+import { useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 interface ProgressBarProps {
   currentStep: number;
@@ -10,8 +12,11 @@ interface ProgressBarProps {
 const ProgressBar: React.FC<ProgressBarProps> = ({
   currentStep,
   totalSteps,
-  color = '#3396D3'
+  color
 }) => {
+  const theme = useSelector((state: RootState) => state.theme.theme);
+  const progressColor = color || theme.accent;
+
   return (
     <View style={styles.container}>
       {Array.from({ length: totalSteps }).map((_, index) => (
@@ -19,7 +24,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
           key={index}
           style={[
             styles.step,
-            index < currentStep && { backgroundColor: color },
+            { backgroundColor: `${theme.text}15` },
+            index < currentStep && { backgroundColor: progressColor },
             index === currentStep - 1 && styles.activeStep,
           ]}
         />
@@ -38,7 +44,6 @@ const styles = StyleSheet.create({
   step: {
     flex: 1,
     height: 4,
-    backgroundColor: 'rgba(255, 247, 245, 0.15)',
     borderRadius: 2,
   },
   activeStep: {

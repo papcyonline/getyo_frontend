@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,50 @@ import {
   Dimensions,
   Animated,
   PanResponder,
+  ActivityIndicator,
 } from 'react-native';
 import { useSelector } from 'react-redux';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 
 import { RootState } from '../store';
 import { Ionicons } from '@expo/vector-icons';
+import api from '../services/api';
 
 const { height, width } = Dimensions.get('window');
+
+// Helper function to get icon name based on notification type
+const getIconForType = (type: string): string => {
+  const iconMap: Record<string, string> = {
+    'ai_suggestion': 'sparkles',
+    'calendar': 'calendar',
+    'event': 'calendar',
+    'meeting': 'people',
+    'email': 'mail',
+    'task': 'checkmark-circle',
+    'ai_insight': 'trending-up',
+    'reminder': 'alarm',
+    'system': 'information-circle',
+    'alert': 'alert-circle',
+  };
+  return iconMap[type] || 'notifications';
+};
+
+// Helper function to convert date to relative time
+const getRelativeTime = (date: string): string => {
+  const now = new Date();
+  const past = new Date(date);
+  const diffMs = now.getTime() - past.getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} min ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  return past.toLocaleDateString();
+};
 
 const NotificationFeedScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -27,76 +62,117 @@ const NotificationFeedScreen: React.FC = () => {
   const user = useSelector((state: RootState) => state.user.user);
 
   const [refreshing, setRefreshing] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [selectedFilter, setSelectedFilter] = useState('all');
-  const [notificationList, setNotificationList] = useState([
-    {
-      id: '1',
-      type: 'ai_suggestion',
-      title: 'Meeting Preparation Ready',
-      message: 'Your briefing for the 3PM board meeting is ready. Key talking points and agenda prepared.',
-      timestamp: '5 min ago',
-      unread: true,
-      icon: 'sparkles',
-      priority: 'high'
-    },
-    {
-      id: '2',
-      type: 'calendar',
-      title: 'Meeting Starting Soon',
-      message: 'Quarterly Review with Sarah Johnson starts in 15 minutes.',
-      timestamp: '12 min ago',
-      unread: true,
-      icon: 'calendar',
-      priority: 'urgent'
-    },
-    {
-      id: '3',
-      type: 'email',
-      title: 'Important Email Draft Ready',
-      message: 'Response to investor inquiry has been drafted and is ready for your review.',
-      timestamp: '28 min ago',
-      unread: true,
-      icon: 'mail',
-      priority: 'high'
-    },
-    {
-      id: '4',
-      type: 'task',
-      title: 'Daily Goals Achieved',
-      message: 'Congratulations! You\'ve completed 8 out of 8 priority tasks for today.',
-      timestamp: '1 hour ago',
-      unread: false,
-      icon: 'checkmark-circle',
-      priority: 'normal'
-    },
-    {
-      id: '5',
-      type: 'ai_insight',
-      title: 'Productivity Insight',
-      message: 'Your response time to emails has improved by 23% this week.',
-      timestamp: '2 hours ago',
-      unread: false,
-      icon: 'trending-up',
-      priority: 'normal'
+  const [notificationList, setNotificationList] = useState<any[]>([]);
+
+  // Fetch notifications from API
+  const fetchNotifications = async () => {
+    try {
+      const response = await api.getNotifications({ limit: 50 });
+
+      // Map backend format to frontend format
+      const mappedNotifications = response.map((notification: any) => ({
+        id: notification._id,
+        type: notification.type,
+        title: notification.title,
+        message: notification.message,
+        timestamp: getRelativeTime(notification.createdAt),
+        unread: !notification.read, // Backend uses "read", frontend uses "unread"
+        icon: getIconForType(notification.type),
+        priority: notification.priority,
+        relatedId: notification.relatedId,
+        relatedModel: notification.relatedModel,
+      }));
+
+      setNotificationList(mappedNotifications);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+      Alert.alert('Error', 'Failed to load notifications. Please try again.');
+    } finally {
+      setLoading(false);
     }
-  ]);
+  };
+
+  // Load notifications when screen focuses
+  useFocusEffect(
+    useCallback(() => {
+      fetchNotifications();
+    }, [])
+  );
 
   const handleBackPress = () => {
     navigation.goBack();
   };
 
-  const onRefresh = () => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    setTimeout(() => setRefreshing(false), 1000);
+    await fetchNotifications();
+    setRefreshing(false);
   };
 
-  const markAllAsRead = () => {
+  const markAllAsRead = async () => {
     Alert.alert(
       'Mark All as Read',
       'Mark all notifications as read?',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Mark All Read', onPress: () => console.log('Marked all as read') }
+        {
+          text: 'Mark All Read',
+          onPress: async () => {
+            try {
+              await api.markAllNotificationsAsRead();
+              // Update local state
+              setNotificationList(prev =>
+                prev.map(n => ({ ...n, unread: false }))
+              );
+            } catch (error) {
+              console.error('Failed to mark all as read:', error);
+              Alert.alert('Error', 'Failed to mark notifications as read.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleNotificationPress = async (notification: any) => {
+    // Mark as read in API
+    try {
+      await api.markNotificationAsRead(notification.id);
+
+      // Update local state
+      setNotificationList(prev =>
+        prev.map(n => n.id === notification.id ? { ...n, unread: false } : n)
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+
+    // Show notification details
+    Alert.alert(
+      notification.title,
+      notification.message,
+      [
+        {
+          text: 'Dismiss',
+          style: 'cancel'
+        },
+        {
+          text: 'View Related',
+          onPress: () => {
+            // Navigate based on notification type
+            if (notification.type === 'calendar' || notification.type === 'event' || notification.type === 'meeting') {
+              navigation.navigate('Calendar' as any);
+            } else if (notification.type === 'email') {
+              navigation.navigate('EmailManagement' as any);
+            } else if (notification.type === 'task') {
+              navigation.navigate('Tasks' as any);
+            } else if (notification.type === 'reminder') {
+              navigation.navigate('Tasks' as any);
+            }
+          }
+        }
       ]
     );
   };
@@ -110,8 +186,15 @@ const NotificationFeedScreen: React.FC = () => {
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setNotificationList(prev => prev.filter(n => n.id !== id));
+          onPress: async () => {
+            try {
+              await api.deleteNotification(id);
+              // Update local state
+              setNotificationList(prev => prev.filter(n => n.id !== id));
+            } catch (error) {
+              console.error('Failed to delete notification:', error);
+              Alert.alert('Error', 'Failed to delete notification.');
+            }
           }
         }
       ]
@@ -194,7 +277,7 @@ const NotificationFeedScreen: React.FC = () => {
               styles.notificationItem,
               notification.unread && styles.notificationItemUnread
             ]}
-            onPress={() => console.log('Notification tapped:', notification.id)}
+            onPress={() => handleNotificationPress(notification)}
             activeOpacity={0.7}
           >
             {notification.priority === 'urgent' && (
@@ -331,7 +414,12 @@ const NotificationFeedScreen: React.FC = () => {
         }
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}
       >
-        {filteredNotifications.length === 0 ? (
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#C9A96E" />
+            <Text style={styles.loadingText}>Loading notifications...</Text>
+          </View>
+        ) : filteredNotifications.length === 0 ? (
           <View style={styles.emptyState}>
             <View style={styles.emptyIcon}>
               <Ionicons name="notifications-off-outline" size={48} color="rgba(201, 169, 110, 0.3)" />
@@ -497,6 +585,16 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     paddingHorizontal: 20,
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 40,
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: 'rgba(255, 255, 255, 0.6)',
   },
   emptyState: {
     alignItems: 'center',

@@ -73,6 +73,19 @@ export interface Task {
   dueDate?: string;
   reminders: string[];
   tags: string[];
+  images?: string[];
+  location?: {
+    name: string;
+    latitude: number;
+    longitude: number;
+  };
+  category?: string;
+  subtasks?: Array<{
+    id: string;
+    text: string;
+    completed: boolean;
+  }>;
+  recurrence?: 'daily' | 'weekly' | 'monthly' | 'yearly';
   createdBy: 'user' | 'ai_suggestion';
   createdAt: string;
   updatedAt: string;
@@ -221,6 +234,7 @@ export type RootStackParamList = {
   Calendar: undefined;
   Settings: undefined;
   Profile: undefined;
+  Reminders: undefined;
   Integration: undefined;
   Analytics: undefined;
   NotificationFeed: undefined;
@@ -253,6 +267,12 @@ export type RootStackParamList = {
   ChangePasscode: undefined;
   TwoFactorAuth: undefined;
   ActiveSessions: undefined;
+  EmailIntegration: undefined;
+  EmailList: undefined;
+  EmailDetail: { threadId: string; accountId: string };
+  EmailCompose: { accountId?: string; replyTo?: string; forward?: string; initialBody?: string };
+  EmailAccounts: undefined;
+  ChatScreen: { autoStartVoice?: boolean };
 };
 
 export type TabParamList = {

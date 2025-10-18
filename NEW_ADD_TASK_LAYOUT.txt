@@ -1,0 +1,26 @@
+NEW ADDTASKSCREEN LAYOUT DESIGN
+================================
+
+STRUCTURE:
+1. Header (Close | Title | Done)
+2. Single ScrollView with everything inline:
+   - Title input
+   - Description input
+   - Due Date Section (expandable inline)
+   - Due Time Section (expandable inline)
+   - Priority selector
+   - Optional: Tags, Images, Location, Reminder
+
+NO TOOLBARS
+NO COMPLEX MODALS
+EVERYTHING IN ONE FLOW
+
+Date Selection:
+- Collapsed: Shows "Set Due Date" button
+- Expanded: Shows 4 quick options + custom button inline
+- Custom: Opens ONE modal with date picker and Done button that CLOSES
+
+Time Selection:
+- Collapsed: Shows "Set Time" button
+- Expanded: Shows time grid inline
+- Custom: Opens ONE modal with time picker and Done button that CLOSES

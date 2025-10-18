@@ -204,7 +204,7 @@ const ForgotPasswordScreen: React.FC = () => {
                     <ActivityIndicator color={theme.background} />
                   ) : (
                     <>
-                      <MaterialCommunityIcons name="email-send" size={20} color={theme.background} />
+                      <MaterialCommunityIcons name="send" size={20} color={theme.background} />
                       <Text style={[styles.sendButtonText, { color: theme.background }]}>Send Reset Code</Text>
                     </>
                   )}

@@ -15,7 +15,9 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
+import { RootState } from '../store';
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import ApiService from '../services/api';
 import { Audio } from 'expo-av';
@@ -70,12 +72,15 @@ const voiceOptions: VoiceOption[] = [
 const AssistantGenderScreen: React.FC = () => {
   const navigation = useNavigation<AssistantGenderNavigationProp>();
   const insets = useSafeAreaInsets();
+  const theme = useSelector((state: RootState) => state.theme.theme);
 
   const [selectedGender, setSelectedGender] = useState<'male' | 'female' | null>(null);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showGenderDropdown, setShowGenderDropdown] = useState(false);
+  const [cachedAudio, setCachedAudio] = useState<Record<string, string>>({});
+  const [isLoadingSamples, setIsLoadingSamples] = useState(false);
 
   const slideAnim = useRef(new Animated.Value(height)).current;
   const soundRef = useRef<Audio.Sound | null>(null);
@@ -96,6 +101,9 @@ const AssistantGenderScreen: React.FC = () => {
       friction: 8,
     }).start();
 
+    // Pre-load all voice samples for instant playback
+    preloadVoiceSamples();
+
     // Cleanup audio on unmount
     return () => {
       if (soundRef.current) {
@@ -104,6 +112,35 @@ const AssistantGenderScreen: React.FC = () => {
     };
   }, []);
 
+  const preloadVoiceSamples = async () => {
+    setIsLoadingSamples(true);
+    console.log('🎵 Pre-loading all voice samples...');
+
+    try {
+      const cache: Record<string, string> = {};
+
+      // Load all 4 voices in parallel
+      await Promise.all(
+        voiceOptions.map(async (voice) => {
+          try {
+            const audioDataUri = await ApiService.synthesizeSpeech(voice.sampleText, voice.id);
+            cache[voice.id] = audioDataUri;
+            console.log(`✅ Cached ${voice.name}`);
+          } catch (error) {
+            console.error(`❌ Failed to cache ${voice.name}:`, error);
+          }
+        })
+      );
+
+      setCachedAudio(cache);
+      console.log(`✅ All voice samples cached (${Object.keys(cache).length}/4)`);
+    } catch (error) {
+      console.error('❌ Failed to preload voice samples:', error);
+    } finally {
+      setIsLoadingSamples(false);
+    }
+  };
+
   const handleGenderSelect = (gender: 'male' | 'female') => {
     setSelectedGender(gender);
     setSelectedVoice(null);
@@ -111,7 +148,7 @@ const AssistantGenderScreen: React.FC = () => {
   };
 
   const playVoiceSample = async (voice: VoiceOption) => {
-    console.log('🎵 Playing OpenAI TTS sample for:', voice.name, voice.sampleText);
+    console.log('🎵 Playing voice sample for:', voice.name);
 
     // If already playing this voice, stop it
     if (isPlaying === voice.id) {
@@ -125,15 +162,21 @@ const AssistantGenderScreen: React.FC = () => {
     setIsPlaying(voice.id);
 
     try {
-      // Call OpenAI TTS API through backend
-      console.log('📡 Calling OpenAI TTS API...');
-      const audioBase64 = await ApiService.synthesizeSpeech(voice.sampleText, voice.id);
+      // Use cached audio if available, otherwise fetch it
+      let audioDataUri = cachedAudio[voice.id];
 
-      console.log('✅ Audio received, loading...');
+      if (!audioDataUri) {
+        console.log('📡 Audio not cached, fetching from API...');
+        audioDataUri = await ApiService.synthesizeSpeech(voice.sampleText, voice.id);
+        // Cache it for next time
+        setCachedAudio(prev => ({ ...prev, [voice.id]: audioDataUri }));
+      } else {
+        console.log('⚡ Using cached audio - instant playback!');
+      }
 
-      // Create and load sound from base64
+      // Create and load sound from data URI
       const { sound } = await Audio.Sound.createAsync(
-        { uri: audioBase64 },
+        { uri: audioDataUri },
         { shouldPlay: true },
         (status) => {
           if (status.isLoaded) {
@@ -238,17 +281,17 @@ const AssistantGenderScreen: React.FC = () => {
   const filteredVoices = voiceOptions.filter(voice => voice.gender === selectedGender);
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       {/* Background gradient */}
 
 
       <SafeAreaView style={styles.safeArea}>
         {/* Top Bar - Fixed on black background */}
-        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <Ionicons name="chevron-back" size={24} color="#FFF7F5" />
+        <View style={[styles.topBar, { paddingTop: Math.max(insets.top, 15) + 10, backgroundColor: theme.background }]}>
+          <TouchableOpacity style={[styles.backButton, { backgroundColor: theme.surfaceSecondary }]} onPress={handleBack}>
+            <Ionicons name="arrow-back" size={24} color={theme.text} />
           </TouchableOpacity>
-          <Text style={styles.title}>Choose Voice</Text>
+          <Text style={[styles.title, { color: theme.text }]}>Choose Voice</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -258,97 +301,90 @@ const AssistantGenderScreen: React.FC = () => {
         <Animated.View
           style={[
             styles.slidingContainer,
-            { transform: [{ translateY: slideAnim }] }
+            { backgroundColor: theme.surface, borderColor: theme.border, transform: [{ translateY: slideAnim }] }
           ]}
         >
 
           <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent}>
             <View style={styles.content}>
               {/* Gender Selection */}
-              <Text style={styles.sectionTitle}>Assistant Gender</Text>
+              <Text style={[styles.sectionTitle, { color: theme.text }]}>Assistant Gender</Text>
               <TouchableOpacity
-                style={styles.dropdownButton}
+                style={[styles.dropdownButton, { backgroundColor: `${theme.text}08`, borderColor: theme.border }]}
                 onPress={() => setShowGenderDropdown(!showGenderDropdown)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.dropdownButtonText}>
+                <Text style={[styles.dropdownButtonText, { color: theme.text }]}>
                   {selectedGender ? selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1) : 'Select Gender'}
                 </Text>
                 <Ionicons
                   name={showGenderDropdown ? "chevron-up" : "chevron-down"}
                   size={20}
-                  color="rgba(255, 247, 245, 0.7)"
+                  color={theme.textSecondary}
                 />
               </TouchableOpacity>
 
               {showGenderDropdown && (
-                <View style={styles.dropdown}>
+                <View style={[styles.dropdown, { backgroundColor: theme.surfaceSecondary }]}>
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() => handleGenderSelect('female')}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="person" size={20} color="#3396D3" />
-                    <Text style={styles.dropdownItemText}>Female</Text>
+                    <Ionicons name="person" size={20} color={theme.accent} />
+                    <Text style={[styles.dropdownItemText, { color: theme.text }]}>Female</Text>
                   </TouchableOpacity>
-                  <View style={styles.divider} />
+                  <View style={[styles.divider, { backgroundColor: theme.border }]} />
                   <TouchableOpacity
                     style={styles.dropdownItem}
                     onPress={() => handleGenderSelect('male')}
                     activeOpacity={0.8}
                   >
-                    <Ionicons name="person" size={20} color="#3396D3" />
-                    <Text style={styles.dropdownItemText}>Male</Text>
+                    <Ionicons name="person" size={20} color={theme.accent} />
+                    <Text style={[styles.dropdownItemText, { color: theme.text }]}>Male</Text>
                   </TouchableOpacity>
-                </View>
-              )}
-
-              {/* Demo Text Display */}
-              {demoText && (
-                <View style={styles.demoTextContainer}>
-                  <Text style={styles.demoText}>🎭 Demo: {demoText}</Text>
                 </View>
               )}
 
               {/* Voice Selection List */}
               {selectedGender && (
                 <View style={styles.voiceSection}>
-                  <Text style={styles.sectionTitle}>
+                  <Text style={[styles.sectionTitle, { color: theme.text }]}>
                     Choose {selectedGender.charAt(0).toUpperCase() + selectedGender.slice(1)} Voice
                   </Text>
-                  <View style={styles.voiceList}>
+                  <View style={[styles.voiceList, { backgroundColor: theme.surfaceSecondary }]}>
                     {filteredVoices.map((voice, index) => (
                       <View key={voice.id}>
                         <TouchableOpacity
                           style={[
                             styles.voiceItem,
-                            selectedVoice === voice.id && styles.selectedVoiceItem
+                            selectedVoice === voice.id && [styles.selectedVoiceItem, { backgroundColor: `${theme.accent}15` }]
                           ]}
                           onPress={() => handleVoiceSelect(voice.id)}
                           activeOpacity={0.8}
                         >
                           <View style={styles.voiceInfo}>
-                            <Text style={styles.voiceName}>{voice.name}</Text>
-                            <Text style={styles.voiceDescription}>{voice.description}</Text>
+                            <Text style={[styles.voiceName, { color: theme.text }]}>{voice.name}</Text>
+                            <Text style={[styles.voiceDescription, { color: theme.textSecondary }]}>{voice.description}</Text>
                           </View>
 
                           <TouchableOpacity
-                            style={styles.playButton}
+                            style={[styles.playButton, { backgroundColor: `${theme.accent}20` }]}
                             onPress={() => playVoiceSample(voice)}
                             activeOpacity={0.8}
                           >
                             <Ionicons
                               name={isPlaying === voice.id ? "stop" : "play"}
                               size={20}
-                              color="#3396D3"
+                              color={theme.accent}
                             />
                           </TouchableOpacity>
 
                           {selectedVoice === voice.id && (
-                            <Ionicons name="checkmark-circle" size={24} color="#3396D3" style={styles.checkmark} />
+                            <Ionicons name="checkmark-circle" size={24} color={theme.accent} style={styles.checkmark} />
                           )}
                         </TouchableOpacity>
-                        {index < filteredVoices.length - 1 && <View style={styles.voiceDivider} />}
+                        {index < filteredVoices.length - 1 && <View style={[styles.voiceDivider, { backgroundColor: theme.border }]} />}
                       </View>
                     ))}
                   </View>
@@ -362,6 +398,7 @@ const AssistantGenderScreen: React.FC = () => {
             <TouchableOpacity
               style={[
                 styles.continueButton,
+                { backgroundColor: theme.accent },
                 (!selectedGender || !selectedVoice) && styles.disabledButton,
               ]}
               onPress={handleContinue}
@@ -369,11 +406,12 @@ const AssistantGenderScreen: React.FC = () => {
               activeOpacity={0.9}
             >
               {loading ? (
-                <ActivityIndicator color="#FFF7F5" size="large" />
+                <ActivityIndicator color={theme.background} size="large" />
               ) : (
                 <Text style={[
                   styles.continueButtonText,
-                  (!selectedGender || !selectedVoice) && styles.disabledButtonText,
+                  { color: theme.background },
+                  (!selectedGender || !selectedVoice) && [styles.disabledButtonText, { color: theme.textTertiary }],
                 ]}>
                   Continue
                 </Text>
@@ -389,7 +427,6 @@ const AssistantGenderScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000000',
   },
   gradientFlare: {
     position: 'absolute',
@@ -408,19 +445,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingBottom: 20,
-    backgroundColor: '#000000',
   },
   backButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#1A1A1A',
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
     fontSize: 24,
-    color: '#FFF7F5',
     fontWeight: '800',
     letterSpacing: 0.5,
     flex: 1,
@@ -432,13 +466,11 @@ const styles = StyleSheet.create({
   },
   slidingContainer: {
     flex: 1,
-    backgroundColor: '#1A1A1A',
     borderTopLeftRadius: 30,
     borderTopRightRadius: 30,
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: 'rgba(255, 247, 245, 0.1)',
   },
   scrollView: {
     flex: 1,
@@ -454,17 +486,14 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: 18,
-    color: '#FFF7F5',
     fontWeight: '600',
     marginBottom: 15,
     letterSpacing: 0.3,
   },
   dropdownButton: {
     height: 60,
-    backgroundColor: 'rgba(255, 247, 245, 0.08)',
     borderRadius: 16,
     borderWidth: 2,
-    borderColor: 'rgba(255, 247, 245, 0.15)',
     paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
@@ -473,11 +502,9 @@ const styles = StyleSheet.create({
   },
   dropdownButtonText: {
     fontSize: 16,
-    color: '#FFF7F5',
     fontWeight: '500',
   },
   dropdown: {
-    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     borderRadius: 12,
     marginBottom: 30,
     overflow: 'hidden',
@@ -490,34 +517,17 @@ const styles = StyleSheet.create({
   },
   dropdownItemText: {
     fontSize: 16,
-    color: '#FFF7F5',
     fontWeight: '500',
     marginLeft: 12,
   },
   divider: {
     height: 1,
-    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginHorizontal: 20,
-  },
-  demoTextContainer: {
-    backgroundColor: 'rgba(201, 169, 110, 0.15)',
-    borderRadius: 12,
-    padding: 15,
-    marginVertical: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(201, 169, 110, 0.3)',
-  },
-  demoText: {
-    fontSize: 14,
-    color: '#C9A96E',
-    textAlign: 'center',
-    fontWeight: '500',
   },
   voiceSection: {
     marginTop: 20,
   },
   voiceList: {
-    backgroundColor: '#1A1A1A',
     borderRadius: 12,
     overflow: 'hidden',
   },
@@ -527,27 +537,22 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 20,
   },
-  selectedVoiceItem: {
-    backgroundColor: 'rgba(51, 150, 211, 0.15)',
-  },
+  selectedVoiceItem: {},
   voiceInfo: {
     flex: 1,
   },
   voiceName: {
     fontSize: 16,
-    color: '#FFF7F5',
     fontWeight: '600',
     marginBottom: 4,
   },
   voiceDescription: {
     fontSize: 14,
-    color: 'rgba(255, 247, 245, 0.7)',
   },
   playButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(51, 150, 211, 0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     marginLeft: 15,
@@ -557,7 +562,6 @@ const styles = StyleSheet.create({
   },
   voiceDivider: {
     height: 1,
-    backgroundColor: 'rgba(255, 247, 245, 0.1)',
     marginHorizontal: 20,
   },
   footer: {
@@ -567,23 +571,19 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     height: 65,
-    backgroundColor: '#3396D3',
     borderRadius: 32,
     justifyContent: 'center',
     alignItems: 'center',
   },
   disabledButton: {
-    backgroundColor: 'rgba(255, 247, 245, 0.1)',
+    opacity: 0.5,
   },
   continueButtonText: {
     fontSize: 20,
     fontWeight: '700',
-    color: '#FFF7F5',
     letterSpacing: 0.5,
   },
-  disabledButtonText: {
-    color: 'rgba(255, 247, 245, 0.4)',
-  },
+  disabledButtonText: {},
 });
 
 export default AssistantGenderScreen;

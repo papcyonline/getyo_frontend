@@ -8,7 +8,6 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ActivityIndicator,
   Alert,
   Dimensions,
@@ -17,16 +16,20 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { MaterialIcons, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
+import { useSelector } from 'react-redux';
 
 import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from '../services/api';
-import { RootStackParamList } from '../types';
+import { RootStackParamList, RootState } from '../types';
 
 const { height, width } = Dimensions.get('window');
 
-type ChatNavigationProp = StackNavigationProp<RootStackParamList, 'Chat'>;
+type ChatNavigationProp = StackNavigationProp<RootStackParamList, 'ChatScreen'>;
 
 interface Message {
   id: string;
@@ -45,28 +48,18 @@ interface VoiceState {
 
 const ChatScreen: React.FC = () => {
   const navigation = useNavigation<ChatNavigationProp>();
+  const route = navigation.getState().routes[navigation.getState().index];
+  const params = route.params as { autoStartVoice?: boolean } | undefined;
   const insets = useSafeAreaInsets();
   const scrollViewRef = useRef<ScrollView>(null);
-  const slideAnim = useRef(new Animated.Value(height)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const user = useSelector((state: RootState) => state.user.user);
 
   // Chat state
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: '1',
-      type: 'assistant',
-      content: "Hi! I'm your AI assistant. How can I help you today?",
-      timestamp: new Date(),
-    },
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [inputText, setInputText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | undefined>();
-
-  // Progress tracking
-  const [totalQuestions] = useState(10); // Total expected questions in conversation
-  const [answeredQuestions, setAnsweredQuestions] = useState(1); // Start with 1 (initial greeting)
-  const [conversationProgress, setConversationProgress] = useState(10); // 10% progress
+  const [isLoadingConversation, setIsLoadingConversation] = useState(true);
 
   // Voice state
   const [voiceState, setVoiceState] = useState<VoiceState>({
@@ -76,25 +69,123 @@ const ChatScreen: React.FC = () => {
     transcription: '',
   });
 
+  // Voice output enabled/disabled
+  const [isVoiceEnabled, setIsVoiceEnabled] = useState(false);
+
   useEffect(() => {
     // Initialize audio permissions
     initializeAudio();
-
-    // Slide up animation
-    Animated.spring(slideAnim, {
-      toValue: 0,
-      useNativeDriver: true,
-      tension: 50,
-      friction: 8,
-    }).start();
-
-    // Fade animation
-    Animated.timing(fadeAnim, {
-      toValue: 1,
-      duration: 600,
-      useNativeDriver: true,
-    }).start();
+    // Load conversation history
+    loadConversationHistory();
+    // Load voice preference
+    loadVoicePreference();
   }, []);
+
+  const loadVoicePreference = async () => {
+    try {
+      const stored = await AsyncStorage.getItem('chat_voice_enabled');
+      if (stored !== null) {
+        setIsVoiceEnabled(stored === 'true');
+      }
+    } catch (error) {
+      console.error('Failed to load voice preference:', error);
+    }
+  };
+
+  const toggleVoiceEnabled = async () => {
+    try {
+      const newValue = !isVoiceEnabled;
+      setIsVoiceEnabled(newValue);
+      await AsyncStorage.setItem('chat_voice_enabled', String(newValue));
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      console.log(`🔊 Voice output ${newValue ? 'enabled' : 'disabled'}`);
+    } catch (error) {
+      console.error('Failed to save voice preference:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Auto-start voice recording if requested from HomeScreen
+    if (params?.autoStartVoice && !isLoadingConversation) {
+      // Wait a moment for audio initialization and conversation loading
+      const timer = setTimeout(() => {
+        console.log('🎤 Auto-starting voice recording...');
+        startRecording();
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isLoadingConversation]);
+
+  const loadConversationHistory = async () => {
+    try {
+      setIsLoadingConversation(true);
+      console.log('📜 Loading conversation history...');
+
+      // Fetch recent conversations from backend
+      const response = await ApiService.getConversations();
+      console.log('📡 API Response:', JSON.stringify(response, null, 2));
+
+      if (response.success && response.data && response.data.length > 0) {
+        // Get the most recent conversation
+        const recentConversation = response.data[0];
+        console.log('📝 Recent conversation ID:', recentConversation._id);
+        console.log('📝 Messages in conversation:', recentConversation.messages?.length || 0);
+
+        setConversationId(recentConversation._id);
+
+        // Convert backend messages to UI messages
+        if (recentConversation.messages && recentConversation.messages.length > 0) {
+          const loadedMessages: Message[] = recentConversation.messages.map((msg: any, index: number) => ({
+            id: msg._id || `${index}`,
+            type: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content,
+            timestamp: new Date(msg.timestamp || Date.now()),
+          }));
+
+          setMessages(loadedMessages);
+          console.log(`✅ Loaded ${loadedMessages.length} messages from conversation ${recentConversation._id}`);
+        } else {
+          // Conversation exists but no messages yet
+          setMessages([
+            {
+              id: '1',
+              type: 'assistant',
+              content: `Hi! I'm ${user?.assistantName || 'your assistant'}. How can I help you today?`,
+              timestamp: new Date(),
+            },
+          ]);
+          console.log('📝 Conversation exists but no messages - showing welcome');
+        }
+      } else {
+        // No existing conversation, show welcome message
+        console.log('📝 No existing conversations found - starting fresh');
+        setMessages([
+          {
+            id: '1',
+            type: 'assistant',
+            content: `Hi! I'm ${user?.assistantName || 'your assistant'}. How can I help you today?`,
+            timestamp: new Date(),
+          },
+        ]);
+        console.log('📝 Starting new conversation');
+      }
+    } catch (error: any) {
+      console.error('❌ Failed to load conversation history:', error);
+      console.error('❌ Error details:', error.message);
+      // Show welcome message on error
+      setMessages([
+        {
+          id: '1',
+          type: 'assistant',
+          content: `Hi! I'm ${user?.assistantName || 'your assistant'}. How can I help you today?`,
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setIsLoadingConversation(false);
+    }
+  };
 
   useEffect(() => {
     // Auto-scroll to bottom when new messages are added
@@ -102,14 +193,6 @@ const ChatScreen: React.FC = () => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
   }, [messages]);
-
-  useEffect(() => {
-    // Update progress when messages change
-    const userMessages = messages.filter(msg => msg.type === 'user').length;
-    const newProgress = Math.min(100, Math.round((userMessages / totalQuestions) * 100));
-    setAnsweredQuestions(userMessages + 1); // +1 for initial greeting
-    setConversationProgress(newProgress);
-  }, [messages, totalQuestions]);
 
   const initializeAudio = async () => {
     try {
@@ -128,13 +211,14 @@ const ChatScreen: React.FC = () => {
   };
 
   const sendMessage = async (text: string) => {
-    console.log('🔵 sendMessage called with:', text);
-    if (!text.trim()) {
-      console.log('❌ Message is empty, returning');
-      return;
-    }
+    if (!text.trim()) return;
 
-    console.log('✅ Sending message:', text.trim());
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    console.log('📤 Sending message...');
+    console.log('📤 Current conversationId:', conversationId || 'NEW');
+    console.log('📤 Message:', text.trim());
+
     const userMessage: Message = {
       id: Date.now().toString(),
       type: 'user',
@@ -160,11 +244,15 @@ const ChatScreen: React.FC = () => {
     try {
       // Send message to backend
       const response = await ApiService.sendMessage(text.trim(), conversationId);
+      console.log('📥 Response received:', response.success ? '✅ Success' : '❌ Failed');
 
       if (response.success) {
         // Update conversation ID if new conversation
         if (!conversationId && response.data.conversationId) {
+          console.log('💾 Saving new conversationId:', response.data.conversationId);
           setConversationId(response.data.conversationId);
+        } else if (conversationId) {
+          console.log('📝 Continuing conversation:', conversationId);
         }
 
         // Remove typing indicator and add AI response
@@ -178,6 +266,29 @@ const ChatScreen: React.FC = () => {
           };
           return [...filtered, aiMessage];
         });
+
+        // Auto-play PA voice response if audio is available and voice is enabled
+        if (isVoiceEnabled && response.data.audioBuffer) {
+          try {
+            const audioBase64 = response.data.audioBuffer;
+            const dataUri = `data:audio/mp3;base64,${audioBase64}`;
+
+            const { sound } = await Audio.Sound.createAsync(
+              { uri: dataUri },
+              { shouldPlay: true },
+              (status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                  sound.unloadAsync();
+                }
+              }
+            );
+            console.log('🔊 Playing voice response');
+          } catch (audioError) {
+            console.error('Failed to play PA voice:', audioError);
+          }
+        } else if (!isVoiceEnabled) {
+          console.log('🔇 Voice output disabled - text only');
+        }
       } else {
         throw new Error('Failed to get response');
       }
@@ -203,16 +314,14 @@ const ChatScreen: React.FC = () => {
   };
 
   const startRecording = async () => {
-    console.log('🎤 startRecording called');
     try {
-      // Check permissions
       const { status } = await Audio.requestPermissionsAsync();
-      console.log('🎤 Permission status:', status);
       if (status !== 'granted') {
         Alert.alert('Permission Required', 'Microphone access is required for voice messages.');
         return;
       }
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setVoiceState(prev => ({ ...prev, isRecording: true }));
 
       const recording = new Audio.Recording();
@@ -234,8 +343,6 @@ const ChatScreen: React.FC = () => {
 
       await recording.startAsync();
       setVoiceState(prev => ({ ...prev, recording }));
-
-      console.log('🎤 Recording started');
     } catch (error) {
       console.error('Failed to start recording:', error);
       setVoiceState(prev => ({ ...prev, isRecording: false }));
@@ -248,6 +355,7 @@ const ChatScreen: React.FC = () => {
       const { recording } = voiceState;
       if (!recording) return;
 
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       setVoiceState(prev => ({ ...prev, isRecording: false, isTranscribing: true }));
 
       await recording.stopAndUnloadAsync();
@@ -257,15 +365,46 @@ const ChatScreen: React.FC = () => {
         throw new Error('No recording URI available');
       }
 
-      console.log('🎤 Recording stopped, starting transcription...');
+      console.log('🎤 Recording stopped, audio URI:', uri);
+      console.log('📡 API Base URL:', ApiService.getBaseURL());
+      console.log('🔐 Conversation ID:', conversationId || 'NEW');
+
+      // Test connection before sending
+      try {
+        const isConnected = await ApiService.checkConnection();
+        console.log('📡 Connection test:', isConnected ? '✅ Connected' : '❌ Not connected');
+
+        if (!isConnected) {
+          const diagnostics = await ApiService.getConnectionDiagnostics();
+          console.log('🔍 Connection diagnostics:', JSON.stringify(diagnostics, null, 2));
+
+          Alert.alert(
+            'Connection Error',
+            `Cannot reach backend server at ${diagnostics.apiBaseUrl}\n\n` +
+            `Network: ${diagnostics.networkConnected ? 'Connected' : 'Not connected'}\n` +
+            `Server: ${diagnostics.serverReachable ? 'Reachable' : 'Not reachable'}\n\n` +
+            'Please check:\n' +
+            '1. Backend server is running\n' +
+            '2. Your device is on the same network\n' +
+            '3. Firewall settings allow connections'
+          );
+          return;
+        }
+      } catch (connError) {
+        console.error('Connection test failed:', connError);
+      }
 
       // Send audio for transcription and AI response
+      console.log('📤 Sending audio for transcription...');
       const response = await ApiService.transcribeAndRespond(uri, conversationId);
 
       if (response.success) {
         // Update conversation ID if new conversation
         if (!conversationId && response.data.conversationId) {
+          console.log('💾 Saving new conversationId:', response.data.conversationId);
           setConversationId(response.data.conversationId);
+        } else if (conversationId) {
+          console.log('📝 Continuing conversation:', conversationId);
         }
 
         // Add user message (transcription) and AI response
@@ -284,6 +423,29 @@ const ChatScreen: React.FC = () => {
         };
 
         setMessages(prev => [...prev, userMessage, aiMessage]);
+
+        // Auto-play PA voice response if audio is available and voice is enabled
+        if (isVoiceEnabled && response.data.audioBuffer) {
+          try {
+            const audioBase64 = response.data.audioBuffer;
+            const dataUri = `data:audio/mp3;base64,${audioBase64}`;
+
+            const { sound } = await Audio.Sound.createAsync(
+              { uri: dataUri },
+              { shouldPlay: true },
+              (status) => {
+                if (status.isLoaded && status.didJustFinish) {
+                  sound.unloadAsync();
+                }
+              }
+            );
+            console.log('🔊 Playing voice response');
+          } catch (audioError) {
+            console.error('Failed to play PA voice:', audioError);
+          }
+        } else if (!isVoiceEnabled) {
+          console.log('🔇 Voice output disabled - text only');
+        }
       } else {
         throw new Error(response.error || 'Transcription failed');
       }
@@ -295,9 +457,31 @@ const ChatScreen: React.FC = () => {
         console.warn('Failed to cleanup recording file:', cleanupError);
       }
 
-    } catch (error) {
-      console.error('Error processing recording:', error);
-      Alert.alert('Voice Error', 'Failed to process voice message. Please try again.');
+    } catch (error: any) {
+      console.error('❌ Error processing recording:', error);
+      console.error('❌ Error details:', {
+        message: error?.message,
+        code: error?.code,
+        status: error?.status,
+        details: error?.details,
+      });
+
+      let errorMessage = 'Failed to process voice message. Please try again.';
+
+      if (error?.code === 'CONNECTION_ERROR') {
+        errorMessage = 'Cannot connect to server. Please ensure:\n\n' +
+          '1. Backend server is running\n' +
+          '2. You\'re on the same network (WiFi)\n' +
+          '3. Server IP is correct (192.168.1.231:3000)';
+      } else if (error?.code === 'AUTH_EXPIRED') {
+        errorMessage = 'Your session has expired. Please log in again.';
+      } else if (error?.code === 'NETWORK_ERROR') {
+        errorMessage = 'No internet connection. Please check your network.';
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      Alert.alert('Voice Recording Error', errorMessage);
     } finally {
       setVoiceState(prev => ({
         ...prev,
@@ -308,54 +492,29 @@ const ChatScreen: React.FC = () => {
     }
   };
 
-  const renderMessage = (item: Message, index: number) => {
+  const renderMessage = (item: Message) => {
     const isUser = item.type === 'user';
 
     return (
-      <View key={item.id} style={styles.messageRow}>
-        <Text style={[
-          styles.messageLabel,
-          isUser ? styles.userLabel : styles.assistantLabel
+      <View key={item.id} style={styles.messageContainer}>
+        <View style={[
+          styles.messageBubble,
+          isUser ? styles.userBubble : styles.assistantBubble
         ]}>
-          {isUser ? 'You' : 'AI Assistant'}
-        </Text>
-        {item.isTyping ? (
-          <View style={styles.typingContainer}>
-            <Text style={styles.typingText}>●</Text>
-            <Text style={styles.typingText}>●</Text>
-            <Text style={styles.typingText}>●</Text>
-          </View>
-        ) : (
-          <Text style={styles.messageContent}>
-            {item.content}
-          </Text>
-        )}
-        {index < messages.length - 1 && <View style={styles.messageDivider} />}
-      </View>
-    );
-  };
-
-  const renderProgressBar = () => {
-    return (
-      <View style={styles.progressContainer}>
-        <View style={styles.progressInfo}>
-          <Text style={styles.progressText}>
-            Question {answeredQuestions} of {totalQuestions}
-          </Text>
-          <Text style={styles.progressPercentage}>
-            {conversationProgress}% Complete
-          </Text>
-        </View>
-        <View style={styles.progressBarBackground}>
-          <Animated.View
-            style={[
-              styles.progressBarFill,
-              {
-                width: `${conversationProgress}%`,
-                opacity: fadeAnim,
-              }
-            ]}
-          />
+          {item.isTyping ? (
+            <View style={styles.typingIndicator}>
+              <View style={[styles.typingDot, { animationDelay: '0s' }]} />
+              <View style={[styles.typingDot, { animationDelay: '0.2s' }]} />
+              <View style={[styles.typingDot, { animationDelay: '0.4s' }]} />
+            </View>
+          ) : (
+            <Text style={[
+              styles.messageText,
+              isUser ? styles.userText : styles.assistantText
+            ]}>
+              {item.content}
+            </Text>
+          )}
         </View>
       </View>
     );
@@ -363,122 +522,192 @@ const ChatScreen: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      {/* Background gradient flare */}
-      
+      {/* Background */}
+      <LinearGradient
+        colors={['#000000', '#000000', '#000000']}
+        style={styles.backgroundGradient}
+      />
 
-      <SafeAreaView style={styles.safeArea}>
-        {/* Fixed Header */}
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="rgba(255, 247, 245, 0.9)" />
+      {/* Animated Background Dots */}
+      <View style={styles.backgroundDotsContainer} pointerEvents="none">
+        {Array(200).fill(0).map((_, index) => {
+          const dotSpacing = 35;
+          const columns = Math.ceil(width / dotSpacing);
+          const row = Math.floor(index / columns);
+          const col = index % columns;
+
+          return (
+            <View
+              key={index}
+              style={[
+                styles.backgroundDot,
+                {
+                  left: col * dotSpacing,
+                  top: row * dotSpacing,
+                  opacity: 0.15,
+                },
+              ]}
+            />
+          );
+        })}
+      </View>
+
+      {/* Header */}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity
+          style={styles.backButton}
+          onPress={() => {
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+            navigation.goBack();
+          }}
+        >
+          <Ionicons name="arrow-back" size={24} color="#C9A96E" />
+        </TouchableOpacity>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerTitle}>Chat with {user?.assistantName || 'Assistant'}</Text>
+          <Text style={styles.headerSubtitle}>Your AI Personal Assistant</Text>
+        </View>
+        <View style={styles.headerRightButtons}>
+          {/* Voice Toggle Button */}
+          <TouchableOpacity
+            style={[styles.headerButton, isVoiceEnabled && styles.headerButtonActive]}
+            onPress={toggleVoiceEnabled}
+          >
+            <Ionicons
+              name={isVoiceEnabled ? "volume-high" : "volume-mute"}
+              size={22}
+              color={isVoiceEnabled ? "#C9A96E" : "rgba(201, 169, 110, 0.5)"}
+            />
+          </TouchableOpacity>
+
+          {/* New Conversation Button */}
+          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => {
+              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+              // Start new conversation
+              setConversationId(undefined);
+              setMessages([
+                {
+                  id: '1',
+                  type: 'assistant',
+                  content: `Hi! I'm ${user?.assistantName || 'your assistant'}. How can I help you today?`,
+                  timestamp: new Date(),
+                },
+              ]);
+            }}
+          >
+            <Ionicons name="create-outline" size={22} color="#C9A96E" />
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Title */}
-        <View style={styles.titleContainer}>
-          <Text style={styles.title}>Tell me more about you</Text>
-          <Text style={styles.subtitle}>
-            Let's get to know each other better
-          </Text>
-        </View>
-
-        {/* Progress Tracker */}
-        {renderProgressBar()}
-
-        {/* Glass-like Sliding Container */}
-        <Animated.View
-          style={[
-            styles.slidingContainer,
-            { transform: [{ translateY: slideAnim }], opacity: fadeAnim }
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardContainer}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+        {/* Chat Messages */}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={[
+            styles.messagesContent,
+            { paddingBottom: insets.bottom + 80 }
           ]}
+          showsVerticalScrollIndicator={false}
         >
-          <View style={styles.glassPanel}>
-            <KeyboardAvoidingView
-              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-              style={styles.keyboardContainer}
-            >
-              {/* Chat Messages */}
-              <ScrollView
-                ref={scrollViewRef}
-                style={styles.messagesContainer}
-                contentContainerStyle={styles.messagesContent}
-                showsVerticalScrollIndicator={false}
+          {isLoadingConversation ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color="#C9A96E" size="large" />
+              <Text style={styles.loadingText}>Loading conversation...</Text>
+            </View>
+          ) : (
+            messages.map((message) => renderMessage(message))
+          )}
+        </ScrollView>
+
+        {/* Input Section */}
+        <View style={[styles.inputContainer, { paddingBottom: insets.bottom + 10 }]}>
+          {voiceState.isRecording && (
+            <View style={styles.recordingIndicator}>
+              <View style={styles.recordingPulse} />
+              <Ionicons name="mic" size={16} color="#FF4757" />
+              <Text style={styles.recordingText}>Recording...</Text>
+            </View>
+          )}
+
+          <View style={styles.inputRow}>
+            <View style={styles.inputWrapper}>
+              {/* Attachment Button */}
+              <TouchableOpacity
+                style={styles.attachmentButton}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  // TODO: Implement attachment functionality
+                }}
+                disabled={voiceState.isRecording || isLoading}
               >
-                {messages.map((message, index) => renderMessage(message, index))}
-              </ScrollView>
+                <Ionicons name="add-circle" size={24} color="rgba(201, 169, 110, 0.6)" />
+              </TouchableOpacity>
 
-              {/* Input Section */}
-              <View style={styles.inputContainer}>
-                <View style={styles.inputRow}>
-                  <TextInput
-                    style={styles.textInput}
-                    value={inputText}
-                    onChangeText={setInputText}
-                    placeholder="Type your message..."
-                    placeholderTextColor="rgba(255, 247, 245, 0.5)"
-                    multiline
-                    maxLength={500}
-                    editable={!isLoading}
-                  />
+              <TextInput
+                style={styles.textInput}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder="Type your message..."
+                placeholderTextColor="rgba(201, 169, 110, 0.4)"
+                multiline
+                maxLength={500}
+                editable={!isLoading && !voiceState.isRecording}
+              />
 
-                  {/* Voice Button */}
-                  <TouchableOpacity
-                    style={[
-                      styles.voiceButton,
-                      voiceState.isRecording && styles.voiceButtonActive
-                    ]}
-                    onPress={() => {
-                      console.log('🎤 Voice button pressed, isRecording:', voiceState.isRecording);
-                      if (voiceState.isRecording) {
-                        stopRecording();
-                      } else {
-                        startRecording();
-                      }
-                    }}
-                    disabled={voiceState.isTranscribing || isLoading}
-                  >
-                    {voiceState.isTranscribing ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <MaterialIcons
-                        name={voiceState.isRecording ? "stop" : "mic"}
-                        size={20}
-                        color="#fff"
-                      />
-                    )}
-                  </TouchableOpacity>
+              {/* Right side buttons inside input */}
+              <View style={styles.inputRightButtons}>
+                {/* Voice Button */}
+                <TouchableOpacity
+                  style={styles.inlineVoiceButton}
+                  onPress={() => {
+                    if (voiceState.isRecording) {
+                      stopRecording();
+                    } else {
+                      startRecording();
+                    }
+                  }}
+                  disabled={voiceState.isTranscribing || isLoading}
+                >
+                  {voiceState.isTranscribing ? (
+                    <ActivityIndicator color="#C9A96E" size="small" />
+                  ) : (
+                    <Ionicons
+                      name={voiceState.isRecording ? "stop-circle" : "mic"}
+                      size={24}
+                      color={voiceState.isRecording ? "#FF4757" : "rgba(201, 169, 110, 0.6)"}
+                    />
+                  )}
+                </TouchableOpacity>
 
-                  {/* Send Button */}
-                  <TouchableOpacity
-                    style={[
-                      styles.sendButton,
-                      !inputText.trim() && styles.sendButtonDisabled
-                    ]}
-                    onPress={() => {
-                      console.log('📤 Send button pressed, inputText:', inputText);
-                      sendMessage(inputText);
-                    }}
-                    disabled={!inputText.trim() || isLoading}
-                  >
-                    {isLoading ? (
-                      <ActivityIndicator color="#fff" size="small" />
-                    ) : (
-                      <Ionicons name="send" size={18} color="#fff" />
-                    )}
-                  </TouchableOpacity>
-                </View>
-
-                {voiceState.isRecording && (
-                  <View style={styles.recordingIndicator}>
-                    <MaterialIcons name="fiber-manual-record" size={12} color="#ff4444" />
-                    <Text style={styles.recordingText}>Recording...</Text>
-                  </View>
-                )}
+                {/* Send Button */}
+                <TouchableOpacity
+                  style={styles.inlineSendButton}
+                  onPress={() => sendMessage(inputText)}
+                  disabled={!inputText.trim() || isLoading || voiceState.isRecording}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#C9A96E" size="small" />
+                  ) : (
+                    <Ionicons
+                      name="arrow-up-circle"
+                      size={28}
+                      color={inputText.trim() ? "#C9A96E" : "rgba(201, 169, 110, 0.3)"}
+                    />
+                  )}
+                </TouchableOpacity>
               </View>
-            </KeyboardAvoidingView>
+            </View>
           </View>
-        </Animated.View>
-      </SafeAreaView>
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
 };
@@ -488,205 +717,263 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000000',
   },
-  gradientFlare: {
+  backgroundGradient: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    zIndex: 1,
+    zIndex: 0,
   },
-  safeArea: {
-    flex: 1,
-    zIndex: 2,
+  backgroundDotsContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 0,
+  },
+  backgroundDot: {
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    borderRadius: 1.5,
+    backgroundColor: '#C9A96E',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 5,
+    paddingBottom: 15,
+    zIndex: 10,
   },
   backButton: {
-    padding: 8,
-  },
-  titleContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 15,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(201, 169, 110, 0.15)',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  title: {
-    fontSize: 26,
+  headerCenter: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 16,
+  },
+  headerTitle: {
+    fontSize: 18,
     fontWeight: '700',
-    color: 'rgba(255, 247, 245, 0.95)',
-    marginBottom: 8,
-    letterSpacing: 0.5,
+    color: '#FFFFFF',
+    marginBottom: 2,
   },
-  subtitle: {
-    fontSize: 15,
-    color: 'rgba(255, 247, 245, 0.7)',
-    letterSpacing: 0.3,
+  headerSubtitle: {
+    fontSize: 12,
+    fontWeight: '400',
+    color: '#C9A96E',
   },
-  slidingContainer: {
-    flex: 1,
-    marginTop: 10,
-  },
-  glassPanel: {
-    flex: 1,
-    backgroundColor: 'rgba(255, 247, 245, 0.08)',
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 247, 245, 0.15)',
-    overflow: 'hidden',
-    paddingTop: 20,
-  },
-  progressContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    marginBottom: 10,
-  },
-  progressInfo: {
+  headerRightButtons: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    gap: 8,
   },
-  progressText: {
+  headerButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(201, 169, 110, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerButtonActive: {
+    backgroundColor: 'rgba(201, 169, 110, 0.25)',
+  },
+  headerRight: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(201, 169, 110, 0.15)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
     fontSize: 14,
-    color: 'rgba(255, 247, 245, 0.7)',
+    color: '#C9A96E',
+    marginTop: 12,
     fontWeight: '500',
-  },
-  progressPercentage: {
-    fontSize: 14,
-    color: 'rgba(51, 150, 211, 0.9)',
-    fontWeight: '600',
-  },
-  progressBarBackground: {
-    height: 4,
-    backgroundColor: 'rgba(255, 247, 245, 0.1)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  progressBarFill: {
-    height: '100%',
-    backgroundColor: 'rgba(51, 150, 211, 0.8)',
-    borderRadius: 2,
   },
   keyboardContainer: {
     flex: 1,
+    zIndex: 5,
   },
   messagesContainer: {
     flex: 1,
     paddingHorizontal: 20,
   },
   messagesContent: {
-    paddingBottom: 20,
+    paddingTop: 20,
   },
-  messageRow: {
-    marginBottom: 20,
+  messageContainer: {
+    marginBottom: 16,
   },
-  messageLabel: {
-    fontSize: 12,
-    fontWeight: '600',
-    letterSpacing: 0.5,
-    marginBottom: 8,
-    textTransform: 'uppercase',
+  messageBubble: {
+    maxWidth: '80%',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderRadius: 20,
   },
-  userLabel: {
-    color: 'rgba(51, 150, 211, 0.9)',
+  userBubble: {
+    alignSelf: 'flex-end',
+    backgroundColor: '#C9A96E',
+    borderBottomRightRadius: 4,
   },
-  assistantLabel: {
-    color: 'rgba(255, 247, 245, 0.7)',
+  assistantBubble: {
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(201, 169, 110, 0.15)',
+    borderBottomLeftRadius: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 110, 0.3)',
   },
-  messageContent: {
-    fontSize: 16,
-    lineHeight: 24,
-    color: 'rgba(255, 247, 245, 0.9)',
+  messageText: {
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  userText: {
+    color: '#000000',
+    fontWeight: '500',
+  },
+  assistantText: {
+    color: '#FFFFFF',
     fontWeight: '400',
   },
-  messageDivider: {
-    height: 1,
-    backgroundColor: 'rgba(255, 247, 245, 0.1)',
-    marginTop: 16,
-  },
-  typingContainer: {
+  typingIndicator: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
+    paddingVertical: 4,
   },
-  typingText: {
-    fontSize: 20,
-    color: 'rgba(255, 247, 245, 0.5)',
+  typingDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#C9A96E',
     opacity: 0.6,
   },
   inputContainer: {
-    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 247, 245, 0.15)',
+    borderTopColor: 'rgba(201, 169, 110, 0.2)',
     paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingTop: 12,
+    zIndex: 10,
+  },
+  recordingIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  recordingPulse: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#FF4757',
+  },
+  recordingText: {
+    fontSize: 14,
+    color: '#FF4757',
+    fontWeight: '600',
   },
   inputRow: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: 12,
+  },
+  inputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 28,
+    backgroundColor: 'rgba(201, 169, 110, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(201, 169, 110, 0.3)',
+    paddingLeft: 12,
+    paddingRight: 8,
+    paddingVertical: 8,
+    maxHeight: 120,
+    gap: 8,
+  },
+  attachmentButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   textInput: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 247, 245, 0.25)',
-    borderRadius: 22,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    fontSize: 16,
+    fontSize: 15,
+    color: '#FFFFFF',
     maxHeight: 100,
-    backgroundColor: 'rgba(255, 247, 245, 0.15)',
-    color: 'rgba(255, 247, 245, 0.95)',
+    paddingVertical: 6,
   },
+  inputRightButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  inlineVoiceButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  inlineSendButton: {
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  // Legacy styles kept for backward compatibility
   voiceButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: '#34C759',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#34C759',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
   },
   voiceButtonActive: {
-    backgroundColor: '#ff4444',
-    shadowColor: '#ff4444',
+    backgroundColor: '#FF4757',
+    shadowColor: '#FF4757',
   },
   sendButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: '#007AFF',
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#C9A96E',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#007AFF',
+    shadowColor: '#C9A96E',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.4,
     shadowRadius: 4,
     elevation: 4,
   },
   sendButtonDisabled: {
-    backgroundColor: 'rgba(255, 247, 245, 0.3)',
-    shadowColor: 'rgba(255, 247, 245, 0.3)',
-  },
-  recordingIndicator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingTop: 12,
-    justifyContent: 'center',
-  },
-  recordingText: {
-    fontSize: 14,
-    color: '#ff4444',
-    fontWeight: '600',
+    backgroundColor: 'rgba(201, 169, 110, 0.3)',
+    shadowOpacity: 0,
   },
 });
 

@@ -15,7 +15,8 @@ import {
 import { useNavigation, CommonActions } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store';
 
 import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
@@ -84,6 +85,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
   const navigation = useNavigation<AssistantPersonalizationNavigationProp>();
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
+  const theme = useSelector((state: RootState) => state.theme.theme);
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scrollViewRef = useRef<ScrollView>(null);
@@ -327,8 +329,8 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
   const renderRoleSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>What's your role?</Text>
-      <Text style={styles.sectionSubtitle}>This helps me understand your needs</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>What's your role?</Text>
+      <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>This helps me understand your needs</Text>
 
       <View style={styles.chipsContainer}>
         {roles.map((role) => (
@@ -336,18 +338,20 @@ const AssistantPersonalizationScreen: React.FC = () => {
             key={role.id}
             style={[
               styles.chip,
-              data.role === role.id && styles.chipSelected,
+              { backgroundColor: `${theme.text}08`, borderColor: `${theme.text}20` },
+              data.role === role.id && { backgroundColor: theme.accent, borderColor: theme.accent },
             ]}
             onPress={() => handleRoleSelect(role.id)}
           >
             <MaterialIcons
               name={role.icon as any}
               size={20}
-              color={data.role === role.id ? '#FFF7F5' : 'rgba(255, 247, 245, 0.7)'}
+              color={data.role === role.id ? theme.text : theme.textSecondary}
             />
             <Text style={[
               styles.chipText,
-              data.role === role.id && styles.chipTextSelected,
+              { color: theme.textSecondary },
+              data.role === role.id && { color: theme.text },
             ]}>
               {role.label}
             </Text>
@@ -357,9 +361,9 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
       {showCustomRole && (
         <TextInput
-          style={styles.customInput}
+          style={[styles.customInput, { backgroundColor: `${theme.text}08`, borderColor: `${theme.text}20`, color: theme.text }]}
           placeholder="Enter your role..."
-          placeholderTextColor="rgba(255, 247, 245, 0.5)"
+          placeholderTextColor={theme.textTertiary}
           value={data.customRole}
           onChangeText={(text) => setData(prev => ({ ...prev, customRole: text }))}
           autoFocus
@@ -370,8 +374,8 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
   const renderChallengesSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>What are your biggest challenges?</Text>
-      <Text style={styles.sectionSubtitle}>Select all that apply</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>What are your biggest challenges?</Text>
+      <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Select all that apply</Text>
 
       <View style={styles.chipsContainer}>
         {challenges.map((challenge) => {
@@ -381,23 +385,25 @@ const AssistantPersonalizationScreen: React.FC = () => {
               key={challenge.id}
               style={[
                 styles.chip,
-                isSelected && styles.chipSelected,
+                { backgroundColor: `${theme.text}08`, borderColor: `${theme.text}20` },
+                isSelected && { backgroundColor: theme.accent, borderColor: theme.accent },
               ]}
               onPress={() => toggleChallenge(challenge.id)}
             >
               <MaterialIcons
                 name={challenge.icon as any}
                 size={20}
-                color={isSelected ? '#FFF7F5' : 'rgba(255, 247, 245, 0.7)'}
+                color={isSelected ? theme.text : theme.textSecondary}
               />
               <Text style={[
                 styles.chipText,
-                isSelected && styles.chipTextSelected,
+                { color: theme.textSecondary },
+                isSelected && { color: theme.text },
               ]}>
                 {challenge.label}
               </Text>
               {isSelected && (
-                <Ionicons name="checkmark-circle" size={18} color="#FFF7F5" />
+                <Ionicons name="checkmark-circle" size={18} color={theme.text} />
               )}
             </TouchableOpacity>
           );
@@ -408,18 +414,18 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
   const renderWorkStyleSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>How do you prefer to work?</Text>
-      <Text style={styles.sectionSubtitle}>Slide to adjust</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>How do you prefer to work?</Text>
+      <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Slide to adjust</Text>
 
       <View style={styles.sliderContainer}>
         <View style={styles.sliderLabels}>
           <View style={styles.sliderLabelItem}>
-            <Ionicons name="list" size={24} color="#3396D3" />
-            <Text style={styles.sliderLabelText}>Structured</Text>
+            <Ionicons name="list" size={24} color={theme.accent} />
+            <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>Structured</Text>
           </View>
           <View style={styles.sliderLabelItem}>
-            <Ionicons name="shuffle" size={24} color="#3396D3" />
-            <Text style={styles.sliderLabelText}>Flexible</Text>
+            <Ionicons name="shuffle" size={24} color={theme.accent} />
+            <Text style={[styles.sliderLabelText, { color: theme.textSecondary }]}>Flexible</Text>
           </View>
         </View>
 
@@ -429,12 +435,12 @@ const AssistantPersonalizationScreen: React.FC = () => {
           maximumValue={100}
           value={data.workStyle}
           onValueChange={(value) => setData(prev => ({ ...prev, workStyle: value }))}
-          minimumTrackTintColor="#3396D3"
-          maximumTrackTintColor="rgba(255, 247, 245, 0.3)"
-          thumbTintColor="#3396D3"
+          minimumTrackTintColor={theme.accent}
+          maximumTrackTintColor={`${theme.text}30`}
+          thumbTintColor={theme.accent}
         />
 
-        <Text style={styles.sliderValue}>
+        <Text style={[styles.sliderValue, { color: theme.accent }]}>
           {data.workStyle < 33 ? 'Structured' : data.workStyle > 66 ? 'Flexible' : 'Balanced'}
         </Text>
       </View>
@@ -443,8 +449,8 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
   const renderProductiveTimeSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>When are you most productive?</Text>
-      <Text style={styles.sectionSubtitle}>Select your peak times</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>When are you most productive?</Text>
+      <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>Select your peak times</Text>
 
       <View style={styles.chipsContainer}>
         {productiveTimes.map((time) => {
@@ -454,23 +460,25 @@ const AssistantPersonalizationScreen: React.FC = () => {
               key={time.id}
               style={[
                 styles.chip,
-                isSelected && styles.chipSelected,
+                { backgroundColor: `${theme.text}08`, borderColor: `${theme.text}20` },
+                isSelected && { backgroundColor: theme.accent, borderColor: theme.accent },
               ]}
               onPress={() => toggleProductiveTime(time.id)}
             >
               <MaterialIcons
                 name={time.icon as any}
                 size={20}
-                color={isSelected ? '#FFF7F5' : 'rgba(255, 247, 245, 0.7)'}
+                color={isSelected ? theme.text : theme.textSecondary}
               />
               <Text style={[
                 styles.chipText,
-                isSelected && styles.chipTextSelected,
+                { color: theme.textSecondary },
+                isSelected && { color: theme.text },
               ]}>
                 {time.label}
               </Text>
               {isSelected && (
-                <Ionicons name="checkmark-circle" size={18} color="#FFF7F5" />
+                <Ionicons name="checkmark-circle" size={18} color={theme.text} />
               )}
             </TouchableOpacity>
           );
@@ -481,8 +489,8 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
   const renderCommunicationSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Communication style</Text>
-      <Text style={styles.sectionSubtitle}>How should I notify you?</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Communication style</Text>
+      <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>How should I notify you?</Text>
 
       <View style={styles.optionsContainer}>
         {communicationPreferences.map((pref) => (
@@ -490,18 +498,23 @@ const AssistantPersonalizationScreen: React.FC = () => {
             key={pref.id}
             style={[
               styles.optionCard,
-              data.communicationPreference === pref.id && styles.optionCardSelected,
+              { backgroundColor: `${theme.text}08`, borderColor: `${theme.text}15` },
+              data.communicationPreference === pref.id && {
+                borderColor: theme.accent,
+                backgroundColor: `${theme.accent}15`,
+              },
             ]}
             onPress={() => setData(prev => ({ ...prev, communicationPreference: pref.id }))}
           >
             <MaterialIcons
               name={pref.icon as any}
               size={32}
-              color={data.communicationPreference === pref.id ? '#3396D3' : 'rgba(255, 247, 245, 0.5)'}
+              color={data.communicationPreference === pref.id ? theme.accent : theme.textSecondary}
             />
             <Text style={[
               styles.optionCardText,
-              data.communicationPreference === pref.id && styles.optionCardTextSelected,
+              { color: theme.textSecondary },
+              data.communicationPreference === pref.id && { color: theme.text, fontWeight: '600' },
             ]}>
               {pref.label}
             </Text>
@@ -513,8 +526,8 @@ const AssistantPersonalizationScreen: React.FC = () => {
 
   const renderMeetingSection = () => (
     <View style={styles.section}>
-      <Text style={styles.sectionTitle}>Meeting preparation</Text>
-      <Text style={styles.sectionSubtitle}>How much prep do you need?</Text>
+      <Text style={[styles.sectionTitle, { color: theme.text }]}>Meeting preparation</Text>
+      <Text style={[styles.sectionSubtitle, { color: theme.textSecondary }]}>How much prep do you need?</Text>
 
       <View style={styles.optionsContainer}>
         {meetingPreferences.map((pref) => (
@@ -522,18 +535,23 @@ const AssistantPersonalizationScreen: React.FC = () => {
             key={pref.id}
             style={[
               styles.optionCard,
-              data.meetingPreference === pref.id && styles.optionCardSelected,
+              { backgroundColor: `${theme.text}08`, borderColor: `${theme.text}15` },
+              data.meetingPreference === pref.id && {
+                borderColor: theme.accent,
+                backgroundColor: `${theme.accent}15`,
+              },
             ]}
             onPress={() => setData(prev => ({ ...prev, meetingPreference: pref.id }))}
           >
             <MaterialIcons
               name={pref.icon as any}
               size={32}
-              color={data.meetingPreference === pref.id ? '#3396D3' : 'rgba(255, 247, 245, 0.5)'}
+              color={data.meetingPreference === pref.id ? theme.accent : theme.textSecondary}
             />
             <Text style={[
               styles.optionCardText,
-              data.meetingPreference === pref.id && styles.optionCardTextSelected,
+              { color: theme.textSecondary },
+              data.meetingPreference === pref.id && { color: theme.text, fontWeight: '600' },
             ]}>
               {pref.label}
             </Text>
@@ -544,16 +562,16 @@ const AssistantPersonalizationScreen: React.FC = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
 
 
       <SafeAreaView style={styles.safeArea}>
         {/* Top Bar - Fixed on black background */}
-        <View style={[styles.header, { paddingTop: Math.max(insets.top, 15) + 10 }]}>
-          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={24} color="#FFF7F5" />
+        <View style={[styles.header, { paddingTop: Math.max(insets.top, 15) + 10, backgroundColor: theme.background }]}>
+          <TouchableOpacity style={[styles.backButton, { backgroundColor: theme.surfaceSecondary }]} onPress={() => navigation.goBack()}>
+            <Ionicons name="chevron-back" size={24} color={theme.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Personalize</Text>
+          <Text style={[styles.headerTitle, { color: theme.text }]}>Personalize</Text>
           <View style={styles.placeholder} />
         </View>
 
@@ -564,7 +582,7 @@ const AssistantPersonalizationScreen: React.FC = () => {
         <Animated.View
           style={[
             styles.slidingContainer,
-            { transform: [{ translateY: slideAnim }], opacity: fadeAnim }
+            { backgroundColor: theme.surface, borderColor: theme.border, transform: [{ translateY: slideAnim }], opacity: fadeAnim }
           ]}
         >
           <ScrollView
@@ -586,21 +604,22 @@ const AssistantPersonalizationScreen: React.FC = () => {
         </Animated.View>
 
         {/* Fixed Bottom Button */}
-        <View style={styles.bottomContainer}>
+        <View style={[styles.bottomContainer, { backgroundColor: theme.background }]}>
           <TouchableOpacity
             style={[
               styles.continueButton,
-              !isFormValid() && styles.continueButtonDisabled,
+              { backgroundColor: theme.accent },
+              !isFormValid() && { backgroundColor: `${theme.text}08`, opacity: 0.5 },
             ]}
             onPress={handleContinue}
             disabled={!isFormValid() || loading}
           >
             {loading ? (
-              <ActivityIndicator color="#FFF7F5" />
+              <ActivityIndicator color={theme.text} />
             ) : (
               <>
-                <Text style={styles.continueButtonText}>Continue</Text>
-                <Ionicons name="arrow-forward" size={20} color="#FFF7F5" />
+                <Text style={[styles.continueButtonText, { color: theme.text }]}>Continue</Text>
+                <Ionicons name="arrow-forward" size={20} color={theme.text} />
               </>
             )}
           </TouchableOpacity>

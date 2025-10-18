@@ -37,7 +37,7 @@ const userSlice = createSlice({
     clearUser: (state) => {
       state.user = null;
       state.isAuthenticated = false;
-      state.hasCompletedOnboarding = false;
+      // Keep hasCompletedOnboarding as is - users who completed onboarding should go to login, not onboarding
       state.error = null;
     },
     setUserLoading: (state, action: PayloadAction<boolean>) => {
