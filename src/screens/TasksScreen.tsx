@@ -19,6 +19,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { RootState } from '../store';
 import { deleteTask, setTasks } from '../store/slices/taskSlice';
 import apiService from '../services/api';
+import { TaskStatus } from '../constants/statuses';
 
 const THEME_GOLD = '#C9A96E';
 
@@ -128,9 +129,8 @@ const TasksScreen: React.FC = () => {
     const taskId = task._id || task.id;
     // Close the swipeable first
     swipeableRefs.current[taskId]?.close();
-    // Navigate to edit screen or show edit modal
-    console.log('Edit task:', taskId);
-    Alert.alert('Edit Task', `Editing: ${task.title}`);
+    // Navigate to TaskDetail screen with edit mode
+    navigation.navigate('TaskDetail' as never, { taskId, mode: 'edit' } as never);
   };
 
   const handleDeleteTask = (task: any) => {
@@ -165,17 +165,17 @@ const TasksScreen: React.FC = () => {
 
   const filters = [
     { key: 'all', label: 'All', count: displayTasks.length },
-    { key: 'pending', label: 'Pending', count: displayTasks.filter(t => t.status === 'pending').length },
-    { key: 'in_progress', label: 'In Progress', count: displayTasks.filter(t => t.status === 'in_progress').length },
-    { key: 'completed', label: 'Completed', count: displayTasks.filter(t => t.status === 'completed').length },
+    { key: TaskStatus.PENDING, label: 'Pending', count: displayTasks.filter(t => t.status === TaskStatus.PENDING).length },
+    { key: TaskStatus.IN_PROGRESS, label: 'In Progress', count: displayTasks.filter(t => t.status === TaskStatus.IN_PROGRESS).length },
+    { key: TaskStatus.COMPLETED, label: 'Completed', count: displayTasks.filter(t => t.status === TaskStatus.COMPLETED).length },
     { key: 'high', label: 'High Priority', count: displayTasks.filter(t => t.priority === 'high').length }
   ];
 
   const filteredTasks = displayTasks.filter(task => {
     if (selectedFilter === 'all') return true;
-    if (selectedFilter === 'pending') return task.status === 'pending';
-    if (selectedFilter === 'in_progress') return task.status === 'in_progress';
-    if (selectedFilter === 'completed') return task.status === 'completed';
+    if (selectedFilter === TaskStatus.PENDING) return task.status === TaskStatus.PENDING;
+    if (selectedFilter === TaskStatus.IN_PROGRESS) return task.status === TaskStatus.IN_PROGRESS;
+    if (selectedFilter === TaskStatus.COMPLETED) return task.status === TaskStatus.COMPLETED;
     if (selectedFilter === 'high') return task.priority === 'high';
     return true;
   });
@@ -192,7 +192,7 @@ const TasksScreen: React.FC = () => {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed': return 'checkmark-circle';
-      case 'in_progress': return 'time';
+      case 'in-progress': return 'time';
       case 'pending': return 'ellipse-outline';
       default: return 'ellipse-outline';
     }
@@ -201,7 +201,7 @@ const TasksScreen: React.FC = () => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed': return '#10B981';
-      case 'in_progress': return THEME_GOLD;
+      case 'in-progress': return THEME_GOLD;
       case 'pending': return '#F59E0B';
       default: return theme.textSecondary;
     }
@@ -303,8 +303,8 @@ const TasksScreen: React.FC = () => {
   };
 
   const renderTask = (item: any, index: number) => {
-    const isOverdue = new Date(item.dueDate) < new Date() && item.status !== 'completed';
-    const isCompleted = item.status === 'completed';
+    const isOverdue = new Date(item.dueDate) < new Date() && item.status !== TaskStatus.COMPLETED;
+    const isCompleted = item.status === TaskStatus.COMPLETED;
     const isLast = index === filteredTasks.length - 1;
 
     const timePercentage = getTimeRemainingPercentage(item.dueDate, item.createdAt);
@@ -418,7 +418,7 @@ const TasksScreen: React.FC = () => {
                       styles.progressFill,
                       {
                         width: `${item.progress}%`,
-                        backgroundColor: item.status === 'in_progress' ? THEME_GOLD : getPriorityColor(item.priority)
+                        backgroundColor: item.status === TaskStatus.IN_PROGRESS ? THEME_GOLD : getPriorityColor(item.priority)
                       }
                     ]} />
                   </View>
@@ -444,15 +444,15 @@ const TasksScreen: React.FC = () => {
   const dueTodayCount = displayTasks.filter(t => {
     const dueDate = new Date(t.dueDate);
     dueDate.setHours(0, 0, 0, 0);
-    return dueDate.getTime() === today.getTime() && t.status !== 'completed';
+    return dueDate.getTime() === today.getTime() && t.status !== TaskStatus.COMPLETED;
   }).length;
 
   const overdueCount = displayTasks.filter(t => {
     const dueDate = new Date(t.dueDate);
-    return dueDate < today && t.status !== 'completed';
+    return dueDate < today && t.status !== TaskStatus.COMPLETED;
   }).length;
 
-  const highPriorityCount = displayTasks.filter(t => t.priority === 'high' && t.status !== 'completed').length;
+  const highPriorityCount = displayTasks.filter(t => t.priority === 'high' && t.status !== TaskStatus.COMPLETED).length;
 
   return (
     <View style={[styles.container, { backgroundColor: theme.background }]}>
