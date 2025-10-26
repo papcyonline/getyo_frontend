@@ -1,7 +1,10 @@
 import Voice from '@react-native-voice/voice';
 import { Platform, Alert, AppState, AppStateStatus, PermissionsAndroid } from 'react-native';
+import * as Audio from 'expo-av';
+import * as Speech from 'expo-speech';
 import { voiceService } from './voiceService';
 import ApiService from './api';
+import { wakeWordNotificationService } from './wakeWordNotificationService';
 
 interface WakeWordConfig {
   wakeWord: string; // "Yo!"
@@ -44,6 +47,22 @@ class WakeWordService {
   async initialize(assistantName: string) {
     this.config.assistantName = assistantName;
     this.config.enabled = true;
+
+    // Configure audio for background operation
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true, // CRITICAL: Keeps audio session active when app is backgrounded
+        interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
+        shouldDuckAndroid: false,
+        playThroughEarpieceAndroid: false,
+      });
+      console.log('✅ Background audio mode configured for wake word detection');
+    } catch (error) {
+      console.warn('⚠️ Failed to configure background audio:', error);
+    }
+
     console.log(`🎤 Wake word service initialized: "Yo ${assistantName}"`);
   }
 
@@ -199,8 +218,20 @@ class WakeWordService {
     // Stop listening for wake word
     await this.stopListening();
 
-    // Play acknowledgment sound (optional)
-    // await voiceService.playAcknowledgment();
+    console.log('🎯 Wake word detected - speaking acknowledgment...');
+
+    // Speak acknowledgment: "Yes boss, I'm listening"
+    try {
+      await Speech.speak("Yes boss, I'm listening", {
+        language: 'en',
+        pitch: 1.0,
+        rate: 0.95,
+        voice: Platform.OS === 'ios' ? 'com.apple.ttsbundle.Samantha-compact' : undefined,
+      });
+      console.log('✅ Acknowledgment spoken');
+    } catch (error) {
+      console.error('❌ Failed to speak acknowledgment:', error);
+    }
 
     // Trigger callback to start conversation
     if (this.onWakeWordDetectedCallback) {
@@ -249,8 +280,12 @@ class WakeWordService {
     console.log('🔄 Resuming wake word detection');
     if (this.config.enabled) {
       // Wait a bit before restarting
-      setTimeout(() => {
-        this.startListening();
+      setTimeout(async () => {
+        const started = await this.startListening();
+        if (started && this.config.assistantName) {
+          // Show listening notification when wake word detection resumes
+          await wakeWordNotificationService.showListeningNotification(this.config.assistantName);
+        }
       }, 500);
     }
   }

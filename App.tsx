@@ -13,9 +13,12 @@ import AuthService from './src/services/auth';
 import sentryService from './src/services/sentry';
 import ConnectionManager from './src/services/connectionManager';
 import { wakeWordService } from './src/services/wakeWordService';
+import { wakeWordNotificationService } from './src/services/wakeWordNotificationService';
 import { conversationManager } from './src/services/conversationManager';
 import { notificationService } from './src/services/notificationService';
 import * as SplashScreen from 'expo-splash-screen';
+import { RecordingProvider } from './src/contexts/RecordingContext';
+import RecordingIndicator from './src/components/RecordingIndicator';
 
 // Keep the splash screen visible while we fetch resources
 SplashScreen.preventAutoHideAsync();
@@ -115,6 +118,9 @@ const AppContent: React.FC = () => {
           wakeWordService.onWakeWordDetected(async () => {
             console.log('✅ Wake word detected! Starting conversation...');
 
+            // Show "Activated" notification
+            await wakeWordNotificationService.showActivatedNotification(user.assistantName);
+
             // Stop wake word detection while conversation is active
             await wakeWordService.stopListening();
 
@@ -133,6 +139,8 @@ const AppContent: React.FC = () => {
           const started = await wakeWordService.startListening();
           if (started) {
             console.log(`✅ Wake word detection started - listening for "Yo ${user.assistantName}"`);
+            // Show persistent notification to indicate wake word detection is active
+            await wakeWordNotificationService.showListeningNotification(user.assistantName);
           }
         } catch (error) {
           console.error('❌ Failed to initialize wake word detection:', error);
@@ -148,6 +156,7 @@ const AppContent: React.FC = () => {
       if (user) {
         try {
           wakeWordService.destroy();
+          wakeWordNotificationService.hideNotification();
         } catch (error) {
           // Ignore errors in Expo Go
         }
@@ -171,10 +180,13 @@ const AppContent: React.FC = () => {
   }, [user]);
 
   return (
-    <BiometricLoginGate>
-      <AppNavigator />
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-    </BiometricLoginGate>
+    <RecordingProvider>
+      <BiometricLoginGate>
+        <AppNavigator />
+        <RecordingIndicator />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+      </BiometricLoginGate>
+    </RecordingProvider>
   );
 };
 

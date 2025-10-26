@@ -3,6 +3,7 @@ import { voiceService } from './voiceService';
 import ApiService from './api';
 import { Alert } from 'react-native';
 import { wakeWordService } from './wakeWordService';
+import { wakeWordNotificationService } from './wakeWordNotificationService';
 
 interface ConversationMessage {
   role: 'user' | 'assistant';
@@ -54,18 +55,10 @@ class ConversationManager {
 
       console.log('💬 Starting conversation');
 
-      // Greet the user
-      const greeting = `Hi Boss, what can I do for you?`;
-      await this.speakResponse(greeting);
+      // NO GREETING - Go straight to listening
+      // User wants PA to just listen silently when activated
 
-      // Add greeting to transcript
-      this.transcript.push({
-        role: 'assistant',
-        content: greeting,
-        timestamp: new Date(),
-      });
-
-      // Start listening for user's response
+      // Start listening for user's response immediately
       await this.startListening();
 
       return true;
@@ -176,7 +169,8 @@ class ConversationManager {
   private async getAIResponse(message: string): Promise<string> {
     try {
       // Send to backend for AI processing
-      const response = await ApiService.sendMessage(message, this.conversationId);
+      // VOICE MODE - Get concise, conversational responses (1-3 sentences, no markdown)
+      const response = await ApiService.sendMessage(message, this.conversationId, 'voice');
 
       if (response.success) {
         this.conversationId = response.data.conversationId;
@@ -272,7 +266,10 @@ class ConversationManager {
     this.transcript = [];
     this.conversationId = null;
 
-    // Resume wake word detection
+    // Hide the activated notification before resuming wake word detection
+    await wakeWordNotificationService.hideNotification();
+
+    // Resume wake word detection (will show listening notification)
     await wakeWordService.resumeWakeWordDetection();
   }
 
