@@ -17,6 +17,7 @@ import {
   Contact as IntegrationContact,
 } from '../types/integrations';
 import ApiService from './api';
+import config from '../config/environment';
 
 // Initialize WebBrowser for OAuth
 WebBrowser.maybeCompleteAuthSession();
@@ -455,7 +456,7 @@ class IntegrationManager {
       // Open browser for authentication
       const result = await WebBrowser.openAuthSessionAsync(
         authUrl,
-        'http://192.168.1.231:3000/api/oauth/google/callback'
+        `${config.API_BASE_URL}/api/oauth/google/callback`
       );
 
       if (result.type !== 'success') {

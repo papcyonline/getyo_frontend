@@ -24,6 +24,8 @@ const userSlice = createSlice({
     setUser: (state, action: PayloadAction<User>) => {
       state.user = action.payload;
       state.isAuthenticated = true;
+      // Sync hasCompletedOnboarding from user object
+      state.hasCompletedOnboarding = action.payload.hasCompletedOnboarding || false;
       state.error = null;
     },
     updateUserPreferences: (state, action: PayloadAction<Partial<User['preferences']>>) => {

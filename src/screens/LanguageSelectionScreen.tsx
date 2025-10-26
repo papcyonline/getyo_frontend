@@ -391,7 +391,7 @@ const styles = StyleSheet.create({
   selectedLanguageName: {
     fontSize: 17,
     fontWeight: '700',
-    color: '#3396D3',
+    color: '#C9A96E',
   },
   nativeName: {
     fontSize: 14,
@@ -400,14 +400,14 @@ const styles = StyleSheet.create({
   },
   selectedNativeName: {
     fontSize: 14,
-    color: '#3396D3',
+    color: '#C9A96E',
     fontWeight: '500',
   },
   checkmarkContainer: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#3396D3',
+    backgroundColor: '#C9A96E',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -429,7 +429,7 @@ const styles = StyleSheet.create({
   },
   continueButton: {
     height: 56,
-    backgroundColor: '#3396D3',
+    backgroundColor: '#C9A96E',
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',

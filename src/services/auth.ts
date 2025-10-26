@@ -21,6 +21,20 @@ class AuthService {
         const user = JSON.parse(savedUser) as User;
         store.dispatch(setUser(user));
 
+        // Refresh profile from server to ensure we have the latest data (including avatar)
+        try {
+          console.log('🔄 Refreshing user profile from server...');
+          const freshProfile = await ApiService.getProfile();
+          await AsyncStorage.setItem('user', JSON.stringify(freshProfile));
+          store.dispatch(setUser(freshProfile));
+          console.log('✅ Profile refreshed with latest data:', {
+            assistantProfileImage: freshProfile.assistantProfileImage,
+          });
+        } catch (error) {
+          console.warn('⚠️ Failed to refresh profile, using cached data:', error);
+          // Use cached data if refresh fails (offline scenario)
+        }
+
         // Try to connect to socket with better error handling
         try {
           console.log('🔌 Attempting socket connection during auth initialization...');

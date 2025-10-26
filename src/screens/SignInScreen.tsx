@@ -18,10 +18,9 @@ import { MaterialIcons, Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector, useDispatch } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { RootStackParamList } from '../types';
-import { RootState, AppDispatch } from '../store';
-import { completeOnboarding } from '../store/slices/userSlice';
+import { RootState } from '../store';
 import AuthService from '../services/auth';
 import { getTranslations } from '../utils/translations';
 import CustomAlert from '../components/common/CustomAlert';
@@ -33,7 +32,6 @@ type SignInNavigationProp = StackNavigationProp<RootStackParamList, 'SignIn'>;
 
 const SignInScreen: React.FC = () => {
   const navigation = useNavigation<SignInNavigationProp>();
-  const dispatch = useDispatch<AppDispatch>();
   const insets = useSafeAreaInsets();
 
   // Get current language from Redux store
@@ -91,23 +89,22 @@ const SignInScreen: React.FC = () => {
       console.log('🔐 [DEBUG] Login response received:', {
         success: !!user,
         userExists: !!user,
+        hasCompletedOnboarding: user?.hasCompletedOnboarding,
         hasAssistantName: !!(user && user.assistantName),
         assistantName: user?.assistantName,
         userId: user?.id
       });
 
-      // Check if user has completed onboarding
-      // Trust the backend's hasCompletedOnboarding flag
+      // AuthService.login() already dispatches setUser() which syncs hasCompletedOnboarding
+      // from the backend user object. No need to dispatch completeOnboarding() again.
+      // The AppNavigator will automatically show MainAppNavigator if both isAuthenticated
+      // and hasCompletedOnboarding are true, or OnboardingNavigator if hasCompletedOnboarding is false.
+
       if (user && user.hasCompletedOnboarding) {
-        console.log('✅ [DEBUG] User has completed onboarding, dispatching completeOnboarding()');
-        // Mark onboarding as complete in Redux
-        dispatch(completeOnboarding());
-        console.log('✅ [DEBUG] completeOnboarding() dispatched successfully');
+        console.log('✅ [DEBUG] User has completed onboarding - AppNavigator will show MainApp');
       } else {
-        console.log('🔄 [DEBUG] User has NOT completed onboarding');
-        // User needs to complete onboarding - navigate to assistant naming
-        console.log('🔄 [DEBUG] Navigating to AssistantNaming to start onboarding');
-        navigation.navigate('AssistantNaming' as any);
+        console.log('🔄 [DEBUG] User has NOT completed onboarding - AppNavigator will show OnboardingNavigator');
+        console.log('🔄 [DEBUG] OnboardingNavigator will start at AssistantNaming for authenticated users');
       }
 
       console.log('✅ [DEBUG] Login process completed successfully');

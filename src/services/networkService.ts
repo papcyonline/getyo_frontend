@@ -1,5 +1,6 @@
 import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { store } from '../store';
+import config from '../config/environment';
 
 interface NetworkState {
   isConnected: boolean;
@@ -138,8 +139,7 @@ class NetworkService {
     let apiReachable = false;
     if (networkState.isConnected) {
       // Check if our backend API is reachable
-      const apiBaseUrl = 'http://192.168.1.206:3000'; // Get from config
-      apiReachable = await this.checkHostReachability(apiBaseUrl);
+      apiReachable = await this.checkHostReachability(config.API_BASE_URL);
     }
 
     return {

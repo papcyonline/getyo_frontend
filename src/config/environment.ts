@@ -17,10 +17,10 @@ interface EnvironmentConfig {
 const expoConfig = Constants.expoConfig?.extra || {};
 
 const development: EnvironmentConfig = {
-  API_BASE_URL: expoConfig.apiUrl || 'http://192.168.1.231:3000',
-  SOCKET_URL: expoConfig.socketUrl || 'http://192.168.1.231:3000',
+  API_BASE_URL: expoConfig.apiUrl || 'http://192.168.1.232:3000',
+  SOCKET_URL: expoConfig.socketUrl || 'http://192.168.1.232:3000',
   DEBUG: true,
-  API_TIMEOUT: 10000, // Fast local network - 10 seconds
+  API_TIMEOUT: 30000, // Allow time for AI processing - 30 seconds
   VOICE_TIMEOUT: 30000,
   MAX_RECORDING_DURATION: 300000, // 5 minutes
   SOCKET_RECONNECT_ATTEMPTS: 5,

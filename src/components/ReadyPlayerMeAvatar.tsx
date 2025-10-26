@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import { View, StyleSheet, Dimensions, ActivityIndicator, Text } from 'react-native';
+import { View, StyleSheet, Dimensions, ActivityIndicator, Text, ViewStyle } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 const { width } = Dimensions.get('window');
@@ -11,6 +11,7 @@ interface ReadyPlayerMeAvatarProps {
   onLoadStart?: () => void;
   onLoadEnd?: () => void;
   onError?: () => void;
+  containerStyle?: ViewStyle;
 }
 
 const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
@@ -20,6 +21,7 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
   onLoadStart,
   onLoadEnd,
   onError,
+  containerStyle,
 }) => {
   const webViewRef = useRef<WebView>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,6 +68,7 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
       background-color: transparent;
       transition: transform 0.5s ease;
       transform-origin: center center;
+      z-index: 10;
     }
 
     /* Idle/Waiting animation - gentle breathing */
@@ -283,16 +286,6 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
       animation-delay: 0.15s;
     }
 
-    .loading {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      color: #C9A96E;
-      font-size: 14px;
-      font-weight: 600;
-      z-index: 10;
-    }
     .error {
       position: absolute;
       top: 50%;
@@ -307,8 +300,6 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
   </style>
 </head>
 <body>
-  <div class="loading" id="loading">Loading...</div>
-
   <model-viewer
     id="avatar"
     src="${avatarUrl}"
@@ -323,6 +314,8 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
     exposure="1.2"
     interaction-prompt="none"
     disable-zoom
+    loading="eager"
+    reveal="auto"
   ></model-viewer>
 
   <!-- Animated mouth indicator for talking -->
@@ -348,18 +341,17 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
   <script>
     (function() {
       const modelViewer = document.getElementById('avatar');
-      const loadingEl = document.getElementById('loading');
       const mouthIndicator = document.getElementById('mouthIndicator');
       const thinkingIndicator = document.getElementById('thinkingIndicator');
       const listeningIndicator = document.getElementById('listeningIndicator');
       let isReady = false;
 
-      console.log('Avatar URL:', modelViewer.getAttribute('src'));
+      console.log('🎭 [WebView] Avatar URL:', modelViewer.getAttribute('src'));
+      console.log('🎭 [WebView] Initializing model-viewer...');
 
       // When model loads
       modelViewer.addEventListener('load', function() {
-        console.log('Model loaded successfully');
-        if (loadingEl) loadingEl.style.display = 'none';
+        console.log('✅ [WebView] Model loaded successfully!');
         isReady = true;
 
         window.ReactNativeWebView?.postMessage(JSON.stringify({
@@ -374,16 +366,7 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
         showError('Failed to load 3D avatar');
       });
 
-      // Progress tracking
-      modelViewer.addEventListener('progress', function(event) {
-        const percent = Math.round((event.detail.totalProgress) * 100);
-        if (loadingEl) {
-          loadingEl.textContent = 'Loading ' + percent + '%';
-        }
-      });
-
       function showError(message) {
-        if (loadingEl) loadingEl.style.display = 'none';
         const errorEl = document.createElement('div');
         errorEl.className = 'error';
         errorEl.textContent = message;
@@ -467,12 +450,11 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
   `;
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, containerStyle]}>
       {/* Loading indicator */}
       {isLoading && (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#C9A96E" />
-          <Text style={styles.loadingText}>Loading 3D Avatar...</Text>
+        <View style={{ position: 'absolute', bottom: 20, alignSelf: 'center', backgroundColor: 'rgba(201, 169, 110, 0.9)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, zIndex: 10000 }}>
+          <Text style={{ color: '#fff', fontSize: 11, fontWeight: '600' }}>Loading 3D avatar...</Text>
         </View>
       )}
 
@@ -480,6 +462,7 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
+          <Text style={{ color: '#ff0', fontSize: 10 }}>URL: {avatarUrl}</Text>
         </View>
       )}
 
@@ -488,7 +471,7 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
         key={cacheKey}
         ref={webViewRef}
         source={{ html }}
-        style={[styles.webview, (isLoading || error) && styles.hidden]}
+        style={[styles.webview, containerStyle, error && styles.hidden]}
         originWhitelist={['*']}
         javaScriptEnabled={true}
         domStorageEnabled={true}
@@ -499,17 +482,13 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
         incognito={true}
         onLoadStart={() => {
           console.log('🎭 Avatar WebView: Loading started');
-          setIsLoading(true);
           setError(null);
           onLoadStart?.();
         }}
         onLoadEnd={() => {
           console.log('🎭 Avatar WebView: Loading ended');
-          setTimeout(() => {
-            setIsLoading(false);
-            onLoadEnd?.();
-            console.log('🎭 Avatar WebView: Ready to display');
-          }, 1000); // Small delay to ensure iframe loads
+          setIsLoading(false);
+          onLoadEnd?.();
         }}
         onError={(syntheticEvent) => {
           const { nativeEvent } = syntheticEvent;
@@ -556,7 +535,9 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
         androidLayerType="hardware"
         androidHardwareAccelerationDisabled={false}
         cacheEnabled={true}
-        cacheMode="LOAD_DEFAULT"
+        cacheMode="LOAD_CACHE_ELSE_NETWORK"
+        startInLoadingState={false}
+        mixedContentMode="always"
       />
     </View>
   );
@@ -564,36 +545,21 @@ const ReadyPlayerMeAvatar: React.FC<ReadyPlayerMeAvatarProps> = ({
 
 const styles = StyleSheet.create({
   container: {
-    width: width * 0.75,  // Smaller width
-    height: 380,          // Smaller height for full body
+    width: width * 0.95,
+    height: 480,
     backgroundColor: 'transparent',
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+    overflow: 'hidden',
   },
   webview: {
-    width: width * 0.75,
-    height: 380,
+    width: width * 0.95,
+    height: 480,
     backgroundColor: 'transparent',
   },
   hidden: {
     opacity: 0,
-  },
-  loadingContainer: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: [{ translateX: -50 }, { translateY: -50 }],
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#C9A96E',
-    textAlign: 'center',
   },
   errorContainer: {
     position: 'absolute',

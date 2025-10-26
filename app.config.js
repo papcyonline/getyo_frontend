@@ -8,8 +8,8 @@ export default ({ config }) => {
   // Environment-specific configuration
   const envConfig = {
     development: {
-      apiUrl: process.env.API_URL || 'http://192.168.1.231:3000',
-      socketUrl: process.env.SOCKET_URL || 'http://192.168.1.231:3000',
+      apiUrl: process.env.API_URL || 'http://192.168.1.232:3000',
+      socketUrl: process.env.SOCKET_URL || 'http://192.168.1.232:3000',
       sentryDsn: null, // Don't use Sentry in development
       enableAnalytics: false,
     },
@@ -98,7 +98,7 @@ export default ({ config }) => {
       ...envConfig[ENV],
       environment: ENV,
       eas: {
-        projectId: process.env.EAS_PROJECT_ID,
+        projectId: '0968f9f3-377d-4ee2-a0d2-879e868d9124',
       },
     },
     hooks: {

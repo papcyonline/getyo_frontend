@@ -10,6 +10,10 @@ import {
   TextInput,
   Share,
   Animated,
+  AppState,
+  Platform,
+  ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSelector } from 'react-redux';
@@ -17,6 +21,10 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
 import * as ImagePicker from 'expo-image-picker';
+import * as Notifications from 'expo-notifications';
+import * as FileSystem from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
+import * as Clipboard from 'expo-clipboard';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { RootState } from '../store';
@@ -24,7 +32,7 @@ import apiService from '../services/api';
 
 const THEME_GOLD = '#C9A96E';
 
-type RecordingStatus = 'idle' | 'recording' | 'recorded' | 'playing';
+type RecordingStatus = 'idle' | 'recording' | 'paused' | 'processing' | 'recorded' | 'playing';
 
 const QuickNoteScreen: React.FC = () => {
   const navigation = useNavigation();
@@ -55,7 +63,12 @@ const QuickNoteScreen: React.FC = () => {
   const [showMoreOptionsModal, setShowMoreOptionsModal] = useState(false);
   const [showTagModal, setShowTagModal] = useState(false);
   const [showSpeedModal, setShowSpeedModal] = useState(false);
+  const [showAiResultModal, setShowAiResultModal] = useState(false);
+  const [showTranslateModal, setShowTranslateModal] = useState(false);
   const [newTag, setNewTag] = useState('');
+  const [targetLanguage, setTargetLanguage] = useState('');
+  const [aiResult, setAiResult] = useState<{ title: string; content: string } | null>(null);
+  const [isProcessingAI, setIsProcessingAI] = useState(false);
 
   // Recording history
   const [recordingHistory, setRecordingHistory] = useState([]);
@@ -72,9 +85,15 @@ const QuickNoteScreen: React.FC = () => {
     // Request audio permissions and load recordings
     (async () => {
       await Audio.requestPermissionsAsync();
+      await Notifications.requestPermissionsAsync();
+
+      // Enable background audio recording
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: true,
         playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
       });
 
       // Load existing recordings
@@ -94,6 +113,34 @@ const QuickNoteScreen: React.FC = () => {
       }
     };
   }, []);
+
+  // Handle app state changes (background/foreground)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', async (nextAppState) => {
+      if (nextAppState === 'background' && (recordingStatus === 'recording' || recordingStatus === 'paused')) {
+        // Send local notification when app goes to background while recording
+        await Notifications.scheduleNotificationAsync({
+          content: {
+            title: '🎤 Recording in Progress',
+            body: recordingStatus === 'recording'
+              ? `Still recording... (${formatDuration(recordingDuration)})`
+              : `Recording paused at ${formatDuration(recordingDuration)}`,
+            sound: false,
+            priority: Notifications.AndroidNotificationPriority.HIGH,
+            sticky: true,
+          },
+          trigger: null, // Show immediately
+        });
+      } else if (nextAppState === 'active' && (recordingStatus === 'recording' || recordingStatus === 'paused')) {
+        // Clear notification when app comes back to foreground
+        await Notifications.dismissAllNotificationsAsync();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [recordingStatus, recordingDuration]);
 
   const loadRecordings = async () => {
     try {
@@ -122,7 +169,7 @@ const QuickNoteScreen: React.FC = () => {
         ])
       ).start();
 
-      // Update duration
+      // Update duration only when recording
       const interval = setInterval(() => {
         setRecordingDuration(prev => prev + 1);
       }, 1000);
@@ -147,16 +194,47 @@ const QuickNoteScreen: React.FC = () => {
     }
   };
 
+  const pauseRecording = async () => {
+    if (!recording) return;
+
+    try {
+      await recording.pauseAsync();
+      setRecordingStatus('paused');
+      console.log('⏸️ Recording paused');
+    } catch (error) {
+      console.error('Failed to pause recording:', error);
+      Alert.alert('Error', 'Failed to pause recording');
+    }
+  };
+
+  const resumeRecording = async () => {
+    if (!recording) return;
+
+    try {
+      await recording.startAsync();
+      setRecordingStatus('recording');
+      console.log('▶️ Recording resumed');
+    } catch (error) {
+      console.error('Failed to resume recording:', error);
+      Alert.alert('Error', 'Failed to resume recording');
+    }
+  };
+
   const stopRecording = async () => {
     if (!recording) return;
 
     try {
+      // Clear any background notifications
+      await Notifications.dismissAllNotificationsAsync();
+
       // Stop the recording
       await recording.stopAndUnloadAsync();
       const uri = recording.getURI();
       setRecordingUri(uri);
       setRecording(null);
-      setRecordingStatus('recorded');
+
+      // Show processing state
+      setRecordingStatus('processing');
 
       console.log('🎤 Recording stopped, starting transcription...');
 
@@ -196,12 +274,16 @@ const QuickNoteScreen: React.FC = () => {
           console.error('❌ Failed to save recording:', saveError);
           Alert.alert('Save Error', 'Recording transcribed but failed to save. Please try again.');
         }
+
+        // Processing complete, show the result
+        setRecordingStatus('recorded');
       } else {
         console.warn('⚠️ Transcription returned no text');
         // Fallback to placeholder
         setAiGeneratedTitle('Untitled Recording');
         setEditedTitle('Untitled Recording');
         setTranscript('Failed to transcribe audio. Please try again.');
+        setRecordingStatus('recorded');
       }
     } catch (error) {
       console.error('❌ Failed to transcribe recording:', error);
@@ -211,6 +293,7 @@ const QuickNoteScreen: React.FC = () => {
       setAiGeneratedTitle('Untitled Recording');
       setEditedTitle('Untitled Recording');
       setTranscript('Transcription unavailable.');
+      setRecordingStatus('recorded');
     }
   };
 
@@ -278,12 +361,55 @@ const QuickNoteScreen: React.FC = () => {
     return formatDuration(totalSeconds);
   };
 
-  const handleAiAction = (action: string) => {
+  const handleAiAction = async (actionLabel: string, actionType: 'summary' | 'todo' | 'points' | 'translate') => {
     setShowAiActionsModal(false);
-    // Simulate AI processing
-    Alert.alert('Processing', `Generating ${action}...`, [
-      { text: 'OK' }
-    ]);
+
+    if (!transcript) {
+      Alert.alert('Error', 'No transcript available');
+      return;
+    }
+
+    // For translate, show language input modal
+    if (actionType === 'translate') {
+      setShowTranslateModal(true);
+      return;
+    }
+
+    await processAI(actionLabel, actionType);
+  };
+
+  const handleTranslate = async () => {
+    if (!targetLanguage || !targetLanguage.trim()) {
+      Alert.alert('Error', 'Please enter a target language');
+      return;
+    }
+
+    setShowTranslateModal(false);
+    await processAI('Translate', 'translate', targetLanguage.trim());
+    setTargetLanguage(''); // Reset
+  };
+
+  const processAI = async (actionLabel: string, actionType: string, targetLanguage?: string) => {
+    setIsProcessingAI(true);
+
+    try {
+      const result = await apiService.processTranscriptWithAI({
+        transcript,
+        action: actionType as 'summary' | 'todo' | 'points' | 'translate',
+        targetLanguage,
+      });
+
+      setAiResult({
+        title: actionLabel,
+        content: result.result,
+      });
+      setShowAiResultModal(true);
+    } catch (error) {
+      console.error('AI processing error:', error);
+      Alert.alert('Error', 'Failed to process transcript. Please try again.');
+    } finally {
+      setIsProcessingAI(false);
+    }
   };
 
   const handleShare = async () => {
@@ -298,40 +424,126 @@ const QuickNoteScreen: React.FC = () => {
   };
 
   const handleAttachImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      quality: 1,
-    });
+    setShowMoreOptionsModal(false);
 
-    if (!result.canceled && result.assets[0]) {
-      setAttachedImages([...attachedImages, result.assets[0].uri]);
+    try {
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        quality: 1,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        setAttachedImages([...attachedImages, result.assets[0].uri]);
+        Alert.alert('Success', 'Image attached to recording');
+      }
+    } catch (error) {
+      console.error('Failed to attach image:', error);
+      Alert.alert('Error', 'Failed to attach image');
     }
-    setShowMoreOptionsModal(false);
   };
 
-  const handleDownloadAudio = () => {
+  const handleDownloadAudio = async () => {
     setShowMoreOptionsModal(false);
-    Alert.alert('Success', 'Audio downloaded to your device');
+
+    if (!recordingUri) {
+      Alert.alert('Error', 'No audio file available');
+      return;
+    }
+
+    try {
+      // Request media library permissions
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+
+      if (status !== 'granted') {
+        Alert.alert('Permission Required', 'Please grant media library permissions to download audio');
+        return;
+      }
+
+      // Copy file to downloads
+      const fileName = `recording_${Date.now()}.m4a`;
+      const downloadPath = `${FileSystem.documentDirectory}${fileName}`;
+
+      await FileSystem.copyAsync({
+        from: recordingUri,
+        to: downloadPath,
+      });
+
+      // Save to media library
+      const asset = await MediaLibrary.createAssetAsync(downloadPath);
+      await MediaLibrary.createAlbumAsync('Recordings', asset, false);
+
+      Alert.alert('Success', 'Audio saved to your device');
+    } catch (error) {
+      console.error('Failed to download audio:', error);
+      Alert.alert('Error', 'Failed to download audio');
+    }
   };
 
-  const handleCopyNote = () => {
+  const handleCopyNote = async () => {
     setShowMoreOptionsModal(false);
-    Alert.alert('Copied', 'Transcript copied to clipboard');
+
+    if (!transcript) {
+      Alert.alert('Error', 'No transcript available');
+      return;
+    }
+
+    try {
+      await Clipboard.setStringAsync(transcript);
+      Alert.alert('Copied', 'Transcript copied to clipboard');
+    } catch (error) {
+      console.error('Failed to copy:', error);
+      Alert.alert('Error', 'Failed to copy transcript');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
+    setShowMoreOptionsModal(false);
+
     Alert.alert(
       'Delete Recording',
-      'Are you sure you want to delete this recording?',
+      'Are you sure you want to delete this recording? This cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Delete',
           style: 'destructive',
-          onPress: () => {
-            setShowMoreOptionsModal(false);
-            navigation.goBack();
+          onPress: async () => {
+            try {
+              // If this is a saved recording, delete from backend
+              if (recordingUri) {
+                // Get the recording ID from the current recording
+                const currentRecording = recordingHistory.find(
+                  (item: any) => item.audioUri === recordingUri || item.audioUrl === recordingUri
+                );
+
+                if (currentRecording) {
+                  const recordingId = currentRecording.id || currentRecording._id;
+                  await apiService.deleteVoiceNote(recordingId);
+
+                  // Remove from history
+                  setRecordingHistory(prev => prev.filter(item =>
+                    (item.id !== recordingId && item._id !== recordingId)
+                  ));
+                }
+              }
+
+              // Reset the view
+              setRecordingStatus('idle');
+              setAiGeneratedTitle('');
+              setTranscript('');
+              setRecordingUri(null);
+              setPlaybackPosition(0);
+              setPlaybackDuration(0);
+              setAttachedImages([]);
+              setTags([]);
+              if (sound) await sound.unloadAsync();
+
+              Alert.alert('Deleted', 'Recording deleted successfully');
+            } catch (error) {
+              console.error('Failed to delete recording:', error);
+              Alert.alert('Error', 'Failed to delete recording');
+            }
           }
         }
       ]
@@ -343,6 +555,7 @@ const QuickNoteScreen: React.FC = () => {
       setTags([...tags, newTag.trim()]);
       setNewTag('');
       setShowTagModal(false);
+      Alert.alert('Success', 'Tag added');
     }
   };
 
@@ -422,11 +635,22 @@ const QuickNoteScreen: React.FC = () => {
               // Delete from backend
               await apiService.deleteVoiceNote(recordingId);
 
-              // Update local state
-              setRecordingHistory(prev => prev.filter(item => item.id !== recordingId));
-              setSwipedItemId(null);
+              // Update local state - handle both id and _id
+              setRecordingHistory(prev => prev.filter(item => {
+                const itemId = item.id || item._id;
+                return itemId !== recordingId;
+              }));
+
+              // Stop playback if this recording was playing
+              if (playingHistoryId === recordingId) {
+                if (historySoundRef.current) {
+                  await historySoundRef.current.unloadAsync();
+                }
+                setPlayingHistoryId(null);
+              }
 
               console.log('✅ Recording deleted successfully');
+              Alert.alert('Success', 'Recording deleted successfully');
             } catch (error) {
               console.error('❌ Failed to delete recording:', error);
               Alert.alert('Delete Error', 'Failed to delete recording. Please try again.');
@@ -585,18 +809,27 @@ const QuickNoteScreen: React.FC = () => {
                 <Text style={[styles.historyTitle, { color: theme.text }]}>
                   Previous Recordings
                 </Text>
-                <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
-                  {recordingHistory.map((item, index) => (
-                    <View key={item.id || item._id}>
+                <ScrollView
+                  style={styles.historyList}
+                  showsVerticalScrollIndicator={false}
+                  nestedScrollEnabled={true}
+                >
+                  {recordingHistory.map((item, index) => {
+                    const recordingId = item.id || item._id;
+                    return (
+                    <View key={recordingId}>
                       <Swipeable
-                        renderRightActions={() => renderRightActions(item.id || item._id)}
+                        renderRightActions={() => renderRightActions(recordingId)}
                         overshootRight={false}
+                        friction={2}
+                        rightThreshold={40}
+                        enableTrackpadTwoFingerGesture
                       >
-                        <View style={styles.historyItem}>
+                        <View style={[styles.historyItem, { backgroundColor: theme.card || '#2A2A2A' }]}>
                           <View style={styles.historyContent}>
                             {/* Title - Clickable for navigation */}
                             <TouchableOpacity
-                              onPress={() => handlePlayRecording(item.id || item._id)}
+                              onPress={() => handlePlayRecording(recordingId)}
                               activeOpacity={0.7}
                             >
                               <Text
@@ -610,7 +843,7 @@ const QuickNoteScreen: React.FC = () => {
                             {/* Transcript Preview - Clickable for navigation */}
                             {item.transcript && (
                               <TouchableOpacity
-                                onPress={() => handlePlayRecording(item.id || item._id)}
+                                onPress={() => handlePlayRecording(recordingId)}
                                 activeOpacity={0.7}
                               >
                                 <Text
@@ -633,7 +866,7 @@ const QuickNoteScreen: React.FC = () => {
                                 }}
                               >
                                 <Ionicons
-                                  name={playingHistoryId === (item.id || item._id) ? 'pause' : 'play'}
+                                  name={playingHistoryId === recordingId ? 'pause' : 'play'}
                                   size={16}
                                   color="#FFFFFF"
                                 />
@@ -644,7 +877,6 @@ const QuickNoteScreen: React.FC = () => {
                                 style={styles.historyProgressBar}
                                 activeOpacity={0.8}
                                 onPress={(e) => {
-                                  const recordingId = item.id || item._id;
                                   const duration = historyPlaybackDuration[recordingId] || item.duration * 1000;
                                   // Calculate position based on touch location
                                   // @ts-ignore
@@ -662,9 +894,9 @@ const QuickNoteScreen: React.FC = () => {
                                       styles.historyProgressFill,
                                       {
                                         width: `${
-                                          (historyPlaybackDuration[item.id || item._id] || 0) > 0
-                                            ? ((historyPlaybackPosition[item.id || item._id] || 0) /
-                                              (historyPlaybackDuration[item.id || item._id] || 1)) * 100
+                                          (historyPlaybackDuration[recordingId] || 0) > 0
+                                            ? ((historyPlaybackPosition[recordingId] || 0) /
+                                              (historyPlaybackDuration[recordingId] || 1)) * 100
                                             : 0
                                         }%`
                                       }
@@ -675,8 +907,8 @@ const QuickNoteScreen: React.FC = () => {
 
                               {/* Duration */}
                               <Text style={[styles.historyDuration, { color: theme.text }]}>
-                                {playingHistoryId === (item.id || item._id) && historyPlaybackPosition[item.id || item._id]
-                                  ? formatMillis(historyPlaybackPosition[item.id || item._id])
+                                {playingHistoryId === recordingId && historyPlaybackPosition[recordingId]
+                                  ? formatMillis(historyPlaybackPosition[recordingId])
                                   : formatDuration(item.duration || 0)}
                               </Text>
 
@@ -699,7 +931,8 @@ const QuickNoteScreen: React.FC = () => {
                         <View style={styles.historyDivider} />
                       )}
                     </View>
-                  ))}
+                  );
+                  })}
                 </ScrollView>
               </View>
             )}
@@ -721,12 +954,22 @@ const QuickNoteScreen: React.FC = () => {
                     Record a meeting, discussion, or voice note
                   </Text>
                 </>
-              ) : (
+              ) : recordingStatus === 'recording' ? (
                 <>
                   <Text style={[styles.recordingTimeDisplay, { color: theme.text }]}>
                     {formatDuration(recordingDuration)}
                   </Text>
+                  <Text style={[styles.recordingStatusText, { color: '#FF4757' }]}>
+                    Recording...
+                  </Text>
                   <View style={styles.recordingControls}>
+                    <TouchableOpacity
+                      style={[styles.controlButton, styles.pauseButton]}
+                      onPress={pauseRecording}
+                    >
+                      <Ionicons name="pause" size={24} color="#FFFFFF" />
+                      <Text style={styles.controlButtonText}>Pause</Text>
+                    </TouchableOpacity>
                     <TouchableOpacity
                       style={[styles.controlButton, styles.stopButton]}
                       onPress={stopRecording}
@@ -736,8 +979,46 @@ const QuickNoteScreen: React.FC = () => {
                     </TouchableOpacity>
                   </View>
                 </>
-              )}
+              ) : recordingStatus === 'paused' ? (
+                <>
+                  <Text style={[styles.recordingTimeDisplay, { color: theme.text }]}>
+                    {formatDuration(recordingDuration)}
+                  </Text>
+                  <Text style={[styles.recordingStatusText, { color: THEME_GOLD }]}>
+                    Paused
+                  </Text>
+                  <View style={styles.recordingControls}>
+                    <TouchableOpacity
+                      style={[styles.controlButton, styles.resumeButton]}
+                      onPress={resumeRecording}
+                    >
+                      <Ionicons name="play" size={24} color="#FFFFFF" />
+                      <Text style={styles.controlButtonText}>Resume</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.controlButton, styles.stopButton]}
+                      onPress={stopRecording}
+                    >
+                      <Ionicons name="stop" size={24} color="#FFFFFF" />
+                      <Text style={styles.controlButtonText}>Stop</Text>
+                    </TouchableOpacity>
+                  </View>
+                </>
+              ) : null}
             </View>
+          </View>
+        )}
+
+        {/* Processing State - Show loader while transcribing */}
+        {recordingStatus === 'processing' && (
+          <View style={styles.processingContainer}>
+            <ActivityIndicator size="large" color={THEME_GOLD} />
+            <Text style={[styles.processingTitle, { color: theme.text }]}>
+              Processing...
+            </Text>
+            <Text style={[styles.processingSubtitle, { color: theme.textSecondary }]}>
+              Please wait
+            </Text>
           </View>
         )}
 
@@ -786,6 +1067,43 @@ const QuickNoteScreen: React.FC = () => {
                 <Text style={[styles.transcriptText, { color: theme.textSecondary }]}>
                   {transcript}
                 </Text>
+
+                {/* Tags Display */}
+                {tags.length > 0 && (
+                  <View style={styles.tagsContainer}>
+                    <Text style={[styles.tagsLabel, { color: theme.text }]}>Tags:</Text>
+                    <View style={styles.tagsRow}>
+                      {tags.map((tag, index) => (
+                        <View key={index} style={styles.tagChip}>
+                          <Text style={styles.tagText}>{tag}</Text>
+                          <TouchableOpacity onPress={() => removeTag(index)}>
+                            <Ionicons name="close-circle" size={16} color={THEME_GOLD} />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                {/* Attached Images Display */}
+                {attachedImages.length > 0 && (
+                  <View style={styles.imagesContainer}>
+                    <Text style={[styles.imagesLabel, { color: theme.text }]}>Attached Images:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.imagesScroll}>
+                      {attachedImages.map((uri, index) => (
+                        <View key={index} style={styles.imageWrapper}>
+                          <Image source={{ uri }} style={styles.attachedImage} resizeMode="cover" />
+                          <TouchableOpacity
+                            style={styles.imageRemoveButton}
+                            onPress={() => setAttachedImages(attachedImages.filter((_, i) => i !== index))}
+                          >
+                            <Ionicons name="close-circle" size={20} color="#FF4757" />
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  </View>
+                )}
               </ScrollView>
             </View>
 
@@ -921,7 +1239,8 @@ const QuickNoteScreen: React.FC = () => {
                   <React.Fragment key={item.action}>
                     <TouchableOpacity
                       style={styles.modalOption}
-                      onPress={() => handleAiAction(item.label)}
+                      onPress={() => handleAiAction(item.label, item.action as 'summary' | 'todo' | 'points' | 'translate')}
+                      disabled={isProcessingAI}
                     >
                       <View style={styles.modalOptionIcon}>
                         <Ionicons name={item.icon as any} size={24} color={THEME_GOLD} />
@@ -1073,6 +1392,109 @@ const QuickNoteScreen: React.FC = () => {
           </View>
         </Modal>
       )}
+
+      {/* Translate Language Modal */}
+      {showTranslateModal && (
+        <Modal visible={showTranslateModal} transparent={true} animationType="slide">
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={styles.modalBackground}
+              onPress={() => setShowTranslateModal(false)}
+            />
+            <View style={[styles.slideUpModal, { paddingBottom: insets.bottom + 20 }]}>
+              <View style={styles.slideUpHeader}>
+                <TouchableOpacity
+                  onPress={() => setShowTranslateModal(false)}
+                  style={{ position: 'absolute', left: 20, zIndex: 10 }}
+                >
+                  <Text style={[styles.modalButton, { color: theme.textSecondary }]}>Cancel</Text>
+                </TouchableOpacity>
+                <View style={styles.slideUpHandle} />
+                <Text style={[styles.slideUpTitle, { color: theme.text }]}>Translate To</Text>
+                <TouchableOpacity
+                  onPress={handleTranslate}
+                  style={{ position: 'absolute', right: 20, zIndex: 10 }}
+                  disabled={isProcessingAI}
+                >
+                  <Text style={[styles.modalButton, { color: isProcessingAI ? theme.textSecondary : THEME_GOLD, fontWeight: '600' }]}>
+                    {isProcessingAI ? 'Processing...' : 'Translate'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              <View style={styles.slideUpContent}>
+                <TextInput
+                  style={[styles.tagInput, { color: theme.text, backgroundColor: '#1A1A1A', borderColor: '#3A3A3A' }]}
+                  placeholder="Enter language (e.g., Spanish, French, Arabic)"
+                  placeholderTextColor={theme.textSecondary}
+                  value={targetLanguage}
+                  onChangeText={setTargetLanguage}
+                  autoFocus
+                  editable={!isProcessingAI}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* AI Processing Loading Modal */}
+      {isProcessingAI && (
+        <Modal visible={isProcessingAI} transparent={true} animationType="fade">
+          <View style={styles.loadingModalOverlay}>
+            <View style={styles.loadingModalContent}>
+              <ActivityIndicator size="large" color={THEME_GOLD} />
+              <Text style={[styles.loadingModalText, { color: theme.text }]}>
+                Processing with AI...
+              </Text>
+              <Text style={[styles.loadingModalSubtext, { color: theme.textSecondary }]}>
+                Please wait
+              </Text>
+            </View>
+          </View>
+        </Modal>
+      )}
+
+      {/* AI Result Modal */}
+      {showAiResultModal && aiResult && (
+        <Modal visible={showAiResultModal} transparent={true} animationType="slide">
+          <View style={styles.modalOverlay}>
+            <TouchableOpacity
+              style={styles.modalBackground}
+              onPress={() => setShowAiResultModal(false)}
+            />
+            <View style={[styles.aiResultModal, { paddingBottom: insets.bottom + 20 }]}>
+              <View style={styles.slideUpHeader}>
+                <TouchableOpacity
+                  onPress={() => setShowAiResultModal(false)}
+                  style={{ position: 'absolute', left: 20, zIndex: 10 }}
+                >
+                  <Text style={[styles.modalButton, { color: theme.textSecondary }]}>Close</Text>
+                </TouchableOpacity>
+                <View style={styles.slideUpHandle} />
+                <Text style={[styles.slideUpTitle, { color: theme.text }]}>
+                  {aiResult.title}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => {
+                    Share.share({
+                      message: `${aiResult.title}\n\n${aiResult.content}`,
+                      title: aiResult.title,
+                    });
+                  }}
+                  style={{ position: 'absolute', right: 20, zIndex: 10 }}
+                >
+                  <Ionicons name="share-outline" size={24} color={THEME_GOLD} />
+                </TouchableOpacity>
+              </View>
+              <ScrollView style={styles.aiResultContent} showsVerticalScrollIndicator={true}>
+                <Text style={[styles.aiResultText, { color: theme.text }]}>
+                  {aiResult.content}
+                </Text>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+      )}
       </View>
     </GestureHandlerRootView>
   );
@@ -1180,6 +1602,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#FF4757',
     shadowColor: '#FF4757',
   },
+  pauseButton: {
+    backgroundColor: THEME_GOLD,
+    shadowColor: THEME_GOLD,
+  },
+  resumeButton: {
+    backgroundColor: '#4CAF50',
+    shadowColor: '#4CAF50',
+  },
+  recordingStatusText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 12,
+    textAlign: 'center',
+    letterSpacing: 1,
+  },
+  processingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  processingTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 20,
+    textAlign: 'center',
+  },
+  processingSubtitle: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
+  },
   recordedContainer: {
     flex: 1,
   },
@@ -1233,6 +1687,73 @@ const styles = StyleSheet.create({
   transcriptText: {
     fontSize: 15,
     lineHeight: 22,
+  },
+  tagsContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  tagsLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  tagsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  tagChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    backgroundColor: `${THEME_GOLD}20`,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: THEME_GOLD,
+  },
+  tagText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME_GOLD,
+  },
+  imagesContainer: {
+    marginTop: 16,
+    paddingTop: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  imagesLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    marginBottom: 8,
+  },
+  imagesScroll: {
+    flexDirection: 'row',
+  },
+  imageWrapper: {
+    width: 100,
+    height: 100,
+    marginRight: 8,
+    borderRadius: 8,
+    overflow: 'hidden',
+    position: 'relative',
+    backgroundColor: '#1A1A1A',
+  },
+  attachedImage: {
+    width: '100%',
+    height: '100%',
+  },
+  imageRemoveButton: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    borderRadius: 10,
+    zIndex: 1,
   },
   audioPlayer: {
     flexDirection: 'row',
@@ -1481,6 +2002,51 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  aiResultModal: {
+    backgroundColor: '#2A2A2A',
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingTop: 8,
+    maxHeight: '80%',
+  },
+  aiResultContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    maxHeight: '100%',
+  },
+  aiResultText: {
+    fontSize: 15,
+    lineHeight: 24,
+  },
+  loadingModalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingModalContent: {
+    backgroundColor: '#2A2A2A',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    minWidth: 200,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  loadingModalText: {
+    fontSize: 18,
+    fontWeight: '600',
+    marginTop: 16,
+    textAlign: 'center',
+  },
+  loadingModalSubtext: {
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center',
   },
 });
 

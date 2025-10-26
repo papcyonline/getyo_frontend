@@ -62,6 +62,11 @@ const HomeScreen: React.FC = () => {
   const loadUserProfile = async () => {
     try {
       const profile = await ApiService.getProfile();
+      console.log('👤 User Profile Loaded:', {
+        assistantName: profile.assistantName,
+        assistantProfileImage: profile.assistantProfileImage,
+        profileImage: profile.profileImage,
+      });
       dispatch(setUser(profile));
     } catch (error: any) {
       console.error('Failed to load user profile in HomeScreen:', error);
@@ -195,6 +200,7 @@ const HomeScreen: React.FC = () => {
     isPlaying: boolean;
     recording: Audio.Recording | null;
     conversationActive: boolean;
+    conversationId: string | null;
   }
 
   const [voiceState, setVoiceState] = useState<VoiceState>({
@@ -203,11 +209,25 @@ const HomeScreen: React.FC = () => {
     isPlaying: false,
     recording: null,
     conversationActive: false,
+    conversationId: null,
   });
+
+  // Recording timeout refs
+  const recordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const maxRecordingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const conversationActiveRef = useRef<boolean>(false); // Track if conversation is active
+  const AUTO_STOP_DELAY = 8000; // 8 seconds auto-stop (allows longer speech)
+  const MAX_RECORDING_TIME = 30000; // 30 seconds maximum
 
   // Conversation overlay animation
   const conversationOverlayOpacity = useRef(new Animated.Value(0)).current;
   const conversationBackgroundPulse = useRef(new Animated.Value(1)).current;
+
+  // Sync conversationActive state with ref
+  useEffect(() => {
+    conversationActiveRef.current = voiceState.conversationActive;
+    console.log(`🔄 Conversation active state: ${voiceState.conversationActive}`);
+  }, [voiceState.conversationActive]);
 
   // Get animation source based on robot state - Full character animations
   const getRobotAnimation = () => {
@@ -315,8 +335,12 @@ const HomeScreen: React.FC = () => {
   }, [user?.assistantName]);
 
   // Auto-open quick actions when navigated from tasks/reminders screens
+  // Also reload profile when screen comes into focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
+      // Reload user profile to get latest avatar and assistant data
+      loadUserProfile();
+
       const params = navigation.getState().routes[navigation.getState().index].params as any;
       if (params?.openQuickActions) {
         // Delay to allow screen to settle
@@ -616,19 +640,26 @@ const HomeScreen: React.FC = () => {
         return;
       }
 
-      // Start conversation
-      setVoiceState(prev => ({ ...prev, conversationActive: true, isRecording: true }));
-      setRobotListening();
+      // If this is the first turn, play PA greeting
+      if (!voiceState.conversationId) {
+        console.log('🎙️ First turn - playing PA greeting');
+        setRobotTalking();
 
-      // Initialize recording
-      const recording = new Audio.Recording();
-      await recording.prepareToRecordAsync(
-        Audio.RecordingOptionsPresets.HIGH_QUALITY
-      );
-
-      await recording.startAsync();
-      setVoiceState(prev => ({ ...prev, recording }));
-      console.log('🎤 Recording started');
+        const greeting = `Hi boss, I'm listening. How can I help you?`;
+        Speech.speak(greeting, {
+          language: 'en-US',
+          pitch: 1.0,
+          rate: 0.85,
+          onDone: async () => {
+            // After greeting, start recording
+            console.log('✅ Greeting complete, starting recording');
+            await startRecording();
+          }
+        });
+      } else {
+        // Continue existing conversation
+        await startRecording();
+      }
 
     } catch (error) {
       console.error('Failed to start voice conversation:', error);
@@ -638,7 +669,65 @@ const HomeScreen: React.FC = () => {
         isPlaying: false,
         recording: null,
         conversationActive: false,
+        conversationId: null,
       });
+      setRobotIdle();
+    }
+  };
+
+  // Helper function to start recording
+  const startRecording = async () => {
+    try {
+      console.log('🎙️ startRecording() called');
+
+      // Clear any existing timeouts
+      if (recordingTimeoutRef.current) {
+        clearTimeout(recordingTimeoutRef.current);
+        recordingTimeoutRef.current = null;
+      }
+      if (maxRecordingTimeoutRef.current) {
+        clearTimeout(maxRecordingTimeoutRef.current);
+        maxRecordingTimeoutRef.current = null;
+      }
+
+      // Start conversation
+      setVoiceState(prev => {
+        console.log('📝 Setting conversationActive=true, isRecording=true');
+        return { ...prev, conversationActive: true, isRecording: true };
+      });
+      setRobotListening();
+
+      // Initialize recording
+      console.log('🎤 Initializing audio recording...');
+      const recording = new Audio.Recording();
+      await recording.prepareToRecordAsync(
+        Audio.RecordingOptionsPresets.HIGH_QUALITY
+      );
+
+      await recording.startAsync();
+      setVoiceState(prev => ({ ...prev, recording }));
+      console.log('✅ Recording started successfully');
+
+      // Set auto-stop timer (8 seconds - allows longer speech without manual stop)
+      console.log(`⏰ Setting auto-stop timer for ${AUTO_STOP_DELAY / 1000} seconds`);
+      recordingTimeoutRef.current = setTimeout(() => {
+        console.log('⏰ Auto-stop timer fired - stopping recording');
+        stopRecording();
+      }, AUTO_STOP_DELAY);
+
+      // Set maximum recording time (30 seconds safety limit)
+      maxRecordingTimeoutRef.current = setTimeout(() => {
+        console.log('⏰ Max recording time reached (30s) - force stopping');
+        stopRecording();
+      }, MAX_RECORDING_TIME);
+    } catch (error) {
+      console.error('❌ Failed to start recording:', error);
+      setVoiceState(prev => ({
+        ...prev,
+        conversationActive: false,
+        isRecording: false,
+        recording: null
+      }));
       setRobotIdle();
     }
   };
@@ -646,13 +735,33 @@ const HomeScreen: React.FC = () => {
   // Stop recording and process voice input
   const stopRecording = async () => {
     try {
-      const { recording } = voiceState;
-      if (!recording) return;
+      console.log('🛑 stopRecording() called');
+
+      // Clear auto-stop timers
+      if (recordingTimeoutRef.current) {
+        console.log('⏰ Clearing auto-stop timer');
+        clearTimeout(recordingTimeoutRef.current);
+        recordingTimeoutRef.current = null;
+      }
+      if (maxRecordingTimeoutRef.current) {
+        console.log('⏰ Clearing max recording timer');
+        clearTimeout(maxRecordingTimeoutRef.current);
+        maxRecordingTimeoutRef.current = null;
+      }
+
+      const { recording, conversationId } = voiceState;
+      if (!recording) {
+        console.warn('⚠️ No recording found, aborting stopRecording');
+        return;
+      }
 
       console.log('🎤 Stopping recording...');
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
 
-      setVoiceState(prev => ({ ...prev, isRecording: false, isTranscribing: true }));
+      setVoiceState(prev => {
+        console.log('📝 Setting isRecording=false, isTranscribing=true');
+        return { ...prev, isRecording: false, isTranscribing: true };
+      });
       setRobotThinking();
 
       await recording.stopAndUnloadAsync();
@@ -663,16 +772,26 @@ const HomeScreen: React.FC = () => {
       }
 
       console.log('🔄 Transcribing and getting AI response...');
+      console.log(`📝 Using conversationId: ${conversationId || 'none (new conversation)'}`);
 
-      // Send audio for transcription and AI response
-      const response = await ApiService.transcribeAndRespond(uri);
+      // Send audio for transcription and AI response with conversationId if available
+      const response = await ApiService.transcribeAndRespond(uri, conversationId || undefined);
 
       if (response.success) {
         console.log('✅ Transcription:', response.data.transcript);
         console.log('✅ AI Response:', response.data.aiResponse);
+        console.log('🆔 ConversationId:', response.data.conversationId);
+
+        // Store conversationId for next turn
+        const newConversationId = response.data.conversationId;
 
         // Set thinking state briefly before talking
-        setVoiceState(prev => ({ ...prev, isTranscribing: false, isPlaying: true }));
+        setVoiceState(prev => ({
+          ...prev,
+          isTranscribing: false,
+          isPlaying: true,
+          conversationId: newConversationId
+        }));
         setRobotTalking();
 
         // Play voice response if available
@@ -697,6 +816,16 @@ const HomeScreen: React.FC = () => {
                     recording: null
                   }));
                   setRobotIdle();
+
+                  // Auto-start next turn after a brief pause (500ms)
+                  setTimeout(() => {
+                    if (conversationActiveRef.current) {
+                      console.log('🔄 Auto-starting next turn');
+                      startRecording();
+                    } else {
+                      console.log('❌ Conversation not active, skipping auto-start');
+                    }
+                  }, 500);
                 }
               }
             );
@@ -705,11 +834,30 @@ const HomeScreen: React.FC = () => {
             // Still keep conversation active even if audio fails
             setVoiceState(prev => ({ ...prev, isPlaying: false, recording: null }));
             setRobotIdle();
+
+            // Auto-start next turn even if audio failed
+            setTimeout(() => {
+              if (conversationActiveRef.current) {
+                console.log('🔄 Auto-starting next turn (after audio error)');
+                startRecording();
+              } else {
+                console.log('❌ Conversation not active, skipping auto-start');
+              }
+            }, 500);
           }
         } else {
-          // No audio, return to idle
+          // No audio, return to idle and auto-start next turn
           setVoiceState(prev => ({ ...prev, isPlaying: false, recording: null }));
           setRobotIdle();
+
+          setTimeout(() => {
+            if (conversationActiveRef.current) {
+              console.log('🔄 Auto-starting next turn (no audio)');
+              startRecording();
+            } else {
+              console.log('❌ Conversation not active, skipping auto-start');
+            }
+          }, 500);
         }
       } else {
         throw new Error(response.error || 'Voice processing failed');
@@ -730,6 +878,7 @@ const HomeScreen: React.FC = () => {
         isPlaying: false,
         recording: null,
         conversationActive: false,
+        conversationId: null,
       });
       setRobotIdle();
     }
@@ -739,6 +888,16 @@ const HomeScreen: React.FC = () => {
   const endConversation = async () => {
     console.log('🛑 Ending conversation');
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+
+    // Clear all recording timers
+    if (recordingTimeoutRef.current) {
+      clearTimeout(recordingTimeoutRef.current);
+      recordingTimeoutRef.current = null;
+    }
+    if (maxRecordingTimeoutRef.current) {
+      clearTimeout(maxRecordingTimeoutRef.current);
+      maxRecordingTimeoutRef.current = null;
+    }
 
     // Stop any ongoing recording
     if (voiceState.recording) {
@@ -755,6 +914,7 @@ const HomeScreen: React.FC = () => {
       isPlaying: false,
       recording: null,
       conversationActive: false,
+      conversationId: null, // Clear conversationId when ending
     });
     setRobotIdle();
   };
@@ -975,7 +1135,7 @@ const HomeScreen: React.FC = () => {
           avatarLoadFailed={avatarLoadFailed}
           greeting={greeting}
           useReadyPlayerMe={USE_READY_PLAYER_ME}
-          avatarUrl={AVATAR_URL}
+          avatarUrl={user?.assistantProfileImage || AVATAR_URL}
           lottieRef={lottieRef}
           onAvatarPress={handleAvatarTap}
           onAvatarLongPress={() => navigation.navigate('AIAssistant')}

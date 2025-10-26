@@ -25,6 +25,7 @@ import { Audio } from 'expo-av';
 import * as FileSystem from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import ApiService from '../services/api';
+import config from '../config/environment';
 import { RootStackParamList, RootState } from '../types';
 
 const { height, width } = Dimensions.get('window');
@@ -472,7 +473,7 @@ const ChatScreen: React.FC = () => {
         errorMessage = 'Cannot connect to server. Please ensure:\n\n' +
           '1. Backend server is running\n' +
           '2. You\'re on the same network (WiFi)\n' +
-          '3. Server IP is correct (192.168.1.231:3000)';
+          `3. Server is reachable at: ${config.API_BASE_URL}`;
       } else if (error?.code === 'AUTH_EXPIRED') {
         errorMessage = 'Your session has expired. Please log in again.';
       } else if (error?.code === 'NETWORK_ERROR') {

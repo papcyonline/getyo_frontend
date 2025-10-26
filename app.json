@@ -45,8 +45,13 @@
       "expo-web-browser"
     ],
     "extra": {
+      "apiUrl": "http://192.168.1.232:3000",
+      "socketUrl": "http://192.168.1.232:3000",
+      "sentryDsn": {},
+      "enableAnalytics": false,
+      "environment": "development",
       "eas": {
-        "projectId": "58379bef-7686-4317-8dbd-c11abaa63467"
+        "projectId": "0968f9f3-377d-4ee2-a0d2-879e868d9124"
       }
     }
   }

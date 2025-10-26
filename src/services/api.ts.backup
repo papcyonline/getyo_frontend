@@ -668,46 +668,6 @@ class ApiService {
     }
   }
 
-  // Assignment management
-  async getAssignments(params?: { status?: string; type?: string; limit?: number; offset?: number }): Promise<any[]> {
-    try {
-      const response = await this.api.get('/api/assignments', { params });
-      return response.data.data;
-    } catch (error) {
-      console.error('Get assignments failed:', error);
-      throw error;
-    }
-  }
-
-  async getAssignment(assignmentId: string): Promise<any> {
-    try {
-      const response = await this.api.get(`/api/assignments/${assignmentId}`);
-      return response.data.data;
-    } catch (error) {
-      console.error('Get assignment failed:', error);
-      throw error;
-    }
-  }
-
-  async deleteAssignment(assignmentId: string): Promise<void> {
-    try {
-      await this.api.delete(`/api/assignments/${assignmentId}`);
-    } catch (error) {
-      console.error('Delete assignment failed:', error);
-      throw error;
-    }
-  }
-
-  async getAssignmentStats(): Promise<any> {
-    try {
-      const response = await this.api.get('/api/assignments/stats');
-      return response.data.data;
-    } catch (error) {
-      console.error('Get assignment stats failed:', error);
-      throw error;
-    }
-  }
-
   async toggleSubtask(taskId: string, subtaskId: string): Promise<Task> {
     try {
       const response = await this.api.patch(`/api/tasks/${taskId}/subtasks/${subtaskId}/toggle`);
@@ -829,13 +789,9 @@ class ApiService {
     aiResponse: string;
   }>> {
     try {
-      // USE OPTIMIZED ENDPOINT - 50% faster, 50% cheaper
-      // Single AI call instead of two (intent detection + conversational response)
-      const response = await this.api.post('/api/conversations/send-message-optimized', {
+      const response = await this.api.post('/api/conversations/send-message', {
         message,
         conversationId
-      }, {
-        timeout: 60000,
       });
       return response.data;
     } catch (error) {
@@ -863,9 +819,10 @@ class ApiService {
         formData.append('conversationId', conversationId);
       }
 
-      // Use longer timeout for file uploads (60 seconds instead of default 10)
       const response = await this.api.post('/api/conversations/transcribe', formData, {
-        timeout: 60000,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
       return response.data;
     } catch (error) {
@@ -881,9 +838,10 @@ class ApiService {
     intent?: any;
   }> {
     try {
-      // Use longer timeout for file uploads (60 seconds instead of default 10)
       const response = await this.api.post('/api/voice/process', audioData, {
-        timeout: 60000,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
       return response.data.data;
     } catch (error) {
@@ -928,32 +886,31 @@ class ApiService {
     assistantProfileImage?: string;
   }>> {
     try {
-      // Check if we have an actual file to upload
-      const hasFileUpload = assistantProfileImage &&
-        (assistantProfileImage.startsWith('file://') || assistantProfileImage.startsWith('content://'));
+      // Create FormData for multipart upload
+      const formData = new FormData();
+      formData.append('assistantName', assistantName);
 
-      if (hasFileUpload) {
-        // Use FormData for file upload
-        const formData = new FormData();
-        formData.append('assistantName', assistantName);
-        formData.append('profileImage', {
-          uri: assistantProfileImage,
-          type: 'image/jpeg',
-          name: 'profile.jpg'
-        } as any);
-
-        // Use longer timeout for file uploads (60 seconds instead of default 10)
-        const response = await this.api.post('/api/assistant/setup', formData, {
-          timeout: 60000,
-        });
-        return response.data;
-      } else {
-        // Use JSON for no file upload
-        const payload: any = { assistantName };
-        if (assistantProfileImage) payload.assistantProfileImage = assistantProfileImage;
-        const response = await this.api.post('/api/assistant/setup', payload);
-        return response.data;
+      if (assistantProfileImage) {
+        // Check if it's a URI (file) or base64 string
+        if (assistantProfileImage.startsWith('file://') || assistantProfileImage.startsWith('content://')) {
+          // Multipart upload for file URI
+          formData.append('profileImage', {
+            uri: assistantProfileImage,
+            type: 'image/jpeg',
+            name: 'profile.jpg'
+          } as any);
+        } else {
+          // Fallback to base64 in body for data URIs
+          formData.append('assistantProfileImage', assistantProfileImage);
+        }
       }
+
+      const response = await this.api.post('/api/assistant/setup', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return response.data;
     } catch (error) {
       console.error('Setup assistant failed:', error);
       throw error;
@@ -993,7 +950,7 @@ class ApiService {
   }): Promise<User> {
     try {
       const response = await this.api.put('/api/users/profile', profileData);
-      return response.data.data;
+      return response.data.data.user;
     } catch (error) {
       console.error('Update user profile failed:', error);
       throw error;
@@ -1010,9 +967,10 @@ class ApiService {
         name: 'profile.jpg'
       } as any);
 
-      // Use longer timeout for file uploads (60 seconds instead of default 10)
       const response = await this.api.post('/api/users/profile/image', formData, {
-        timeout: 60000,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       return response.data.data;
@@ -1034,9 +992,10 @@ class ApiService {
         name: 'assistant.jpg'
       } as any);
 
-      // Use longer timeout for file uploads (60 seconds instead of default 10)
       const response = await this.api.put('/api/assistant/profile-image', formData, {
-        timeout: 60000,
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
       });
 
       return response.data;
@@ -2356,25 +2315,6 @@ class ApiService {
       console.log('✅ Voice note deleted');
     } catch (error: any) {
       console.error('Delete voice note failed:', error);
-      throw error;
-    }
-  }
-
-  /**
-   * Process transcript with AI (summary, todo, points, translate)
-   */
-  async processTranscriptWithAI(data: {
-    transcript: string;
-    action: 'summary' | 'todo' | 'points' | 'translate';
-    targetLanguage?: string;
-  }): Promise<{ action: string; result: string; targetLanguage?: string }> {
-    try {
-      console.log('🤖 Processing transcript with AI:', data.action);
-      const response = await this.api.post('/api/notes/voice/ai-process', data);
-      console.log('✅ AI processing complete');
-      return response.data.data;
-    } catch (error: any) {
-      console.error('AI processing failed:', error);
       throw error;
     }
   }

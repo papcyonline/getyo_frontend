@@ -98,6 +98,16 @@ const NotificationFeedScreen: React.FC = () => {
   useFocusEffect(
     useCallback(() => {
       fetchNotifications();
+
+      // Auto-refresh every 10 seconds while screen is active
+      const pollInterval = setInterval(() => {
+        fetchNotifications();
+      }, 10000); // Poll every 10 seconds
+
+      // Cleanup interval when screen loses focus
+      return () => {
+        clearInterval(pollInterval);
+      };
     }, [])
   );
 
@@ -149,32 +159,63 @@ const NotificationFeedScreen: React.FC = () => {
       console.error('Failed to mark notification as read:', error);
     }
 
-    // Show notification details
-    Alert.alert(
-      notification.title,
-      notification.message,
-      [
-        {
-          text: 'Dismiss',
-          style: 'cancel'
-        },
-        {
-          text: 'View Related',
-          onPress: () => {
-            // Navigate based on notification type
-            if (notification.type === 'calendar' || notification.type === 'event' || notification.type === 'meeting') {
-              navigation.navigate('Calendar' as any);
-            } else if (notification.type === 'email') {
-              navigation.navigate('EmailManagement' as any);
-            } else if (notification.type === 'task') {
-              navigation.navigate('Tasks' as any);
-            } else if (notification.type === 'reminder') {
-              navigation.navigate('Tasks' as any);
+    // For AI research notifications, fetch full results from the assignment
+    if (notification.type === 'ai_suggestion' && notification.relatedModel === 'Assignment') {
+      try {
+        // Fetch the full assignment with research findings
+        const assignment = await api.getAssignment(notification.relatedId);
+
+        // Show full research results
+        Alert.alert(
+          notification.title,
+          assignment.findings || notification.message,
+          [
+            {
+              text: 'Close',
+              style: 'cancel'
+            },
+            {
+              text: 'View Task',
+              onPress: () => {
+                navigation.navigate('Tasks' as any);
+              }
+            }
+          ],
+          { cancelable: true }
+        );
+      } catch (error) {
+        console.error('Failed to fetch assignment:', error);
+        // Fallback to showing notification message
+        Alert.alert(notification.title, notification.message);
+      }
+    } else {
+      // Show notification details for other types
+      Alert.alert(
+        notification.title,
+        notification.message,
+        [
+          {
+            text: 'Dismiss',
+            style: 'cancel'
+          },
+          {
+            text: 'View Related',
+            onPress: () => {
+              // Navigate based on notification type
+              if (notification.type === 'calendar' || notification.type === 'event' || notification.type === 'meeting') {
+                navigation.navigate('Calendar' as any);
+              } else if (notification.type === 'email') {
+                navigation.navigate('EmailManagement' as any);
+              } else if (notification.type === 'task') {
+                navigation.navigate('Tasks' as any);
+              } else if (notification.type === 'reminder') {
+                navigation.navigate('Tasks' as any);
+              }
             }
           }
-        }
-      ]
-    );
+        ]
+      );
+    }
   };
 
   const handleDelete = (id: string) => {

@@ -63,7 +63,13 @@
       "Bash(adb devices:*)",
       "Bash(ipconfig:*)",
       "Bash(netsh advfirewall firewall show rule:*)",
-      "Bash(if not exist \"C:\\Users\\papcy\\Desktop\\yofam\\getyo_backend\\uploads\\audio\" mkdir \"C:\\Users\\papcy\\Desktop\\yofam\\getyo_backend\\uploads\\audio\")"
+      "Bash(if not exist \"C:\\Users\\papcy\\Desktop\\yofam\\getyo_backend\\uploads\\audio\" mkdir \"C:\\Users\\papcy\\Desktop\\yofam\\getyo_backend\\uploads\\audio\")",
+      "Bash(netsh advfirewall firewall add rule name=\"Node.js Port 3000\" dir=in action=allow protocol=TCP localport=3000)",
+      "Bash(netsh advfirewall firewall delete rule:*)",
+      "Bash(eas build:configure:*)",
+      "Bash(eas project:info:*)",
+      "Bash(eas project:list:*)",
+      "Bash(eas init:*)"
     ],
     "deny": [],
     "ask": []

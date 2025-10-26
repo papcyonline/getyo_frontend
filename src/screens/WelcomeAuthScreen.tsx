@@ -18,10 +18,10 @@ import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
+import { LinearGradient } from 'expo-linear-gradient';
 import { RootStackParamList } from '../types';
 import { RootState } from '../store';
 import { getTranslations } from '../utils/translations';
-import { MockNotificationScreen, MockAISuggestionsScreen, MockTasksScreen } from '../components/MockScreens';
 
 const { height, width } = Dimensions.get('window');
 
@@ -43,21 +43,31 @@ const WelcomeAuthScreen: React.FC = () => {
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const floatAnim = useRef(new Animated.Value(0)).current;
 
-  const mockScreens = [
+  const screenshots = [
     {
-      component: MockNotificationScreen,
-      title: 'Smart Notifications',
-      description: 'Get timely reminders for calls, meetings, traffic & more'
+      image: require('../../assets/screenshots/one.png'),
+      title: 'Voice Recording',
+      description: 'Record meetings, discussions, or voice notes easily'
     },
     {
-      component: MockAISuggestionsScreen,
-      title: 'AI-Powered Suggestions',
-      description: 'Find cheap flights, optimize schedule, remember important dates'
+      image: require('../../assets/screenshots/two.webp'),
+      title: 'AI-Powered Assistance',
+      description: 'Get intelligent suggestions and manage your tasks effortlessly'
     },
     {
-      component: MockTasksScreen,
-      title: 'Stay Organized',
+      image: require('../../assets/screenshots/three.webp'),
+      title: 'Smart Organization',
       description: 'Manage tasks, track progress, never miss a deadline'
+    },
+    {
+      image: require('../../assets/screenshots/four.webp'),
+      title: 'Stay Connected',
+      description: 'Seamless integration with your daily workflow'
+    },
+    {
+      image: require('../../assets/screenshots/five.webp'),
+      title: 'Achieve More',
+      description: 'Boost productivity with intelligent automation'
     },
   ];
 
@@ -110,6 +120,22 @@ const WelcomeAuthScreen: React.FC = () => {
       ])
     ).start();
   }, []);
+
+  // Auto-scroll carousel with loop
+  useEffect(() => {
+    const autoScrollInterval = setInterval(() => {
+      setCurrentSlide((prev) => {
+        const nextSlide = (prev + 1) % screenshots.length;
+        scrollViewRef.current?.scrollTo({
+          x: nextSlide * width,
+          animated: true,
+        });
+        return nextSlide;
+      });
+    }, 4000); // Change slide every 4 seconds
+
+    return () => clearInterval(autoScrollInterval);
+  }, [screenshots.length]);
 
   const handleSignUp = () => {
     // Navigate to Terms & Privacy (mandatory before sign up)
@@ -164,12 +190,15 @@ const WelcomeAuthScreen: React.FC = () => {
               snapToInterval={width}
               decelerationRate="fast"
             >
-              {mockScreens.map((screen, index) => {
-                const ScreenComponent = screen.component;
+              {screenshots.map((screen, index) => {
                 return (
                   <View key={index} style={styles.screenshotSlide}>
-                    <View style={styles.mockScreenWrapper}>
-                      <ScreenComponent />
+                    <View style={styles.screenshotImageWrapper}>
+                      <Image
+                        source={screen.image}
+                        style={styles.screenshotImage}
+                        resizeMode="contain"
+                      />
                       <View style={styles.screenshotOverlay}>
                         <Text style={styles.screenshotTitle}>{screen.title}</Text>
                         <Text style={styles.screenshotDescription}>{screen.description}</Text>
@@ -180,16 +209,27 @@ const WelcomeAuthScreen: React.FC = () => {
               })}
             </ScrollView>
 
-            {/* Pagination Dots */}
+            {/* Enhanced Pagination Dots */}
             <View style={styles.paginationContainer}>
-              {mockScreens.map((_, index) => (
-                <View
+              {screenshots.map((_, index) => (
+                <TouchableOpacity
                   key={index}
-                  style={[
-                    styles.dot,
-                    currentSlide === index && styles.activeDot
-                  ]}
-                />
+                  onPress={() => {
+                    setCurrentSlide(index);
+                    scrollViewRef.current?.scrollTo({
+                      x: index * width,
+                      animated: true,
+                    });
+                  }}
+                  style={styles.dotTouchable}
+                >
+                  <Animated.View
+                    style={[
+                      styles.dot,
+                      currentSlide === index && styles.activeDot
+                    ]}
+                  />
+                </TouchableOpacity>
               ))}
             </View>
           </View>
@@ -290,46 +330,61 @@ const styles = StyleSheet.create({
   },
   carouselContainer: {
     flex: 1,
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
     paddingTop: 0,
+    paddingBottom: height * 0.28,
   },
   screenshotSlide: {
     width: width,
     alignItems: 'center',
-    justifyContent: 'flex-start',
+    justifyContent: 'center',
+    paddingHorizontal: 30,
   },
-  mockScreenWrapper: {
+  screenshotImageWrapper: {
     alignItems: 'center',
+    width: '100%',
+  },
+  screenshotImage: {
+    width: width * 0.65,
+    height: height * 0.45,
+    borderRadius: 30,
   },
   screenshotOverlay: {
-    marginTop: 12,
+    marginTop: 20,
     alignItems: 'center',
+    paddingHorizontal: 20,
   },
   screenshotTitle: {
-    fontSize: 16,
+    fontSize: 18,
     fontWeight: '700',
     color: '#FFF7F5',
     letterSpacing: 0.3,
-    marginBottom: 4,
+    marginBottom: 6,
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
   screenshotDescription: {
-    fontSize: 13,
-    color: 'rgba(255, 247, 245, 0.7)',
-    fontWeight: '400',
+    fontSize: 14,
+    color: 'rgba(255, 247, 245, 0.85)',
+    fontWeight: '500',
     letterSpacing: 0.2,
     textAlign: 'center',
-    lineHeight: 18,
+    lineHeight: 20,
+    textShadowColor: 'rgba(0, 0, 0, 0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   featureSlide: {
     width: width - 48,
     marginRight: 0,
   },
   featureCard: {
-    backgroundColor: 'rgba(51, 150, 211, 0.08)',
+    backgroundColor: 'rgba(201, 169, 110, 0.08)',
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: 'rgba(51, 150, 211, 0.2)',
+    borderColor: 'rgba(201, 169, 110, 0.2)',
     padding: 24,
     alignItems: 'center',
     minHeight: 200,
@@ -339,7 +394,7 @@ const styles = StyleSheet.create({
     width: 70,
     height: 70,
     borderRadius: 35,
-    backgroundColor: 'rgba(51, 150, 211, 0.15)',
+    backgroundColor: 'rgba(201, 169, 110, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
@@ -365,17 +420,29 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingVertical: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    alignSelf: 'center',
+  },
+  dotTouchable: {
+    padding: 4,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: 'rgba(255, 247, 245, 0.3)',
-    marginHorizontal: 4,
+    backgroundColor: 'rgba(255, 247, 245, 0.4)',
+    marginHorizontal: 3,
   },
   activeDot: {
-    width: 24,
-    backgroundColor: '#3396D3',
+    width: 28,
+    backgroundColor: '#C9A96E',
+    shadowColor: '#C9A96E',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 3,
   },
   slidingContainer: {
     position: 'absolute',
@@ -415,7 +482,7 @@ const styles = StyleSheet.create({
   },
   signUpButton: {
     height: 56,
-    backgroundColor: '#3396D3',
+    backgroundColor: '#C9A96E',
     borderRadius: 28,
     flexDirection: 'row',
     justifyContent: 'center',

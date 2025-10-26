@@ -892,9 +892,24 @@ const TabNavigator = () => {
 };
 
 const OnboardingNavigator = () => {
+  // Determine the initial route based on authentication status
+  const isAuthenticated = useSelector((state: RootState) => state.user.isAuthenticated);
+  const user = useSelector((state: RootState) => state.user.user);
+
+  // If user is authenticated but hasn't completed onboarding, skip initial screens
+  // and go to the appropriate onboarding step
+  const initialRoute = isAuthenticated ? 'AssistantNaming' : 'LanguageSelection';
+
+  console.log('🔄 [DEBUG] OnboardingNavigator initialRoute:', {
+    initialRoute,
+    isAuthenticated,
+    userExists: !!user,
+    userId: user?.id
+  });
+
   return (
     <Stack.Navigator
-      initialRouteName="LanguageSelection"
+      initialRouteName={initialRoute}
       screenOptions={{
         headerShown: false,
         gestureEnabled: false, // Prevent swipe back
